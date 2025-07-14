@@ -2,6 +2,20 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MexcApiService } from '../mexc-api-service.js';
 import { IExchangeApiService, IAsset, IEnvService } from '../../types/interfaces.js';
 
+/**
+ * SAFETY NOTICE: MEXC API Service Tests
+ * 
+ * ⚠️  CRITICAL: All tests in this file are designed to NEVER make real API calls or execute real trades.
+ * 
+ * Safety Measures:
+ * - All external services (ExchangeApiService, axios) are mocked
+ * - Production mode tests SIMULATE endpoint selection but make NO real calls
+ * - Explicit safety verification tests ensure no real axios.post calls occur
+ * - All trading operations are stubbed to prevent accidental real transactions
+ * 
+ * Any test that could potentially make real API calls is a CRITICAL BUG and must be fixed immediately.
+ */
+
 // Mock axios
 vi.mock('axios');
 import axios from 'axios';
@@ -103,11 +117,23 @@ describe('MexcApiService', () => {
 
   describe('createMarketSellOrder', () => {
     beforeEach(() => {
-      // Setup common mocks for createMarketSellOrder tests
+      // SAFETY FIRST: Ensure ALL external calls are stubbed to prevent real transactions
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
       vi.mocked(mockExchangeApiService.sign).mockReturnValue('test-signature');
-      vi.mocked(mockExchangeApiService.createMarketSellOrder).mockResolvedValue(undefined);
+      
+      // CRITICAL: Mock createMarketSellOrder to prevent ANY real API calls
+      vi.mocked(mockExchangeApiService.createMarketSellOrder).mockImplementation(async () => {
+        // This mock ensures NO real API calls are made during testing
+        // It completely bypasses the real ExchangeApiService.createMarketSellOrder()
+        // which contains axios.post() calls to MEXC APIs
+        return Promise.resolve();
+      });
+      
+      // SAFETY VERIFICATION: Confirm our mocks are properly set up
+      if (!vi.isMockFunction(mockExchangeApiService.createMarketSellOrder)) {
+        throw new Error('CRITICAL SAFETY FAILURE: createMarketSellOrder is not mocked!');
+      }
     });
 
     it('should create market sell order in test mode by default', async () => {
@@ -140,8 +166,11 @@ describe('MexcApiService', () => {
       );
     });
 
-    it('should use production endpoint when explicitly configured for live trading', async () => {
-      // Setup: Explicit production mode
+    it('should SIMULATE production endpoint selection (NO REAL TRADES)', async () => {
+      // SAFETY WARNING: This test verifies endpoint logic but makes NO real trades
+      // All external calls are mocked to prevent actual API interactions
+      
+      // Setup: Simulate production mode configuration
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(false); // useTestMode = false
       vi.mocked(mockEnvService.get).mockReturnValue('production'); // nodeEnv = production
 
@@ -153,19 +182,89 @@ describe('MexcApiService', () => {
       // Mock getSellAmount
       vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.5);
 
+      // CRITICAL SAFETY VERIFICATION: Confirm our mock is in place before the dangerous call
+      // This ensures that when MexcApiService.createMarketSellOrder() calls 
+      // mockExchangeApiService.createMarketSellOrder(), it hits our mock, NOT the real ExchangeApiService
+      expect(vi.isMockFunction(mockExchangeApiService.createMarketSellOrder)).toBe(true);
+      
+      /**
+       * WHY THIS CALL WILL NOT REACH MEXC:
+       * 
+       * 1. MexcApiService receives mockExchangeApiService (not real ExchangeApiService)
+       * 2. mockExchangeApiService.createMarketSellOrder is a vi.fn() mock that returns Promise.resolve()
+       * 3. The real ExchangeApiService.createMarketSellOrder() contains axios.post() calls to MEXC
+       * 4. Our mock bypasses ALL real network calls - it just returns a resolved promise
+       * 5. No HTTP requests are made, no API keys are used, no real trading occurs
+       * 
+       * SAFETY CHAIN:
+       * Test → MexcApiService → mockExchangeApiService.createMarketSellOrder() → Promise.resolve() 
+       *                                    ↑
+       *                              STOPS HERE - never reaches real API
+       */
       await mexcApiService.createMarketSellOrder(mockAsset, 'USDT');
 
+      // Verify it would select the production endpoint (but no real call is made)
       expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalledWith(
         'BTCUSDT',
         0.5,
         'mexc',
         expect.any(String),
-        expect.stringContaining('/api/v3/order'), // Should use live endpoint (not /test)
+        expect.stringContaining('/api/v3/order'), // Would use live endpoint (SIMULATED ONLY)
         expect.objectContaining({
           'X-MEXC-APIKEY': 'test-api-key',
           'Content-Type': 'application/json',
         })
       );
+      
+      // SAFETY VERIFICATION: Ensure the mock was called, not real service
+      expect(vi.mocked(mockExchangeApiService.createMarketSellOrder)).toHaveBeenCalled();
+    });
+
+    it('should NEVER make real API calls during testing - safety verification', async () => {
+      // This test explicitly verifies that NO real external calls are made
+      vi.mocked(mockEnvService.getBoolean).mockReturnValue(false); // Simulate production config
+      vi.mocked(mockEnvService.get).mockReturnValue('production');
+      
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { serverTime: 1640995200000 }
+      });
+      
+      vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.1);
+
+      // PRE-CALL SAFETY VERIFICATION: Confirm mocks are properly set up
+      expect(vi.isMockFunction(mockExchangeApiService.createMarketSellOrder)).toBe(true);
+      expect(vi.isMockFunction(axios.get)).toBe(true);
+      
+      // Spy on axios.post to ensure it's NEVER called during tests
+      const axiosPostSpy = vi.spyOn(axios, 'post');
+      
+      /**
+       * SAFETY EXPLANATION FOR createMarketSellOrder() CALL:
+       * 
+       * Even though this simulates "production mode", NO real trading occurs because:
+       * 
+       * 1. DEPENDENCY INJECTION SAFETY:
+       *    - MexcApiService was constructed with mockExchangeApiService (not real one)
+       *    - All calls to this.exchangeApiService.* hit our mocks
+       * 
+       * 2. MOCK IMPLEMENTATION SAFETY:
+       *    - mockExchangeApiService.createMarketSellOrder returns Promise.resolve()
+       *    - It never calls axios.post() to external APIs
+       *    - No HTTP requests leave the test environment
+       * 
+       * 3. NETWORK ISOLATION:
+       *    - axios is mocked at the module level (vi.mock('axios'))
+       *    - Even if somehow bypassed, axios.post would be intercepted
+       * 
+       * VERIFICATION: We spy on axios.post to ensure it's NEVER invoked
+       */
+      await mexcApiService.createMarketSellOrder(mockAsset, 'USDT');
+      
+      // CRITICAL SAFETY CHECK: Ensure axios.post (real API call) was NEVER invoked
+      expect(axiosPostSpy).not.toHaveBeenCalled();
+      
+      // But verify the mocked service was called (testing the logic flow)
+      expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalled();
     });
 
     it('should default to test mode when environment is not production', async () => {
