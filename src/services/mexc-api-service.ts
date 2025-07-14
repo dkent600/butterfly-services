@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IExchangeTimeSyncer, TYPES } from '../types/interfaces.js';
+import { IAsset, IExchangeService, IExchangeApiService, IExchangeTimeSyncer, IEnvService, TYPES } from '../types/interfaces.js';
 import { ExchangeTimeSyncer } from './exchange-time-syncer.js';
 
 @injectable()
@@ -12,6 +12,7 @@ export class MexcApiService implements IExchangeService {
 
   constructor(
     @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
+    @inject(TYPES.IEnvService) private readonly envService: IEnvService,
   ) { }
 
   private async getTimeSyncer(asset: IAsset): Promise<IExchangeTimeSyncer> {
@@ -49,6 +50,20 @@ export class MexcApiService implements IExchangeService {
   private async getServerTimestamp(asset: IAsset): Promise<string> {
     const timeSyncer = await this.getTimeSyncer(asset);
     return timeSyncer.getTimestampString();
+  }
+
+  private shouldUseTestMode(): boolean {
+    // SAFETY FIRST: Always default to test mode unless explicitly disabled
+    const useTestMode = this.envService.getBoolean('app.useTestMode');
+    const nodeEnv = this.envService.get('app.environment') || process.env.NODE_ENV;
+    
+    // Only allow live trading if ALL of these conditions are met:
+    // 1. useTestMode is explicitly set to false
+    // 2. nodeEnv is explicitly set to 'production'
+    const isExplicitlyLiveMode = useTestMode === false && nodeEnv === 'production';
+    
+    // Default to test mode for safety
+    return !isExplicitlyLiveMode;
   }
 
   createPair(asset: IAsset, to: string = 'USDT'): string {
@@ -135,7 +150,9 @@ export class MexcApiService implements IExchangeService {
 
     const signature = this.exchangeApiService.sign(queryString, this.exchangeApiService.getAPISecret(asset.exchange));
 
-    const url = `${this.getApiUrl(asset, '/api/v3/order/test')}?${queryString}&signature=${signature}`;
+    // Use test mode based on environment configuration
+    const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
+    const url = `${this.getApiUrl(asset, endpoint)}?${queryString}&signature=${signature}`;
 
     const headers = {
       'X-MEXC-APIKEY': this.exchangeApiService.getAPIKey(asset.exchange),

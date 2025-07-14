@@ -18,11 +18,11 @@
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "test": "npm run lint:check && vitest",
-    "test:quick": "vitest",
+    "test": "npm run lint:check && vitest --run",
+    "test:quick": "vitest --run",
     "test:ui": "npm run lint:check && vitest --ui",
     "test:watch": "vitest --watch",
-    "test:coverage": "npm run lint:check && vitest --coverage",
+    "test:coverage": "npm run lint:check && vitest --coverage --run",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "lint:check": "eslint src --ext .ts --max-warnings 0"
@@ -33,6 +33,7 @@
     "@fastify/swagger": "^9.5.1",
     "@fastify/swagger-ui": "^5.2.3",
     "axios": "^1.10.0",
+    "dotenv": "^17.2.0",
     "fastify": "^5.4.0",
     "reflect-metadata": "^0.2.2",
     "tsyringe": "^4.10.0"

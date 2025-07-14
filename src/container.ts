@@ -18,4 +18,10 @@ export function configureDI(): void {
   container.registerSingleton('MexcApiService', MexcApiService);
 }
 
+export async function initializeServices(): Promise<void> {
+  // Initialize environment service
+  const envService = container.resolve<EnvService>(TYPES.IEnvService);
+  await envService.init();
+}
+
 export { container };

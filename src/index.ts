@@ -1,5 +1,6 @@
+import 'dotenv/config'; // Load environment variables from .env file
 import 'reflect-metadata';
-import { configureDI } from './container.js';
+import { configureDI, initializeServices } from './container.js';
 import { startServer } from './api/server.js';
 
 async function main() {
@@ -8,10 +9,9 @@ async function main() {
     configureDI();
     console.log('✅ Dependency injection configured');
 
-    // Initialize environment service
-    // Note: In a real application, you'd initialize the EnvService here
-    // const envService = container.resolve<IEnvService>(TYPES.IEnvService);
-    // await envService.init();
+    // Initialize services (loads environment configuration)
+    await initializeServices();
+    console.log('✅ Services initialized');
 
     // Start the server
     const port = parseInt(process.env.PORT || '3000', 10);
