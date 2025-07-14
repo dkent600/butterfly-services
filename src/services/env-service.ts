@@ -1,10 +1,7 @@
-export interface IEnvService {
-  init(): Promise<void>;
-  get(key: string): string | undefined;
-  getNumber(key: string): number | undefined;
-  getBoolean(key: string): boolean | undefined;
-}
+import { injectable } from 'tsyringe';
+import { IEnvService } from '../types/interfaces.js';
 
+@injectable()
 export class EnvService implements IEnvService {
   private config: Record<string, unknown> = {};
 

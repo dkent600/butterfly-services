@@ -1,20 +1,13 @@
-export interface IExchangeTimeSyncer {
-  getTimestampString(): string;
-  now(): number;
-  initFromServer(serverTime: number): void;
-  getSynchronizedTimestamp(): number;
-}
+import { injectable } from 'tsyringe';
+import { IExchangeTimeSyncer } from '../types/interfaces.js';
 
 /**
  * ExchangeTimeSyncer is used to synchronize the local time with the server time for a specific exchange.
  */
-export class ExchangeTimeSyncer {
-  private exchangeName: string;
+@injectable()
+export class ExchangeTimeSyncer implements IExchangeTimeSyncer {
   private cachedTimeOffset: number = 0;
 
-  constructor(exchangeName: string) {
-    this.exchangeName = exchangeName;
-  }
   /**
    * Call this to initialize the time syncer with the server time.
    * This should be called once before using the time syncer.
@@ -23,14 +16,13 @@ export class ExchangeTimeSyncer {
    * This will set the cached time offset to the difference between the server time and the local time.
    * This is used to synchronize the local time with the server time.
    */
-  initFromServer(serverTime: number) {
+  async initFromServer(serverTime: number): Promise<void> {
     this.cachedTimeOffset = serverTime - Date.now();
   }
 
   /**
-   * `now()` is the server time in milliseconds.
+   * `getTimestampString()` returns the server time as a string.
    * It is used to create a timestamp string for API requests.
-   * @returns 
    */
   getTimestampString(): string {
     return this.now().toString();
@@ -41,12 +33,11 @@ export class ExchangeTimeSyncer {
    * This method is used to synchronize the local time with the server time.
    * It can be used to calculate the time offset between the server and the local machine.
    */
-  now() {
+  now(): number {
     return this.getSynchronizedTimestamp();
-    // return new Date().toISOString();
   }
 
   getSynchronizedTimestamp(): number {
     return Date.now() + this.cachedTimeOffset;
   }
-} 
+}

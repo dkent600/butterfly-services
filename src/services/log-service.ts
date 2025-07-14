@@ -1,9 +1,7 @@
-export interface ILogService {
-  log(message: string): void;
-  logError(err: Error | unknown): void;
-  logReport(message: string): void;
-}
+import { injectable } from 'tsyringe';
+import { ILogService } from '../types/interfaces.js';
 
+@injectable()
 export class LogService implements ILogService {
 
   log(message: string): void {
@@ -21,7 +19,7 @@ export class LogService implements ILogService {
     }
     const _log = [...report].join('\n');
 
-    this.log(_log + '\n');
+    this.log(`${_log  }\n`);
   }
 
   async logError(err: Error | unknown): Promise<void> {

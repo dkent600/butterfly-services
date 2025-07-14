@@ -8,6 +8,12 @@
     "resolveJsonModule": true,
     "importHelpers": true,
     "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "strictNullChecks": true,
     "lib": [
       "ES2022",
       "DOM"
@@ -17,7 +23,12 @@
     ]
   },
   "include": [
-    "src",
-    "services"
+    "src"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/__tests__/**/*",
+    "src/test-setup.ts"
   ]
 }

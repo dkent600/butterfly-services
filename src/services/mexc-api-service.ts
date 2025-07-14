@@ -1,29 +1,26 @@
-import { IAsset, IExchangeApiService, IExchangeService } from "./exchange-api-service.js";
 import axios from 'axios';
-import { ExchangeTimeSyncer, IExchangeTimeSyncer } from './exchange-time-syncer.js';
-import { IEnvService } from "./env-service.js";
+import { injectable, inject } from 'tsyringe';
+import { IAsset, IExchangeService, IExchangeApiService, IExchangeTimeSyncer, TYPES } from '../types/interfaces.js';
+import { ExchangeTimeSyncer } from './exchange-time-syncer.js';
 
-
+@injectable()
 export class MexcApiService implements IExchangeService {
-  private readonly exchangeTimeSyncer: IExchangeTimeSyncer;
   /**
    * assuming here that this is a singleton service, so we can cache the time syncers
    */
   private cachedTimeSyncers: Map<IAsset, IExchangeTimeSyncer> = new Map();
 
   constructor(
-    private readonly exchangeApiService: IExchangeApiService,
-    private readonly envService: IEnvService) {
-    this.exchangeTimeSyncer = new ExchangeTimeSyncer('MEXC');
-  }
+    @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
+  ) { }
 
   private async getTimeSyncer(asset: IAsset): Promise<IExchangeTimeSyncer> {
     if (!this.cachedTimeSyncers.has(asset)) {
-      const timeSyncer = new ExchangeTimeSyncer(asset.exchange)
+      const timeSyncer = new ExchangeTimeSyncer();
       this.cachedTimeSyncers.set(asset, timeSyncer);
       await timeSyncer.initFromServer(await this.getRealServerTime(asset));
     }
-    return Promise.resolve(this.cachedTimeSyncers.get(asset));
+    return this.cachedTimeSyncers.get(asset) as ExchangeTimeSyncer;
   }
 
   /**
@@ -34,13 +31,12 @@ export class MexcApiService implements IExchangeService {
    * @returns The proxied API URL as a string.
    */
   private getApiUrl(asset: IAsset, path: string): string {
-    return `${asset.apiUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`;
+    return `${asset.apiUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
   }
 
   private async getRealServerTime(asset: IAsset): Promise<number> {
     try {
       const url = this.getApiUrl(asset, '/api/v3/time');
-      // console.log('Fetching server time from URL:', url);
       const response = await axios.get(url);
       return response.data.serverTime;
     } catch (error) {
@@ -60,7 +56,7 @@ export class MexcApiService implements IExchangeService {
   }
 
   async getSellAmount(asset: IAsset): Promise<number> {
-    const balance = await this.fetchBalance(asset)
+    const balance = await this.fetchBalance(asset);
     return asset.percentage / 100 * balance;
   }
 
@@ -68,7 +64,7 @@ export class MexcApiService implements IExchangeService {
     try {
       const url = this.getApiUrl(asset, '/api/v3/ticker/price');
       const { data } = await axios.get(url, {
-        params: { symbol: `${this.createPair(asset)}` },
+        params: { symbol: this.createPair(asset) },
       });
       return parseFloat(data.price);
     } catch (error) {
@@ -96,27 +92,14 @@ export class MexcApiService implements IExchangeService {
 
     const signature = this.exchangeApiService.sign(queryString, apiSecret);
 
-    // console.log('fetchBalance debug info:', {
-    //   asset: asset.name,
-    //   exchange: asset.exchange,
-    //   timestamp,
-    //   queryString,
-    //   signature: signature.substring(0, 10) + '...', // Only show first 10 chars for security
-    //   apiKey: apiKey.substring(0, 10) + '...',
-    //   url: this.getApiUrl(asset, '/api/v3/account'),
-    //   timestampAge: Date.now() - parseInt(timestamp)
-    // });
-
     try {
       const baseUrl = this.getApiUrl(asset, '/api/v3/account');
       const url = `${baseUrl}?${queryString}&signature=${signature}`;
 
-      // console.log('Final request URL:', url);
-
       const { data } = await axios.get(url, {
         headers: {
           'X-MEXC-APIKEY': apiKey,
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -125,6 +108,7 @@ export class MexcApiService implements IExchangeService {
       for (const coin of data.balances) {
         if (coin.asset.toLowerCase() === asset.name.toLowerCase()) {
           balance = parseFloat(coin.free);
+          break;
         }
       }
 
@@ -137,14 +121,13 @@ export class MexcApiService implements IExchangeService {
         queryString,
         hasApiKey: !!apiKey,
         hasApiSecret: !!apiSecret,
-        errorResponse: error.response?.data
+        errorResponse: (error as any).response?.data,
       });
       throw new Error(`Could not fetch balance for ${asset.name}`);
     }
   }
 
-  async createMarketSellOrder(asset: IAsset, to: string = 'USDT') {
-
+  async createMarketSellOrder(asset: IAsset, to: string = 'USDT'): Promise<any> {
     const coinpair = this.createPair(asset, to);
     const quantity = await this.getSellAmount(asset);
     const timestamp = await this.getServerTimestamp(asset);
@@ -156,15 +139,16 @@ export class MexcApiService implements IExchangeService {
 
     const headers = {
       'X-MEXC-APIKEY': this.exchangeApiService.getAPIKey(asset.exchange),
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     };
 
     return this.exchangeApiService.createMarketSellOrder(
-      this.createPair(asset, to),
+      coinpair,
       quantity,
       asset.exchange,
       timestamp,
       url,
-      headers);
+      headers,
+    );
   }
 }
