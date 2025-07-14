@@ -1,3 +1,16 @@
+/**
+ * Dependency Injection Container Configuration
+ * 
+ * This file sets up the TSyringe dependency injection container for the application.
+ * It registers all services as singletons and provides initialization functions.
+ * 
+ * Services registered:
+ * - LogService: Centralized logging functionality
+ * - EnvService: Environment variable and configuration management
+ * - ExchangeApiService: Core API operations (signing, authentication)
+ * - ExchangeTimeSyncer: Server time synchronization for exchanges
+ * - MexcApiService: MEXC exchange-specific operations
+ */
 import 'reflect-metadata';
 import { container } from 'tsyringe';
 import { TYPES } from './types/interfaces.js';

@@ -10,8 +10,45 @@ import {
   ErrorResponseSchema,
 } from '../schemas/exchange-schemas.js';
 
+/**
+ * Exchange API Routes Plugin
+ * 
+ * This Fastify plugin provides REST API endpoints for interacting with cryptocurrency exchanges.
+ * Currently supports MEXC exchange operations including:
+ * 
+ * Endpoints:
+ * - GET /api/v1/mexc/balance/:asset - Retrieve asset balance from MEXC exchange
+ * - GET /api/v1/mexc/price/:asset - Get current market price for an asset
+ * - POST /api/v1/mexc/orders/sell - Create a market sell order
+ * 
+ * Features:
+ * - Comprehensive input validation using JSON Schema
+ * - Swagger/OpenAPI documentation integration
+ * - Standardized error handling and response formats
+ * - Dependency injection via TSyringe container
+ * - Support for configurable API URLs and trading parameters
+ * 
+ * Security:
+ * - All trading operations use safety-first mode by default
+ * - Input validation prevents malformed requests
+ * - Proper error handling prevents information leakage
+ * 
+ * @param fastify - Fastify instance to register routes on
+ * @returns Promise<void> - Resolves when all routes are registered
+ */
 const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
+  /**
+   * GET /api/v1/mexc/balance/:asset
+   * 
+   * Retrieves the current balance for a specific cryptocurrency asset from the MEXC exchange.
+   * Supports percentage-based balance calculation for partial position management.
+   * 
+   * @param asset - The cryptocurrency symbol (e.g., BTC, ETH, DOGE)
+   * @param apiUrl - MEXC API base URL for the request
+   * @param percentage - Optional percentage of total balance to consider (0-100, default: 100)
+   * @returns Balance information with timestamp and exchange metadata
+   */
   // GET /api/v1/mexc/balance/:asset
   fastify.get('/mexc/balance/:asset', {
     schema: {
@@ -70,6 +107,17 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }
   });
 
+  /**
+   * GET /api/v1/mexc/price/:asset
+   * 
+   * Fetches the current market price for a specified cryptocurrency asset on MEXC exchange.
+   * Supports configurable quote currency (default: USDT) for price conversion.
+   * 
+   * @param asset - The cryptocurrency symbol to get price for
+   * @param apiUrl - MEXC API base URL for the request
+   * @param to - Quote currency for price conversion (default: USDT)
+   * @returns Current price information with trading pair and timestamp
+   */
   // GET /api/v1/mexc/price/:asset
   fastify.get('/mexc/price/:asset', {
     schema: {
@@ -130,6 +178,21 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }
   });
 
+  /**
+   * POST /api/v1/mexc/orders/sell
+   * 
+   * Creates a market sell order for a cryptocurrency asset on MEXC exchange.
+   * This endpoint handles immediate market orders at current market prices.
+   * 
+   * SAFETY FEATURES:
+   * - Validates exchange type to ensure MEXC compatibility
+   * - Uses safety-first trading mode by default (configured in MexcApiService)
+   * - Comprehensive error handling for order failures
+   * 
+   * @param asset - IAsset object containing asset configuration and exchange info
+   * @param to - Target currency for the sell order (default: USDT)
+   * @returns Order confirmation with quantity and execution details
+   */
   // POST /api/v1/mexc/orders/sell
   fastify.post('/mexc/orders/sell', {
     schema: {
