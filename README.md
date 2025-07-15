@@ -30,11 +30,15 @@ npm start        # Run the compiled version
 
 ### Expected Startup Output
 ```
+📁 Loaded environment from: .env
 ✅ Dependency injection configured
 ✅ Services initialized  
-🚀 Server listening on http://0.0.0.0:3000
-📚 Swagger UI available at http://localhost:3000/docs
+🚀 Server running at http://localhost:3000
+📚 API Documentation available at http://localhost:3000/docs
+[timestamp] INFO: Server listening at http://127.0.0.1:3000
+[timestamp] INFO: Server listening at http://[::1]:3000
 ```
+> Note: You'll see both IPv4 (127.0.0.1) and IPv6 ([::1]) localhost addresses
 
 ### Access Points
 - **API Server**: `http://localhost:3000`
@@ -84,8 +88,9 @@ curl http://localhost:3000
 ```
 
 ### Expected Results When Running
-- **Port Check**: Should show `0.0.0.0:3000` or `:::3000` in LISTEN state
-- **Browser**: Should display API documentation or welcome page
+- **Port Check**: Should show `127.0.0.1:3000` and `[::1]:3000` in LISTEN state
+- **Console Output**: Should show both IPv4 (`127.0.0.1:3000`) and IPv6 (`[::1]:3000`) localhost addresses
+- **Browser**: Should display API documentation or welcome page at `http://localhost:3000`
 - **curl**: Should return HTTP response (not connection refused)
 
 ## Development Commands Reference
@@ -94,11 +99,11 @@ curl http://localhost:3000
 
 | Command | Purpose | When to Use |
 |---------|---------|-------------|
-| `npm run dev` | Development server with hot reload | Main development work |
-| `npm run dev:debug` | Development server with debugger attached | Debug with hot reload |
-| `npm run debug` | Single-run server with debugger | Debug specific execution |
-| `npm start` | Production server from compiled JS | Testing built version |
+| `npm run dev` | Development server with hot reload | When hosting for development clients |
+| `npm run dev:debug` | Development server with debugger + hot reload | Debug while developing (restarts on file changes) |
+| `npm run debug` | Development server with debugger (no hot reload) | Debug single session (no auto-restart) |
 | `npm run build` | Compile TypeScript to JavaScript | Before production deployment |
+| **`npm start`** | **Production server** (runs compiled JS) | **Production deployment** |
 
 ### Testing Commands
 
@@ -117,6 +122,17 @@ curl http://localhost:3000
 | `npm run lint` | Check code style | Pre-commit validation |
 | `npm run lint:fix` | Auto-fix style issues | Code cleanup |
 | `npm run lint:check` | Strict linting (zero warnings) | CI/CD pipeline |
+
+### Production Commands
+
+| Command | Purpose | Usage |
+|---------|---------|-------|
+| `npm run build` | Compile TypeScript to JavaScript | Required before production |
+| `npm start` | Run production server | Production deployment |
+| `npm run debug:production` | **Debug production** with real credentials | **Production troubleshooting** |
+
+> **Production Workflow**: `npm run build` → `npm start`  
+> **Production Debug**: `npm run debug:production` (⚠️ uses real credentials)
 
 ### Debugging Options
 
@@ -227,6 +243,9 @@ npm run build
 
 # 📦 Run production build
 npm start
+
+# 🚨 Debug production issues (CAUTION: real credentials)
+npm run debug:production
 ```
 
 ### Development Workflow with Debugging
@@ -324,11 +343,12 @@ npm test     # Automatically uses .env.test with safe settings
 
 **3. Debug Mode**
 ```bash
-npm run debug        # Debug mode with enhanced logging
-npm run dev:debug    # Debug with hot reload + enhanced logging
+npm run debug        # Single-run debug (no auto-restart)
+npm run dev:debug    # Debug with hot reload (restarts on file changes)
 ```
-- Uses same `.env` file but with `NODE_ENV=debug` and `LOG_LEVEL=debug`
+- Both use same `.env` file with `NODE_ENV=debug` and `LOG_LEVEL=debug`
 - Automatically enables verbose logging and debug features
+- **Choose based on need**: single session vs. continuous development
 
 **4. Production Debugging (Advanced)**
 ```bash
@@ -357,6 +377,7 @@ cp .env.production.debug.example .env.production.debug  # (if template exists)
 # Application Settings
 NODE_ENV=development|test|debug|production
 PORT=3000
+HOST=localhost|0.0.0.0
 LOG_LEVEL=debug|info|warn|error
 
 # TRADING SAFETY
@@ -366,7 +387,7 @@ USE_TEST_MODE=true|false  # CRITICAL: Controls real vs test trading
 MEXC_API_KEY=your-api-key
 MEXC_API_SECRET=your-api-secret
 
-# Debug-specific (only in .env.debug)
+# Debug-specific (only in debug environments)
 DEBUG_MODE=true
 VERBOSE_LOGGING=true
 ENABLE_REQUEST_LOGGING=true

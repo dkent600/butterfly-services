@@ -14,8 +14,12 @@ export async function createServer(): Promise<FastifyInstance> {
   });
 
   // Register CORS plugin
+  const corsOrigins = process.env.ALLOWED_ORIGINS 
+    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+    : true; // Allow all origins in development
+    
   await server.register(import('@fastify/cors'), {
-    origin: true, // Allow all origins for development
+    origin: corsOrigins,
     credentials: true,
   });
 
