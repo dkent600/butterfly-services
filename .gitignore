@@ -66,12 +66,12 @@ web_modules/
 .yarn-integrity
 
 # dotenv environment variable files
+.env
 .env.production
 .env.production.debug
 
 # Allow safe template/configuration files to be committed
 # These contain no real credentials and are safe for the repository
-# .env - default development settings (safe)
 # .env.example - template file (safe)
 # .env.test - test configuration with dummy credentials (safe)
 # .env.production.example - production template (safe)
