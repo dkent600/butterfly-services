@@ -1,143 +1,115 @@
 import axios from 'axios';
-import { createHash, createHmac } from 'node:crypto';
+import crypto from 'node:crypto';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IExchangeTimeSyncer, IEnvService, TYPES } from '../types/interfaces.js';
-import { ExchangeTimeSyncer } from './exchange-time-syncer.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, TYPES } from '../types/interfaces.js';
+import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
-export class KrakenApiService implements IExchangeService {
-  /**
-   * assuming here that this is a singleton service, so we can cache the time syncers
-   */
-  private cachedTimeSyncers: Map<IAsset, IExchangeTimeSyncer> = new Map();
-
+export class KrakenApiService extends BaseExchangeService implements IExchangeService {
   constructor(
     @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
-    @inject(TYPES.IEnvService) private readonly envService: IEnvService,
-  ) { }
+    @inject(TYPES.IEnvService) envService: IEnvService,
+  ) {
+    super(envService);
+  }
 
-  private async getTimeSyncer(asset: IAsset): Promise<IExchangeTimeSyncer> {
-    if (!this.cachedTimeSyncers.has(asset)) {
-      const timeSyncer = new ExchangeTimeSyncer();
-      this.cachedTimeSyncers.set(asset, timeSyncer);
-      await timeSyncer.initFromServer(await this.getRealServerTime(asset));
-    }
-    return this.cachedTimeSyncers.get(asset) as ExchangeTimeSyncer;
+  protected getTimeEndpoint(): string {
+    return '/0/public/Time';
+  }
+
+  protected extractServerTime(responseData: any): number {
+    // Kraken returns time in seconds, convert to milliseconds to match other exchanges
+    return responseData.result.unixtime * 1000;
   }
 
   /**
-   * Constructs the full API URL for a given asset and endpoint path.
-   *
-   * @param asset - The asset object containing API configuration details.
-   * @param path - The specific API endpoint path to append.
-   * @returns The proxied API URL as a string.
+   * Maps common asset names to Kraken's naming convention
+   * Based on: https://support.kraken.com/hc/en-us/articles/360001185506-How-to-interpret-asset-codes
+   * 
+   * Only maps assets that have different names on Kraken.
+   * Most assets (like SOL, ADA, DOGE, etc.) use their standard names and don't need mapping.
    */
-  private getApiUrl(asset: IAsset, path: string): string {
-    return `${asset.apiUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
-  }
-
-  private async getRealServerTime(asset: IAsset): Promise<number> {
-    try {
-      const url = this.getApiUrl(asset, '/0/public/Time');
-      const response = await axios.get(url);
-      // Kraken returns time in seconds, convert to milliseconds to match other exchanges
-      return response.data.result.unixtime * 1000;
-    } catch (error) {
-      console.error(`Failed to fetch server time for ${asset.name}:`, error);
-      console.error('Attempted URL was:', this.getApiUrl(asset, '/0/public/Time'));
-      throw new Error(`Could not fetch server time for ${asset.name}`);
-    }
-  }
-
-  private async getServerTimestamp(asset: IAsset): Promise<string> {
-    const timeSyncer = await this.getTimeSyncer(asset);
-    return timeSyncer.getTimestampString();
-  }
-
-  private shouldUseTestMode(): boolean {
-    // SAFETY FIRST: Always default to test mode unless explicitly disabled
-    const useTestMode = this.envService.getBoolean('app.useTestMode');
-    const nodeEnv = this.envService.get('app.environment');
-    
-    // Only allow live trading if ALL of these conditions are met:
-    // 1. useTestMode is explicitly set to false
-    // 2. nodeEnv is explicitly set to 'production'
-    const isExplicitlyLiveMode = useTestMode === false && nodeEnv === 'production';
-    
-    // Default to test mode for safety
-    return !isExplicitlyLiveMode;
-  }
-
   createPair(asset: IAsset, to: string = 'USDT'): string {
-    // Kraken uses different symbols, map common ones
-    const krakenAssetMap: { [key: string]: string } = {
-      'BTC': 'XXBT',
-      'ETH': 'XETH',
-      'USD': 'ZUSD',
-      'USDT': 'USDT',
-    };
-    
-    const fromSymbol = krakenAssetMap[asset.name.toUpperCase()] || asset.name.toUpperCase();
-    const toSymbol = krakenAssetMap[to.toUpperCase()] || to.toUpperCase();
-    
-    return `${fromSymbol}${toSymbol}`;
+    const krakenAsset = this.mapAssetToKraken(asset.name);
+    const krakenTo = this.mapAssetToKraken(to);
+    return `${krakenAsset}${krakenTo}`;
   }
 
-  async getSellAmount(asset: IAsset): Promise<number> {
-    const balance = await this.fetchBalance(asset);
-    return asset.percentage / 100 * balance;
+  /**
+   * Maps an asset name to Kraken's naming convention
+   */
+  private mapAssetToKraken(assetName: string): string {
+    switch (assetName.toUpperCase()) {
+      case 'BTC':
+        return 'XXBT';  // Bitcoin uses XXBT on Kraken
+      case 'ETH':
+        return 'XETH';  // Ethereum uses XETH on Kraken
+      case 'USD':
+        return 'ZUSD';  // USD uses ZUSD on Kraken
+      default:
+        return assetName.toUpperCase();  // Most assets use their standard names
+    }
   }
 
   async fetchPrice(asset: IAsset): Promise<number> {
+    const pair = this.createPair(asset);
+    const url = this.getApiUrl(asset, '/0/public/Ticker');
+    
     try {
-      const pair = this.createPair(asset);
-      const url = this.getApiUrl(asset, '/0/public/Ticker');
       const { data } = await axios.get(url, {
         params: { pair },
       });
+
+      // Try to find price data with the exact pair name first
+      let priceData = data.result?.[pair];
       
-      // Kraken returns data in a different format
-      const pairData = data.result[pair] || data.result[Object.keys(data.result)[0]];
-      if (!pairData) {
+      // If not found, try alternative formats (Kraken sometimes returns different key formats)
+      if (!priceData) {
+        // Look for any key in the result that matches our asset
+        const resultKeys = Object.keys(data.result || {});
+        for (const key of resultKeys) {
+          if (key.includes(asset.name.toUpperCase()) || 
+              key.includes(asset.name.replace('BTC', 'XBT').toUpperCase())) {
+            priceData = data.result[key];
+            break;
+          }
+        }
+      }
+
+      if (!priceData?.c?.[0]) {
         throw new Error(`No price data found for pair ${pair}`);
       }
-      
-      return parseFloat(pairData.c[0]); // 'c' is the last trade closed array [price, lot volume]
+
+      // Kraken returns price data in a nested structure
+      return parseFloat(priceData.c[0]); // 'c' is the last trade closed array, [0] is price
     } catch (error) {
-      console.error(`Failed to fetch price for ${asset.name}:`, error);
-      // Re-throw the original error if it's already a specific error message
+      // If it's already a specific error we threw, preserve it
       if (error instanceof Error && error.message.includes('No price data found')) {
         throw error;
       }
+      
+      console.error(`Failed to fetch price for ${asset.name}:`, error);
       throw new Error(`Could not fetch price for ${asset.name}`);
     }
   }
 
-  /**
-   * fetch the number of coins free for the asset
-   * @param asset 
-   * @returns number of coins free for the asset
-   */
   async fetchBalance(asset: IAsset): Promise<number> {
-    const nonce = Date.now() * 1000; // Kraken uses microsecond nonce
-    const queryString = `nonce=${nonce}`;
-
-    const apiKey = this.exchangeApiService.getAPIKey(asset.exchange);
-    const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
-
-    // Validate we have the required credentials
-    if (!apiKey || !apiSecret) {
-      throw new Error(`Missing API credentials for ${asset.exchange}. API Key: ${!!apiKey}, API Secret: ${!!apiSecret}`);
-    }
-
-    // Kraken uses different signing method - need to implement custom signing for Kraken
-    const urlPath = '/0/private/Balance';
-    const signature = this.signKrakenRequest(urlPath, queryString, apiSecret, nonce);
-
     try {
-      const url = this.getApiUrl(asset, urlPath);
+      const nonce = Date.now() * 1000; // Kraken requires microsecond nonce
+      const path = '/0/private/Balance';
+      const postData = `nonce=${nonce}`;
 
-      const { data } = await axios.post(url, queryString, {
+      const apiKey = this.exchangeApiService.getAPIKey(asset.exchange);
+      const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
+
+      if (!apiKey || !apiSecret) {
+        throw new Error(`Missing API credentials for ${asset.exchange}. API Key: ${!!apiKey}, API Secret: ${!!apiSecret}`);
+      }
+
+      const signature = this.signKrakenRequest(path, postData, apiSecret);
+      const url = this.getApiUrl(asset, path);
+
+      const { data } = await axios.post(url, postData, {
         headers: {
           'API-Key': apiKey,
           'API-Sign': signature,
@@ -149,85 +121,107 @@ export class KrakenApiService implements IExchangeService {
         throw new Error(`Kraken API error: ${data.error.join(', ')}`);
       }
 
-      // Kraken asset mapping
-      const krakenAssetMap: { [key: string]: string } = {
-        'BTC': 'XXBT',
-        'ETH': 'XETH',
-      };
-      
-      const krakenAsset = krakenAssetMap[asset.name.toUpperCase()] || asset.name.toUpperCase();
-      const balance = parseFloat(data.result[krakenAsset] || '0');
+      // Map asset name to Kraken format for balance lookup
+      const krakenAssetName = this.createPair({ ...asset, name: asset.name }, '').replace(/USDT$|USD$/, '');
+      let balance = 0;
+
+      if (data.result?.[krakenAssetName]) {
+        balance = parseFloat(data.result[krakenAssetName]);
+      }
 
       return balance;
     } catch (error) {
+      // If it's already a specific error we threw, preserve it
+      if (error instanceof Error && (
+        error.message.includes('Missing API credentials') || 
+        error.message.includes('Kraken API error:')
+      )) {
+        throw error;
+      }
+      
       console.error(`Failed to fetch balance for ${asset.name}:`, error);
       console.error('Request details:', {
         url: this.getApiUrl(asset, '/0/private/Balance'),
-        hasApiKey: !!apiKey,
-        hasApiSecret: !!apiSecret,
+        hasApiKey: !!this.exchangeApiService.getAPIKey(asset.exchange),
+        hasApiSecret: !!this.exchangeApiService.getAPISecret(asset.exchange),
         errorResponse: (error as any).response?.data,
       });
-      // Re-throw the original error if it's already a specific error message
-      if (error instanceof Error && error.message.includes('Kraken API error')) {
-        throw error;
-      }
       throw new Error(`Could not fetch balance for ${asset.name}`);
     }
   }
 
-  /**
-   * Kraken uses a different signing method than MEXC
-   */
-  private signKrakenRequest(urlPath: string, queryString: string, apiSecret: string, nonce: number): string {
-    // Create the message to sign
-    const message = queryString;
-    const hash = createHash('sha256').update(nonce + message).digest();
-    const hmac = createHmac('sha512', Buffer.from(apiSecret, 'base64'));
-    hmac.update(urlPath, 'utf8');
-    hmac.update(hash);
-    
-    return hmac.digest('base64');
+  async createMarketSellOrder(asset: IAsset, to: string = 'USDT'): Promise<any> {
+    try {
+      const pair = this.createPair(asset, to);
+      const volume = await this.getSellAmount(asset);
+      const nonce = Date.now() * 1000;
+      
+      // Kraken API parameters for market sell order
+      const orderParams = {
+        nonce: nonce.toString(),
+        ordertype: 'market',
+        type: 'sell',
+        volume: volume.toString(),
+        pair,
+        ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
+      };
+
+      const postData = new URLSearchParams(orderParams).toString();
+      const path = '/0/private/AddOrder';
+      const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
+      const signature = this.signKrakenRequest(path, postData, apiSecret);
+
+      const url = this.getApiUrl(asset, path);
+      const headers = {
+        'API-Key': this.exchangeApiService.getAPIKey(asset.exchange),
+        'API-Sign': signature,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+
+      // Use the exchangeApiService to make the call
+      const result = await this.exchangeApiService.createMarketSellOrder(
+        pair,
+        volume,
+        asset.exchange,
+        url,
+        postData,
+        headers,
+      );
+
+      console.log(`✅ Order placed with ${asset.exchange} for ${volume} ${pair}: ${result !== undefined ? 'OK' : 'Failed'}`);
+      return result;
+    } catch (error) {
+      // If it's already a specific error we threw, preserve it
+      if (error instanceof Error && error.message.includes('Kraken API error:')) {
+        throw error;
+      }
+      
+      // Check if it's an error from exchangeApiService that should be preserved
+      if (error instanceof Error && error.message.includes('API Error')) {
+        throw error;
+      }
+      
+      // Check if it's from getSellAmount or other internal methods
+      if (error instanceof Error && (
+        error.message.includes('Balance fetch failed') ||
+        error.message.includes('Could not fetch balance')
+      )) {
+        throw error;
+      }
+      
+      console.error(`Failed to create sell order for ${asset.name}:`, error);
+      throw new Error(`Could not create sell order for ${asset.name}`);
+    }
   }
 
-  async createMarketSellOrder(asset: IAsset, to: string = 'USDT'): Promise<any> {
-    const pair = this.createPair(asset, to);
-    const quantity = await this.getSellAmount(asset);
-    const nonce = Date.now() * 1000; // Kraken uses microsecond nonce
-    
-    // Kraken order parameters
-    const orderParams = new URLSearchParams({
-      nonce: nonce.toString(),
-      ordertype: 'market',
-      type: 'sell',
-      volume: quantity.toString(),
-      pair,
-    });
-
-    if (this.shouldUseTestMode()) {
-      orderParams.append('validate', 'true'); // Kraken's test mode parameter
-    }
-
-    const queryString = orderParams.toString();
-    const urlPath = '/0/private/AddOrder';
-    const signature = this.signKrakenRequest(urlPath, queryString, this.exchangeApiService.getAPISecret(asset.exchange), nonce);
-
-    // For compatibility with ExchangeApiService, we put the data in the URL
-    // Note: This is not ideal for Kraken which expects POST body, but maintains compatibility
-    const url = `${this.getApiUrl(asset, urlPath)}?${queryString}&signature=${encodeURIComponent(signature)}`;
-
-    const headers = {
-      'API-Key': this.exchangeApiService.getAPIKey(asset.exchange),
-      'API-Sign': signature,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    };
-
-    return this.exchangeApiService.createMarketSellOrder(
-      pair,
-      quantity,
-      asset.exchange,
-      nonce.toString(),
-      url,
-      headers,
-    );
+  /**
+   * Creates Kraken-specific API signature
+   */
+  private signKrakenRequest(path: string, postData: string, apiSecret: string): string {
+    const message = path + crypto.createHash('sha256').update(postData).digest();
+    const signature = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
+      .update(message)
+      .digest('base64');
+    return signature;
   }
 }

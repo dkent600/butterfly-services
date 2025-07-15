@@ -1,78 +1,23 @@
 import axios from 'axios';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IExchangeTimeSyncer, IEnvService, TYPES } from '../types/interfaces.js';
-import { ExchangeTimeSyncer } from './exchange-time-syncer.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, TYPES } from '../types/interfaces.js';
+import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
-export class MexcApiService implements IExchangeService {
-  /**
-   * assuming here that this is a singleton service, so we can cache the time syncers
-   */
-  private cachedTimeSyncers: Map<IAsset, IExchangeTimeSyncer> = new Map();
-
+export class MexcApiService extends BaseExchangeService implements IExchangeService {
   constructor(
     @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
-    @inject(TYPES.IEnvService) private readonly envService: IEnvService,
-  ) { }
-
-  private async getTimeSyncer(asset: IAsset): Promise<IExchangeTimeSyncer> {
-    if (!this.cachedTimeSyncers.has(asset)) {
-      const timeSyncer = new ExchangeTimeSyncer();
-      this.cachedTimeSyncers.set(asset, timeSyncer);
-      await timeSyncer.initFromServer(await this.getRealServerTime(asset));
-    }
-    return this.cachedTimeSyncers.get(asset) as ExchangeTimeSyncer;
+    @inject(TYPES.IEnvService) envService: IEnvService,
+  ) {
+    super(envService);
   }
 
-  /**
-   * Constructs the full API URL for a given asset and endpoint path.
-   *
-   * @param asset - The asset object containing API configuration details.
-   * @param path - The specific API endpoint path to append.
-   * @returns The proxied API URL as a string.
-   */
-  private getApiUrl(asset: IAsset, path: string): string {
-    return `${asset.apiUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
+  protected getTimeEndpoint(): string {
+    return '/api/v3/time';
   }
 
-  private async getRealServerTime(asset: IAsset): Promise<number> {
-    try {
-      const url = this.getApiUrl(asset, '/api/v3/time');
-      const response = await axios.get(url);
-      return response.data.serverTime;
-    } catch (error) {
-      console.error(`Failed to fetch server time for ${asset.name}:`, error);
-      console.error('Attempted URL was:', this.getApiUrl(asset, '/api/v3/time'));
-      throw new Error(`Could not fetch server time for ${asset.name}`);
-    }
-  }
-
-  private async getServerTimestamp(asset: IAsset): Promise<string> {
-    const timeSyncer = await this.getTimeSyncer(asset);
-    return timeSyncer.getTimestampString();
-  }
-
-  private shouldUseTestMode(): boolean {
-    // SAFETY FIRST: Always default to test mode unless explicitly disabled
-    const useTestMode = this.envService.getBoolean('app.useTestMode');
-    const nodeEnv = this.envService.get('app.environment');
-    
-    // Only allow live trading if ALL of these conditions are met:
-    // 1. useTestMode is explicitly set to false
-    // 2. nodeEnv is explicitly set to 'production'
-    const isExplicitlyLiveMode = useTestMode === false && nodeEnv === 'production';
-    
-    // Default to test mode for safety
-    return !isExplicitlyLiveMode;
-  }
-
-  createPair(asset: IAsset, to: string = 'USDT'): string {
-    return `${asset.name}${to}`;
-  }
-
-  async getSellAmount(asset: IAsset): Promise<number> {
-    const balance = await this.fetchBalance(asset);
-    return asset.percentage / 100 * balance;
+  protected extractServerTime(responseData: any): number {
+    return responseData.serverTime;
   }
 
   async fetchPrice(asset: IAsset): Promise<number> {

@@ -59,8 +59,8 @@ describe('MexcApiService', () => {
     // Create service with mocked dependencies
     mexcApiService = new MexcApiService(mockExchangeApiService, mockEnvService);
     
-    // Clear the cached time syncers to avoid interference between tests
-    (mexcApiService as any).cachedTimeSyncers.clear();
+    // Reset the time syncer to avoid interference between tests
+    (mexcApiService as any).timeSyncer = undefined;
   });
 
   describe('createPair', () => {
