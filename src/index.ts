@@ -36,7 +36,7 @@ async function main() {
 
     // Start the server
     const port = parseInt(process.env.PORT || '3000', 10);
-    const host = process.env.HOST || '0.0.0.0';
+    const host = process.env.HOST || 'localhost'; // Changed from '0.0.0.0' to 'localhost'
 
     const server = await startServer(port, host);
 
