@@ -18,6 +18,7 @@ import { LogService } from './services/log-service.js';
 import { EnvService } from './services/env-service.js';
 import { ExchangeApiService } from './services/exchange-api-service.js';
 import { MexcApiService } from './services/mexc-api-service.js';
+import { KrakenApiService } from './services/kraken-api-service.js';
 import { ExchangeTimeSyncer } from './services/exchange-time-syncer.js';
 
 export function configureDI(): void {
@@ -29,6 +30,7 @@ export function configureDI(): void {
 
   // Register exchange-specific services
   container.registerSingleton('MexcApiService', MexcApiService);
+  container.registerSingleton('KrakenApiService', KrakenApiService);
 }
 
 export async function initializeServices(): Promise<void> {

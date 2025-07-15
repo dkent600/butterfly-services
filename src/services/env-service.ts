@@ -23,6 +23,8 @@ export class EnvService implements IEnvService {
     // Map flat env vars to nested structure
     // MEXC_API_KEY -> api.mexc.apiKey
     // MEXC_API_SECRET -> api.mexc.apiSecret
+    // KRAKEN_API_KEY -> api.kraken.apiKey
+    // KRAKEN_API_SECRET -> api.kraken.apiSecret
     
     for (const [key, value] of Object.entries(process.env)) {
       if (value) {
@@ -67,6 +69,8 @@ export class EnvService implements IEnvService {
     const mappings: Record<string, string> = {
       'MEXC_API_KEY': 'api.mexc.apiKey',
       'MEXC_API_SECRET': 'api.mexc.apiSecret',
+      'KRAKEN_API_KEY': 'api.kraken.apiKey',
+      'KRAKEN_API_SECRET': 'api.kraken.apiSecret',
       'BINANCE_API_KEY': 'api.binance.apiKey',
       'BINANCE_API_SECRET': 'api.binance.apiSecret',
       'NODE_ENV': 'app.environment',

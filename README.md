@@ -385,9 +385,14 @@ LOG_LEVEL=debug|info|warn|error
 # TRADING SAFETY
 USE_TEST_MODE=true|false  # CRITICAL: Controls real vs test trading
 
-# API Credentials
+# MexC Exchange API Credentials
 MEXC_API_KEY=your-api-key
 MEXC_API_SECRET=your-api-secret
+
+# Kraken Exchange API Credentials
+KRAKEN_API_KEY=your_kraken_api_key_here
+KRAKEN_API_SECRET=your_kraken_api_secret_here
+
 
 # Debug-specific (only in debug environments)
 DEBUG_MODE=true
