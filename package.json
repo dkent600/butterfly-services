@@ -28,7 +28,8 @@
     "test:coverage": "npm run lint:check && vitest --coverage --run",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
-    "lint:check": "eslint src --ext .ts --max-warnings 0"
+    "lint:check": "eslint src --ext .ts --max-warnings 0",
+    "kill": "powershell -Command \"$port = 3000; $processes = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | Get-Process -ErrorAction SilentlyContinue; if ($processes) { $processes | Stop-Process -Force; Write-Host \\\"Terminated processes using port $port\\\" } else { Write-Host \\\"No processes found using port $port\\\" }\""
   },
   "dependencies": {
     "@fastify/cors": "^11.0.1",
