@@ -7,7 +7,7 @@ This project is a Node.js app running as a service, hosting REST API endpoints f
 
 1. **Clone the repository**
 2. **Install dependencies**: `npm install`
-3. **Configure environment**: Copy `.env.example` to `.env` and fill in your API credentials
+3. **Configure environment**: Copy `.env.development.example` to `.env.development` and fill in your API credentials
 4. **Build**: `npm run build`
 5. **Start**: `npm start` or `npm run dev` for development
 
@@ -30,7 +30,7 @@ npm start        # Run the compiled version
 
 ### Expected Startup Output
 ```
-📁 Loaded environment from: .env
+📁 Loaded environment from: .env.development
 ✅ Dependency injection configured
 ✅ Services initialized  
 🚀 Server running at http://localhost:3000
@@ -267,19 +267,19 @@ netstat -an | findstr ":3000"        # Command Prompt
 
 # If port is in use, either:
 # 1. Stop the other service using port 3000
-# 2. Change PORT in your .env file to a different port
+# 2. Change PORT in your .env.development file to a different port
 ```
 
 ### Connection Refused Errors
 - Verify the service is actually running (`npm run dev`)
-- Check the correct port in your `.env` file
+- Check the correct port in your `.env.development` file
 - Ensure no firewall is blocking the connection
 - Try `http://127.0.0.1:3000` instead of `localhost:3000`
 
 ### Missing API Credentials
-- Verify your `.env` file exists and has proper API keys
+- Verify your `.env.development` file exists and has proper API keys
 - Check that `USE_TEST_MODE=true` for safe testing
-- Ensure `.env` file is in the project root directory
+- Ensure `.env.development` file is in the project root directory
 
 ## Environment Configuration
 
@@ -289,8 +289,8 @@ The project uses environment-specific configuration files for different contexts
 
 | File | Purpose | Committed to Git | When Used |
 |------|---------|------------------|-----------|
-| `.env` | Default development settings | ✅ Yes | Development and debugging |
-| `.env.example` | Template for new developers | ✅ Yes | Initial project setup |
+| `.env.development` | Development settings with real credentials | ❌ No | Development and debugging |
+| `.env.development.example` | Template for development setup | ✅ Yes | Initial project setup |
 | `.env.test` | Test-specific overrides | ✅ Yes | During `npm test` |
 | `.env.production` | Production settings | ❌ No | Production deployment |
 | `.env.production.debug` | Production debugging | ❌ No | Production issue debugging |
@@ -299,29 +299,31 @@ The project uses environment-specific configuration files for different contexts
 ### Environment Loading Priority
 
 The application loads environment files in this order (first found wins):
-1. `.env.{NODE_ENV}` (e.g., `.env.test`, `.env.production.debug`)
-2. `.env` (default for development and debugging)
+1. `.env.{NODE_ENV}` (e.g., `.env.development`, `.env.test`, `.env.production.debug`)
+2. `.env` (legacy fallback - prefer explicit naming)
 
 ### File Purposes Explained
 
-**`.env.example`** - The original template file
+**`.env.development.example`** - Development template file
 - Contains placeholder values and comments
 - Safe to commit (no real credentials)
 - Used for onboarding new developers
 - Shows the expected structure and required variables
 
-**`.env`** - Ready-to-use development configuration  
-- Pre-configured with safe defaults
-- Contains placeholder API keys that need to be replaced
-- Can be used immediately for development
-- Safe to commit (uses placeholder credentials)
+**`.env.development`** - Your actual development configuration  
+- Contains your real API credentials
+- Gitignored to protect sensitive information
+- Created by copying from `.env.development.example`
+- Used when NODE_ENV=development (default)
 
 ### Setup Instructions
 
 **1. Basic Development Setup**
 ```bash
-# Option 1: Use the pre-configured .env file (recommended)
-npm run dev  # Uses .env file with safe defaults
+# Copy the template and add your real credentials
+cp .env.development.example .env.development
+# Edit .env.development with your actual API keys
+npm run dev  # Uses .env.development automatically
 
 # Option 2: Start from template (for new setups)
 cp .env.example .env

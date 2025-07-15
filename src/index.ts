@@ -6,8 +6,8 @@ import { join } from 'node:path';
 // Determine which .env file to load based on NODE_ENV
 const nodeEnv = process.env.NODE_ENV || 'development';
 const envFiles = [
-  `.env.${nodeEnv}`,  // .env.test, .env.production.debug, etc.
-  '.env',             // Default fallback
+  `.env.${nodeEnv}`,  // .env.development, .env.test, .env.production, etc.
+  '.env',             // Legacy fallback (prefer explicit .env.development)
 ];
 
 // Load the first existing env file
@@ -23,6 +23,8 @@ for (const envFile of envFiles) {
 import 'reflect-metadata';
 import { configureDI, initializeServices } from './container.js';
 import { startServer } from './api/server.js';
+import { container } from 'tsyringe';
+import { TYPES, IEnvService } from './types/interfaces.js';
 
 async function main() {
   try {
@@ -34,9 +36,12 @@ async function main() {
     await initializeServices();
     console.log('✅ Services initialized');
 
-    // Start the server
-    const port = parseInt(process.env.PORT || '3000', 10);
-    const host = process.env.HOST || 'localhost'; // Changed from '0.0.0.0' to 'localhost'
+    // Get EnvService to access environment variables consistently
+    const envService = container.resolve<IEnvService>(TYPES.IEnvService);
+    
+    // Start the server using EnvService
+    const port = envService.getNumber('app.port') || 3000;
+    const host = envService.get('app.host') || 'localhost';
 
     const server = await startServer(port, host);
 

@@ -13,16 +13,6 @@ export async function createServer(): Promise<FastifyInstance> {
     },
   });
 
-  // Register CORS plugin
-  const corsOrigins = process.env.ALLOWED_ORIGINS 
-    ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-    : true; // Allow all origins in development
-    
-  await server.register(import('@fastify/cors'), {
-    origin: corsOrigins,
-    credentials: true,
-  });
-
   // Register security headers
   await server.register(import('@fastify/helmet'), {
     contentSecurityPolicy: false, // Disable CSP for API

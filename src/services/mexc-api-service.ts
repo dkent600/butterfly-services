@@ -55,7 +55,7 @@ export class MexcApiService implements IExchangeService {
   private shouldUseTestMode(): boolean {
     // SAFETY FIRST: Always default to test mode unless explicitly disabled
     const useTestMode = this.envService.getBoolean('app.useTestMode');
-    const nodeEnv = this.envService.get('app.environment') || process.env.NODE_ENV;
+    const nodeEnv = this.envService.get('app.environment');
     
     // Only allow live trading if ALL of these conditions are met:
     // 1. useTestMode is explicitly set to false

@@ -50,19 +50,4 @@ describe('API Server', () => {
       expect(body.info.title).toBe('Butterfly Services API');
     });
   });
-
-  describe('CORS', () => {
-    it('should include CORS headers', async () => {
-      const response = await server.inject({
-        method: 'GET',
-        url: '/health',
-        headers: {
-          origin: 'http://localhost:3000',
-        },
-      });
-
-      expect(response.statusCode).toBe(200);
-      expect(response.headers['access-control-allow-origin']).toBe('http://localhost:3000');
-    });
-  });
 });

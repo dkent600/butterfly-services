@@ -71,6 +71,7 @@ export class EnvService implements IEnvService {
       'BINANCE_API_SECRET': 'api.binance.apiSecret',
       'NODE_ENV': 'app.environment',
       'PORT': 'app.port',
+      'HOST': 'app.host',
       'LOG_LEVEL': 'app.logLevel',
       'USE_TEST_MODE': 'app.useTestMode',
     };
