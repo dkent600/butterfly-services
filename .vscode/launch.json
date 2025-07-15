@@ -13,7 +13,7 @@
       "env": {
         "NODE_ENV": "debug"
       },
-      "envFile": "${workspaceFolder}/.env",
+      "envFile": "${workspaceFolder}/.env.development",
       "console": "integratedTerminal",
       "restart": true,
       "skipFiles": [
@@ -42,17 +42,47 @@
       "name": "Debug Tests",
       "type": "node",
       "request": "launch",
-      "program": "${workspaceFolder}/node_modules/.bin/vitest",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
       "args": [
         "--run",
-        "--no-coverage"
+        "--no-coverage",
+        "--reporter=verbose"
       ],
       "console": "integratedTerminal",
       "env": {
         "NODE_ENV": "test"
       },
+      "envFile": "${workspaceFolder}/.env.test",
       "skipFiles": [
         "<node_internals>/**"
+      ],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
+      ]
+    },
+    {
+      "name": "Debug Current Test File",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/vitest/vitest.mjs",
+      "args": [
+        "--run",
+        "--no-coverage",
+        "--reporter=verbose",
+        "${relativeFile}"
+      ],
+      "console": "integratedTerminal",
+      "env": {
+        "NODE_ENV": "test"
+      },
+      "envFile": "${workspaceFolder}/.env.test",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/**",
+        "!**/node_modules/**"
       ]
     },
     {

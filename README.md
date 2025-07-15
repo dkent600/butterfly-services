@@ -453,15 +453,17 @@ npm run lint:check # Check for ESLint issues (no warnings allowed)
 ```
 
 ### Development Workflow
-1. **Start the service**: `npm run dev`
-2. **Make changes**: Edit TypeScript files in `src/`
-3. **Service auto-restarts**: Thanks to `tsx watch`
-4. **Test your changes**: Use Swagger UI at `http://localhost:3000/docs`
-5. **Run tests**: `npm test` to ensure everything works
-6. **Check code quality**: `npm run lint` before committing
+1. **Setup environment**: Copy `.env.development.example` to `.env.development` and add your API credentials
+2. **Start the service**: `npm run dev`
+3. **Make changes**: Edit TypeScript files in `src/`
+4. **Service auto-restarts**: Thanks to `tsx watch`
+5. **Test your changes**: Use Swagger UI at `http://localhost:3000/docs`
+6. **Run tests**: `npm test` to ensure everything works
+7. **Check code quality**: `npm run lint` before committing
 
 ### Safety Notes for Development
 - ✅ Default configuration uses `USE_TEST_MODE=true` (safe)
 - ✅ `NODE_ENV=development` enables additional safety checks
+- ✅ `.env.development` is gitignored to protect your credentials
 - ⚠️ Never commit real API credentials to version control
 - 🚨 Only set `USE_TEST_MODE=false` in production with extreme caution
