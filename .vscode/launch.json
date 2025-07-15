@@ -11,7 +11,7 @@
         "tsx"
       ],
       "env": {
-        "NODE_ENV": "debug"
+        "NODE_ENV": "development"
       },
       "envFile": "${workspaceFolder}/.env.development",
       "console": "integratedTerminal",

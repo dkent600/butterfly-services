@@ -12,7 +12,7 @@ export class ExchangeApiService implements IExchangeApiService {
   ) { }
 
   getAPIKey(exchange: string): string {
-    const apiKey = this.envService.get(`api.${exchange}.apiKey`);
+    const apiKey = this.envService.get(`api.${exchange.toLowerCase()}.apiKey`);
     if (!apiKey) {
       throw new Error(`API key not found for exchange: ${exchange}`);
     }
@@ -21,7 +21,7 @@ export class ExchangeApiService implements IExchangeApiService {
 
   getAPISecret(exchange: string): string {
     // Fixed: was returning apiKey instead of apiSecret
-    const apiSecret = this.envService.get(`api.${exchange}.apiSecret`);
+    const apiSecret = this.envService.get(`api.${exchange.toLowerCase()}.apiSecret`);
     if (!apiSecret) {
       throw new Error(`API secret not found for exchange: ${exchange}`);
     }

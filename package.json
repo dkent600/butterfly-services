@@ -17,8 +17,8 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "dev:debug": "cross-env NODE_ENV=debug LOG_LEVEL=debug tsx watch --inspect src/index.ts",
-    "debug": "cross-env NODE_ENV=debug LOG_LEVEL=debug tsx --inspect src/index.ts",
+    "dev:debug": "cross-env NODE_ENV=development LOG_LEVEL=debug tsx watch --inspect src/index.ts",
+    "debug": "cross-env NODE_ENV=development LOG_LEVEL=debug tsx --inspect src/index.ts",
     "debug:production": "cross-env NODE_ENV=production.debug tsx --inspect src/index.ts",
     "build": "tsc",
     "test": "npm run lint:check && vitest --run",

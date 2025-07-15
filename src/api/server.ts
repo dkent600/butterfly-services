@@ -13,6 +13,12 @@ export async function createServer(): Promise<FastifyInstance> {
     },
   });
 
+  // Register CORS for all origins (simple dev fix)
+  await server.register(import('@fastify/cors'), {
+    origin: true,
+    credentials: true,
+  });
+
   // Register security headers
   await server.register(import('@fastify/helmet'), {
     contentSecurityPolicy: false, // Disable CSP for API
