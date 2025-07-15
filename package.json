@@ -17,6 +17,9 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
+    "dev:debug": "cross-env NODE_ENV=debug LOG_LEVEL=debug tsx watch --inspect src/index.ts",
+    "debug": "cross-env NODE_ENV=debug LOG_LEVEL=debug tsx --inspect src/index.ts",
+    "debug:production": "cross-env NODE_ENV=production.debug tsx --inspect src/index.ts",
     "build": "tsc",
     "test": "npm run lint:check && vitest --run",
     "test:quick": "vitest --run",
@@ -44,6 +47,7 @@
     "@typescript-eslint/eslint-plugin": "^8.36.0",
     "@typescript-eslint/parser": "^8.36.0",
     "@vitest/ui": "^3.2.4",
+    "cross-env": "^7.0.3",
     "eslint": "^9.31.0",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-node": "^11.1.0",

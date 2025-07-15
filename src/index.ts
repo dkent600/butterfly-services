@@ -1,4 +1,25 @@
-import 'dotenv/config'; // Load environment variables from .env file
+// Load environment-specific configuration
+import { config } from 'dotenv';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Determine which .env file to load based on NODE_ENV
+const nodeEnv = process.env.NODE_ENV || 'development';
+const envFiles = [
+  `.env.${nodeEnv}`,  // .env.test, .env.production.debug, etc.
+  '.env',             // Default fallback
+];
+
+// Load the first existing env file
+for (const envFile of envFiles) {
+  const envPath = join(process.cwd(), envFile);
+  if (existsSync(envPath)) {
+    config({ path: envPath });
+    console.log(`📁 Loaded environment from: ${envFile}`);
+    break;
+  }
+}
+
 import 'reflect-metadata';
 import { configureDI, initializeServices } from './container.js';
 import { startServer } from './api/server.js';
@@ -42,6 +63,4 @@ async function main() {
 }
 
 // Only run if this is the main module
-if (import.meta.url === new URL(process.argv[1], 'file://').href) {
-  void main();
-}
+void main();

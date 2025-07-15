@@ -90,6 +90,32 @@ export async function createServer(): Promise<FastifyInstance> {
     };
   });
 
+  // Root welcome route
+  server.get('/', {
+    schema: {
+      description: 'Welcome message and API information',
+      tags: ['health'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            message: { type: 'string' },
+            documentation: { type: 'string' },
+            health: { type: 'string' },
+            version: { type: 'string' },
+          },
+        },
+      },
+    },
+  }, async (_request, _reply) => {
+    return {
+      message: 'Welcome to Butterfly Services API! 🦋',
+      documentation: '/docs',
+      health: '/health',
+      version: '1.0.0',
+    };
+  });
+
   // Register API routes
   await server.register(import('./routes/exchanges.js'), { prefix: '/api/v1' });
 
@@ -101,8 +127,12 @@ export async function startServer(port: number = 3000, host: string = '0.0.0.0')
 
   try {
     await server.listen({ port, host });
-    console.log(`🚀 Server running at http://${host}:${port}`);
-    console.log(`📚 API Documentation available at http://${host}:${port}/docs`);
+    
+    // Show user-friendly URLs instead of 0.0.0.0
+    const displayHost = host === '0.0.0.0' ? 'localhost' : host;
+    console.log(`🚀 Server running at http://${displayHost}:${port}`);
+    console.log(`📚 API Documentation available at http://${displayHost}:${port}/docs`);
+    
     return server;
   } catch (err) {
     server.log.error(err);
