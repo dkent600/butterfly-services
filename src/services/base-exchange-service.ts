@@ -117,7 +117,7 @@ export abstract class BaseExchangeService {
     return true; // Test mode (safe default)
   }
 
-  protected createPair(asset: IAsset, to: string = 'USDT'): string {
+  public createPair(asset: IAsset, to: string = 'USDT'): string {
     return `${asset.name}${to}`;
   }
 
