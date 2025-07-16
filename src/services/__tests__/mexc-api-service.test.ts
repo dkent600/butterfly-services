@@ -156,11 +156,13 @@ describe('MexcApiService', () => {
         'BTCUSDT',
         0.5,
         'mexc',
-        expect.any(String),
-        expect.stringContaining('/api/v3/order/test'), // Should use test endpoint
         expect.objectContaining({
-          'X-MEXC-APIKEY': 'test-api-key',
-          'Content-Type': 'application/json',
+          method: 'POST',
+          url: expect.stringContaining('/api/v3/order/test'), // Should use test endpoint
+          headers: expect.objectContaining({
+            'X-MEXC-APIKEY': 'test-api-key',
+            'Content-Type': 'application/json',
+          })
         })
       );
     });
@@ -207,11 +209,13 @@ describe('MexcApiService', () => {
         'BTCUSDT',
         0.5,
         'mexc',
-        expect.any(String),
-        expect.stringContaining('/api/v3/order'), // Would use live endpoint (SIMULATED ONLY)
         expect.objectContaining({
-          'X-MEXC-APIKEY': 'test-api-key',
-          'Content-Type': 'application/json',
+          method: 'POST',
+          url: expect.stringContaining('/api/v3/order'), // Would use live endpoint (SIMULATED ONLY)
+          headers: expect.objectContaining({
+            'X-MEXC-APIKEY': 'test-api-key',
+            'Content-Type': 'application/json',
+          })
         })
       );
       
@@ -284,9 +288,11 @@ describe('MexcApiService', () => {
         expect.any(String),
         expect.any(Number),
         expect.any(String),
-        expect.any(String),
-        expect.stringContaining('/api/v3/order/test'), // Should still use test endpoint for safety
-        expect.any(Object)
+        expect.objectContaining({
+          method: 'POST',
+          url: expect.stringContaining('/api/v3/order/test'), // Should still use test endpoint for safety
+          headers: expect.any(Object)
+        })
       );
     });
 
@@ -306,9 +312,11 @@ describe('MexcApiService', () => {
         'BTCETH', // Should create correct pair
         1.5,
         'mexc',
-        expect.any(String),
-        expect.stringContaining('symbol=BTCETH&side=SELL&type=MARKET&quantity=1.5'), // Correct query params
-        expect.any(Object)
+        expect.objectContaining({
+          method: 'POST',
+          url: expect.stringContaining('symbol=BTCETH&side=SELL&type=MARKET&quantity=1.5'), // Correct query params
+          headers: expect.any(Object)
+        })
       );
     });
 
@@ -328,9 +336,11 @@ describe('MexcApiService', () => {
         'BTCUSDT', // Should default to USDT
         0.75,
         'mexc',
-        expect.any(String),
-        expect.stringContaining('symbol=BTCUSDT'),
-        expect.any(Object)
+        expect.objectContaining({
+          method: 'POST',
+          url: expect.stringContaining('symbol=BTCUSDT'),
+          headers: expect.any(Object)
+        })
       );
     });
 
@@ -355,9 +365,11 @@ describe('MexcApiService', () => {
         expect.any(String),
         expect.any(Number),
         expect.any(String),
-        expect.any(String),
-        expect.stringContaining('&signature=test-signature'),
-        expect.any(Object)
+        expect.objectContaining({
+          method: 'POST',
+          url: expect.stringContaining('&signature=test-signature'),
+          headers: expect.any(Object)
+        })
       );
     });
 

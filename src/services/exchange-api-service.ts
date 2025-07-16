@@ -33,24 +33,35 @@ export class ExchangeApiService implements IExchangeApiService {
   }
 
   /**
-   * Create a market sell order.
-   * @param coinpair `${from}${to}`
-   * @param quantity of tokens to sell
+   * Create a market sell order using flexible request options.
+   * @param coinpair Trading pair (e.g., BTCUSDT, XXBTUSDT)
+   * @param quantity Amount of tokens to sell
    * @param exchangeName The exchange to use for the order
+   * @param requestOptions Request configuration (URL, method, body, headers)
    */
   async createMarketSellOrder(
     coinpair: string,
     quantity: number,
     exchangeName: string,
-    timestamp: string,
-    apiUrl: string,
-    headers: Record<string, string>,
+    requestOptions: {
+      url: string;
+      method: 'POST' | 'GET';
+      body?: string;
+      headers: Record<string, string>;
+    },
   ): Promise<void> {
     try {
-      const response = await axios.post(apiUrl, null, {
-        headers,
-        // Don't add params - the URL already contains all required parameters including signature
-      });
+      let response;
+      
+      if (requestOptions.method === 'POST') {
+        response = await axios.post(requestOptions.url, requestOptions.body || null, {
+          headers: requestOptions.headers,
+        });
+      } else {
+        response = await axios.get(requestOptions.url, {
+          headers: requestOptions.headers,
+        });
+      }
 
       // TODO these messages should not be implemented in this service
       const alertMessage = `✅ Order placed with ${exchangeName} for ${quantity} ${coinpair}: ${response.statusText}`;

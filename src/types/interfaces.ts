@@ -22,9 +22,12 @@ export interface IExchangeApiService {
     coinpair: string,
     quantity: number,
     exchangeName: string,
-    timestamp: string,
-    apiUrl: string,
-    headers: Record<string, string>
+    requestOptions: {
+      url: string;
+      method: 'GET' | 'POST';
+      body?: string;
+      headers: Record<string, string>;
+    }
   ): Promise<void>;
 
   sign(queryString: string, apiSecret: string): string;
@@ -43,6 +46,7 @@ export interface IExchangeService {
 export interface IExchangeTimeSyncer {
   initFromServer(serverTime: number): Promise<void>;
   getTimestampString(): string;
+  now(): number;
 }
 
 // DI Tokens

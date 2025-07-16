@@ -50,6 +50,10 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         return 'XETH';  // Ethereum uses XETH on Kraken
       case 'USD':
         return 'ZUSD';  // USD uses ZUSD on Kraken
+      case 'XLM':
+        return 'XXLM';  // XLM uses XXLM on Kraken
+      case 'XRP':
+        return 'XXRP';  // XRP uses XXRP on Kraken
       default:
         return assetName.toUpperCase();  // Most assets use their standard names
     }
@@ -99,12 +103,15 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
 
   async fetchBalance(asset: IAsset): Promise<number> {
     try {
-      const nonce = Date.now() * 1000; // Kraken requires microsecond nonce
+      // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
+      const timeSyncer = await this.getTimeSyncer(asset);
+      const nonce = timeSyncer.now(); // Server-synchronized timestamp in milliseconds
+      
       const path = '/0/private/Balance';
       const postData = `nonce=${nonce}`;
 
-      const apiKey = this.exchangeApiService.getAPIKey(asset.exchange);
-      const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
+      const apiKey = this.exchangeApiService.getAPIKey(asset.exchange).trim();
+      const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange).trim();
 
       if (!apiKey || !apiSecret) {
         throw new Error(`Missing API credentials for ${asset.exchange}. API Key: ${!!apiKey}, API Secret: ${!!apiSecret}`);
@@ -118,6 +125,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
           'API-Key': apiKey,
           'API-Sign': signature,
           'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'butterfly-services/1.0',
         },
       });
 
@@ -158,7 +166,8 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     try {
       const pair = this.createPair(asset, to);
       const volume = await this.getSellAmount(asset);
-      const nonce = Date.now() * 1000;
+      const timeSyncer = await this.getTimeSyncer(asset);
+      const nonce = timeSyncer.now(); // Use server-synchronized timestamp
       
       // Kraken API parameters for market sell order
       const orderParams = {
@@ -176,6 +185,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       const signature = this.signKrakenRequest(path, postData, apiSecret);
 
       const url = this.getApiUrl(path);
+
       const headers = {
         'API-Key': this.exchangeApiService.getAPIKey(asset.exchange),
         'API-Sign': signature,
@@ -187,12 +197,14 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         pair,
         volume,
         asset.exchange,
-        url,
-        postData,
-        headers,
+        {
+          url,
+          method: 'POST',
+          body: postData,
+          headers,
+        },
       );
 
-      console.log(`✅ Order placed with ${asset.exchange} for ${volume} ${pair}: ${result !== undefined ? 'OK' : 'Failed'}`);
       return result;
     } catch (error) {
       // If it's already a specific error we threw, preserve it
@@ -220,12 +232,37 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
 
   /**
    * Creates Kraken-specific API signature
+   * Based on Kraken's official algorithm: https://support.kraken.com/articles/360029054811
+   * 
+   * Algorithm:
+   * 1. apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
+   * 2. apiSha512 = crypto.createHmac('sha512', apiSecret).update(apiPath).update(apiSha256).digest();
+   * 3. apiSignature = apiSha512.toString('base64');
    */
   private signKrakenRequest(path: string, postData: string, apiSecret: string): string {
-    const message = path + crypto.createHash('sha256').update(postData).digest();
-    const signature = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
-      .update(message)
-      .digest('base64');
-    return signature;
+    // Extract nonce from postData (assumes format: "nonce=123456...")
+    const nonceMatch = postData.match(/nonce=(\d+)/);
+    if (!nonceMatch) {
+      // Fallback for test environments or edge cases - use current timestamp
+      const fallbackNonce = Date.now().toString();
+      console.warn(`[KRAKEN] Nonce not found in postData "${postData}", using fallback: ${fallbackNonce}`);
+      const apiSha256 = crypto.createHash('sha256').update(`${fallbackNonce}${postData}`).digest();
+      const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
+        .update(path)
+        .update(apiSha256)
+        .digest();
+      return apiSha512.toString('base64');
+    }
+    const nonce = nonceMatch[1];
+    
+    // Follow Kraken's exact algorithm
+    const apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
+    const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
+      .update(path)
+      .update(apiSha256)
+      .digest();
+    const apiSignature = apiSha512.toString('base64');
+    
+    return apiSignature;
   }
 }

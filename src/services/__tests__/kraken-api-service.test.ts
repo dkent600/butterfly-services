@@ -77,6 +77,12 @@ describe('KrakenApiService', () => {
       const result = krakenApiService.createPair(dogeAsset, 'USDT');
       expect(result).toBe('DOGEUSDT'); // DOGE not in mapping, used as-is
     });
+
+    it('should map XRP to XXRP', () => {
+      const xrpAsset = { ...mockAsset, name: 'XRP' };
+      const result = krakenApiService.createPair(xrpAsset, 'USDT');
+      expect(result).toBe('XXRPUSDT'); // XRP mapped to XXRP
+    });
   });
 
   describe('fetchPrice', () => {
@@ -235,6 +241,11 @@ describe('KrakenApiService', () => {
     });
 
     it('should throw error when API credentials are missing', async () => {
+      // Mock server time endpoint to prevent it from failing first
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: { result: { unixtime: 1640000000 } }
+      });
+      
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-secret');
 
@@ -281,18 +292,21 @@ describe('KrakenApiService', () => {
         'XXBTUSDT',
         0.5,
         'kraken',
-        expect.any(String),
-        expect.stringContaining('validate=true'), // Should contain test mode parameter
         expect.objectContaining({
-          'API-Key': 'test-api-key',
-          'API-Sign': expect.any(String),
-          'Content-Type': 'application/x-www-form-urlencoded',
+          method: 'POST',
+          url: 'https://api.kraken.com/0/private/AddOrder',
+          body: expect.stringContaining('validate=true'), // Should contain test mode parameter
+          headers: expect.objectContaining({
+            'API-Key': 'test-api-key',
+            'API-Sign': expect.any(String),
+            'Content-Type': 'application/x-www-form-urlencoded',
+          })
         })
       );
 
       // Verify validate=true is added for test mode
-      const urlCall = vi.mocked(mockExchangeApiService.createMarketSellOrder).mock.calls[0][4];
-      expect(urlCall).toContain('validate=true');
+      const requestOptions = vi.mocked(mockExchangeApiService.createMarketSellOrder).mock.calls[0][3];
+      expect(requestOptions.body).toContain('validate=true');
     });
 
     it('should SIMULATE production endpoint selection (NO REAL TRADES)', async () => {
@@ -313,8 +327,8 @@ describe('KrakenApiService', () => {
       await krakenApiService.createMarketSellOrder(mockAsset, 'USDT');
 
       // Verify it would NOT include validate=true for production mode
-      const urlCall = vi.mocked(mockExchangeApiService.createMarketSellOrder).mock.calls[0][4];
-      expect(urlCall).not.toContain('validate=true');
+      const requestOptions = vi.mocked(mockExchangeApiService.createMarketSellOrder).mock.calls[0][3];
+      expect(requestOptions.body).not.toContain('validate=true');
     });
 
     it('should create correct trading pair and query string', async () => {
@@ -333,9 +347,12 @@ describe('KrakenApiService', () => {
         'XXBTXETH', // Should create correct Kraken pair
         1.5,
         'kraken',
-        expect.any(String),
-        expect.stringContaining('pair=XXBTXETH'), // Correct query params
-        expect.any(Object)
+        expect.objectContaining({
+          method: 'POST',
+          url: 'https://api.kraken.com/0/private/AddOrder',
+          body: expect.stringContaining('pair=XXBTXETH'), // Correct query params
+          headers: expect.any(Object)
+        })
       );
     });
 
@@ -355,9 +372,12 @@ describe('KrakenApiService', () => {
         'XXBTUSDT', // Should default to USDT
         0.75,
         'kraken',
-        expect.any(String),
-        expect.stringContaining('pair=XXBTUSDT'),
-        expect.any(Object)
+        expect.objectContaining({
+          method: 'POST',
+          url: 'https://api.kraken.com/0/private/AddOrder',
+          body: expect.stringContaining('pair=XXBTUSDT'),
+          headers: expect.any(Object)
+        })
       );
     });
 

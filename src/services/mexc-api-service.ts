@@ -112,9 +112,11 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       coinpair,
       quantity,
       asset.exchange,
-      timestamp,
-      url,
-      headers,
+      {
+        url,
+        method: 'POST',
+        headers,
+      },
     );
   }
 }
