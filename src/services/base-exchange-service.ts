@@ -29,6 +29,14 @@ export abstract class BaseExchangeService {
   protected abstract getTimeEndpoint(): string;
 
   /**
+   * Abstract method to get the API base URL for the specific exchange.
+   * Each exchange provides its own API URL.
+   * 
+   * @returns string - The base API URL for the exchange
+   */
+  protected abstract getApiBaseUrl(): string;
+
+  /**
    * Abstract method to extract server time from the exchange's response.
    * Each exchange has its own response format.
    * 
@@ -41,17 +49,17 @@ export abstract class BaseExchangeService {
    * Concrete implementation to fetch server time from any exchange.
    * Uses the abstract methods to get exchange-specific endpoint and parse response.
    * 
-   * @param asset - The asset configuration containing API URL and other details
+   * @param asset - The asset configuration for error logging
    * @returns Promise<number> - Server time in milliseconds since epoch
    */
   protected async getRealServerTime(asset: IAsset): Promise<number> {
     try {
-      const url = this.getApiUrl(asset, this.getTimeEndpoint());
+      const url = this.getApiUrl(this.getTimeEndpoint());
       const response = await axios.get(url);
       return this.extractServerTime(response.data);
     } catch (error) {
       console.error(`Failed to fetch server time for ${asset.name}:`, error);
-      console.error('Attempted URL was:', this.getApiUrl(asset, this.getTimeEndpoint()));
+      console.error('Attempted URL was:', this.getApiUrl(this.getTimeEndpoint()));
       throw new Error(`Could not fetch server time for ${asset.name}`);
     }
   }
@@ -84,15 +92,15 @@ export abstract class BaseExchangeService {
   }
 
   /**
-   * Constructs the full API URL for a given asset and endpoint path.
-   * Handles proper URL formatting and path concatenation.
+   * Constructs the full API URL for a given endpoint path.
+   * Uses the exchange's base API URL from the abstract method.
    * 
-   * @param asset - The asset object containing API configuration details
    * @param path - The specific API endpoint path to append
    * @returns The complete API URL as a string
    */
-  protected getApiUrl(asset: IAsset, path: string): string {
-    return `${asset.apiUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
+  protected getApiUrl(path: string): string {
+    const baseUrl = this.getApiBaseUrl();
+    return `${baseUrl.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`;
   }
 
   /**

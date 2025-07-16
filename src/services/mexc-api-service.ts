@@ -16,13 +16,17 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     return '/api/v3/time';
   }
 
+  protected getApiBaseUrl(): string {
+    return 'https://api.mexc.com';
+  }
+
   protected extractServerTime(responseData: any): number {
     return responseData.serverTime;
   }
 
   async fetchPrice(asset: IAsset): Promise<number> {
     try {
-      const url = this.getApiUrl(asset, '/api/v3/ticker/price');
+      const url = this.getApiUrl('/api/v3/ticker/price');
       const { data } = await axios.get(url, {
         params: { symbol: this.createPair(asset) },
       });
@@ -53,7 +57,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     const signature = this.exchangeApiService.sign(queryString, apiSecret);
 
     try {
-      const baseUrl = this.getApiUrl(asset, '/api/v3/account');
+      const baseUrl = this.getApiUrl('/api/v3/account');
       const url = `${baseUrl}?${queryString}&signature=${signature}`;
 
       const { data } = await axios.get(url, {
@@ -76,7 +80,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     } catch (error) {
       console.error(`Failed to fetch balance for ${asset.name}:`, error);
       console.error('Request details:', {
-        url: this.getApiUrl(asset, '/api/v3/account'),
+        url: this.getApiUrl('/api/v3/account'),
         timestamp,
         queryString,
         hasApiKey: !!apiKey,
@@ -97,7 +101,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
 
     // Use test mode based on environment configuration
     const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
-    const url = `${this.getApiUrl(asset, endpoint)}?${queryString}&signature=${signature}`;
+    const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
 
     const headers = {
       'X-MEXC-APIKEY': this.exchangeApiService.getAPIKey(asset.exchange),

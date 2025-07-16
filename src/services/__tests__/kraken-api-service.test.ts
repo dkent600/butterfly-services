@@ -52,7 +52,6 @@ describe('KrakenApiService', () => {
       name: 'BTC',
       exchange: 'kraken',
       percentage: 50,
-      apiUrl: 'https://api.kraken.com',
     };
 
     // Create service with mocked dependencies
@@ -395,22 +394,22 @@ describe('KrakenApiService', () => {
       // Access private method for testing
       const getApiUrl = (krakenApiService as any).getApiUrl.bind(krakenApiService);
 
-      const result = getApiUrl(mockAsset, '/0/public/Time');
+      const result = getApiUrl('/0/public/Time');
       expect(result).toBe('https://api.kraken.com/0/public/Time');
     });
 
     it('should handle trailing slash in base URL', () => {
       const getApiUrl = (krakenApiService as any).getApiUrl.bind(krakenApiService);
-      const assetWithSlash = { ...mockAsset, apiUrl: 'https://api.kraken.com/' };
+      // The base URL is now hardcoded in the service, so this test checks the path handling
 
-      const result = getApiUrl(assetWithSlash, '/0/public/Time');
+      const result = getApiUrl('/0/public/Time');
       expect(result).toBe('https://api.kraken.com/0/public/Time');
     });
 
     it('should handle path without leading slash', () => {
       const getApiUrl = (krakenApiService as any).getApiUrl.bind(krakenApiService);
 
-      const result = getApiUrl(mockAsset, '0/public/Time');
+      const result = getApiUrl('0/public/Time');
       expect(result).toBe('https://api.kraken.com/0/public/Time');
     });
   });

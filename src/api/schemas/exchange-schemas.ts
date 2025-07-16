@@ -4,9 +4,8 @@ export const AssetSchema = {
     name: { type: 'string', description: 'Asset symbol (e.g., BTC, ETH)' },
     exchange: { type: 'string', description: 'Exchange name (e.g., mexc)' },
     percentage: { type: 'number', minimum: 0, maximum: 100, description: 'Percentage to sell (0-100)' },
-    apiUrl: { type: 'string', format: 'uri', description: 'Exchange API base URL' },
   },
-  required: ['name', 'exchange', 'percentage', 'apiUrl'],
+  required: ['name', 'exchange', 'percentage'],
   additionalProperties: false,
 } as const;
 

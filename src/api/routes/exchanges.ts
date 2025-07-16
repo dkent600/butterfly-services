@@ -70,10 +70,9 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         querystring: {
           type: 'object',
           properties: {
-            apiUrl: { type: 'string', format: 'uri', description: `${exchange.displayName} API base URL` },
             percentage: { type: 'number', minimum: 0, maximum: 100, default: 100 },
           },
-          required: ['apiUrl'],
+          required: [],
         },
         response: {
           200: BalanceResponseSchema,
@@ -84,13 +83,12 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }, async (request, reply) => {
       try {
         const { asset } = request.params as { asset: string };
-        const { apiUrl, percentage = 100 } = request.query as { apiUrl: string; percentage?: number };
+        const { percentage = 100 } = request.query as { percentage?: number };
 
         const assetConfig: IAsset = {
           name: asset.toUpperCase(),
           exchange: exchange.name,
           percentage,
-          apiUrl,
         };
 
         const exchangeService = container.resolve(exchange.serviceClass);
@@ -132,10 +130,9 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         querystring: {
           type: 'object',
           properties: {
-            apiUrl: { type: 'string', format: 'uri', description: `${exchange.displayName} API base URL` },
             to: { type: 'string', default: 'USDT', description: 'Target currency for price quote' },
           },
-          required: ['apiUrl'],
+          required: [],
         },
         response: {
           200: PriceResponseSchema,
@@ -146,13 +143,12 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }, async (request, reply) => {
       try {
         const { asset } = request.params as { asset: string };
-        const { apiUrl, to = 'USDT' } = request.query as { apiUrl: string; to?: string };
+        const { to = 'USDT' } = request.query as { to?: string };
 
         const assetConfig: IAsset = {
           name: asset.toUpperCase(),
           exchange: exchange.name,
           percentage: 100, // Not used for price fetching
-          apiUrl,
         };
 
         const exchangeService = container.resolve(exchange.serviceClass);

@@ -17,6 +17,10 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     return '/0/public/Time';
   }
 
+  protected getApiBaseUrl(): string {
+    return 'https://api.kraken.com';
+  }
+
   protected extractServerTime(responseData: any): number {
     // Kraken returns time in seconds, convert to milliseconds to match other exchanges
     return responseData.result.unixtime * 1000;
@@ -53,7 +57,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
 
   async fetchPrice(asset: IAsset): Promise<number> {
     const pair = this.createPair(asset);
-    const url = this.getApiUrl(asset, '/0/public/Ticker');
+    const url = this.getApiUrl('/0/public/Ticker');
     
     try {
       const { data } = await axios.get(url, {
@@ -107,7 +111,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       }
 
       const signature = this.signKrakenRequest(path, postData, apiSecret);
-      const url = this.getApiUrl(asset, path);
+      const url = this.getApiUrl(path);
 
       const { data } = await axios.post(url, postData, {
         headers: {
@@ -141,7 +145,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       
       console.error(`Failed to fetch balance for ${asset.name}:`, error);
       console.error('Request details:', {
-        url: this.getApiUrl(asset, '/0/private/Balance'),
+        url: this.getApiUrl('/0/private/Balance'),
         hasApiKey: !!this.exchangeApiService.getAPIKey(asset.exchange),
         hasApiSecret: !!this.exchangeApiService.getAPISecret(asset.exchange),
         errorResponse: (error as any).response?.data,
@@ -171,7 +175,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
       const signature = this.signKrakenRequest(path, postData, apiSecret);
 
-      const url = this.getApiUrl(asset, path);
+      const url = this.getApiUrl(path);
       const headers = {
         'API-Key': this.exchangeApiService.getAPIKey(asset.exchange),
         'API-Sign': signature,

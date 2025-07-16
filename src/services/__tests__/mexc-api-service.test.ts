@@ -53,7 +53,6 @@ describe('MexcApiService', () => {
       name: 'BTC',
       exchange: 'mexc',
       percentage: 50,
-      apiUrl: 'https://api.mexc.com',
     };
 
     // Create service with mocked dependencies
@@ -395,22 +394,22 @@ describe('MexcApiService', () => {
       // Access private method for testing
       const getApiUrl = (mexcApiService as any).getApiUrl.bind(mexcApiService);
 
-      const result = getApiUrl(mockAsset, '/api/v3/time');
+      const result = getApiUrl('/api/v3/time');
       expect(result).toBe('https://api.mexc.com/api/v3/time');
     });
 
     it('should handle URLs with trailing slashes', () => {
-      const assetWithSlash = { ...mockAsset, apiUrl: 'https://api.mexc.com/' };
+      // The base URL is now hardcoded in the service, so this test checks the path handling
       const getApiUrl = (mexcApiService as any).getApiUrl.bind(mexcApiService);
 
-      const result = getApiUrl(assetWithSlash, '/api/v3/time');
+      const result = getApiUrl('/api/v3/time');
       expect(result).toBe('https://api.mexc.com/api/v3/time');
     });
 
     it('should handle paths without leading slashes', () => {
       const getApiUrl = (mexcApiService as any).getApiUrl.bind(mexcApiService);
 
-      const result = getApiUrl(mockAsset, 'api/v3/time');
+      const result = getApiUrl('api/v3/time');
       expect(result).toBe('https://api.mexc.com/api/v3/time');
     });
   });

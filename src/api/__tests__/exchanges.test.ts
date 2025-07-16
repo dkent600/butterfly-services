@@ -57,7 +57,7 @@ describe('Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/v1/mexc/price/btc?apiUrl=https://api.mexc.com',
+        url: '/api/v1/mexc/price/btc',
       });
 
       expect(response.statusCode).toBe(200);
@@ -77,7 +77,7 @@ describe('Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/v1/mexc/price/btc?apiUrl=https://api.mexc.com&to=ETH',
+        url: '/api/v1/mexc/price/btc?to=ETH',
       });
 
       expect(response.statusCode).toBe(200);
@@ -86,13 +86,18 @@ describe('Exchange Routes', () => {
       expect(body.pair).toBe('BTCETH');
     });
 
-    it('should require apiUrl parameter', async () => {
+    it('should fetch price with default parameters', async () => {
       const response = await server.inject({
         method: 'GET',
         url: '/api/v1/mexc/price/btc',
       });
 
-      expect(response.statusCode).toBe(400);
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.asset).toBe('BTC');
+      expect(body.exchange).toBe('mexc');
+      expect(body.price).toBeDefined();
+      expect(body.pair).toBe('BTCUSDT'); // Default to USDT
     });
   });
 
@@ -111,7 +116,7 @@ describe('Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/v1/mexc/balance/btc?apiUrl=https://api.mexc.com&percentage=75',
+        url: '/api/v1/mexc/balance/btc?percentage=75',
       });
 
       if (response.statusCode !== 200) {
@@ -170,7 +175,6 @@ describe('Exchange Routes', () => {
         name: 'BTC',
         exchange: 'mexc',
         percentage: 50,
-        apiUrl: 'https://api.mexc.com',
       };
 
       const response = await server.inject({
@@ -200,7 +204,6 @@ describe('Exchange Routes', () => {
         name: 'BTC',
         exchange: 'binance',
         percentage: 50,
-        apiUrl: 'https://api.binance.com',
       };
 
       const response = await server.inject({
@@ -233,7 +236,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/price/btc?apiUrl=https://api.kraken.com',
+          url: '/api/v1/kraken/price/btc',
         });
 
         expect(response.statusCode).toBe(200);
@@ -259,7 +262,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/price/btc?apiUrl=https://api.kraken.com&to=ETH',
+          url: '/api/v1/kraken/price/btc?to=ETH',
         });
 
         expect(response.statusCode).toBe(200);
@@ -268,13 +271,13 @@ describe('Exchange Routes', () => {
         expect(body.pair).toBe('XXBTXETH');
       });
 
-      it('should require apiUrl parameter', async () => {
+      it('should fetch price with default parameters', async () => {
         const response = await server.inject({
           method: 'GET',
           url: '/api/v1/kraken/price/btc',
         });
 
-        expect(response.statusCode).toBe(400);
+        expect(response.statusCode).toBe(200);
       });
     });
 
@@ -295,7 +298,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/balance/btc?apiUrl=https://api.kraken.com&percentage=75',
+          url: '/api/v1/kraken/balance/btc?percentage=75',
         });
 
         if (response.statusCode !== 200) {
@@ -368,7 +371,6 @@ describe('Exchange Routes', () => {
           name: 'BTC',
           exchange: 'kraken',
           percentage: 50,
-          apiUrl: 'https://api.kraken.com',
         };
 
         const response = await server.inject({
@@ -398,7 +400,6 @@ describe('Exchange Routes', () => {
           name: 'BTC',
           exchange: 'binance',
           percentage: 50,
-          apiUrl: 'https://api.binance.com',
         };
 
         const response = await server.inject({

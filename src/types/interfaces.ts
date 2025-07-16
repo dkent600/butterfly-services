@@ -2,7 +2,6 @@ export interface IAsset {
   name: string;
   exchange: string;
   percentage: number;
-  apiUrl: string;
 }
 
 export interface ILogService {
