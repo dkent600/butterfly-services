@@ -83,6 +83,8 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         return 'XXLM';  // XLM uses XXLM on Kraken
       case 'XRP':
         return 'XXRP';  // XRP uses XXRP on Kraken
+        case 'DOGE':
+          return 'XXDG';  // DOGE uses XXDG on Kraken
       default:
         return assetName.toUpperCase();  // Most assets use their standard names
     }
