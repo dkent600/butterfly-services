@@ -30,31 +30,6 @@ export interface IExchangeApiService {
     }
   ): Promise<void>;
 
-  createMarketSellOrder(
-    coinpair: string,
-    quantity: number,
-    exchangeName: string,
-    requestOptions: {
-      url: string;
-      method: 'GET' | 'POST';
-      body?: string;
-      headers: Record<string, string>;
-    }
-  ): Promise<void>;
-
-  createLimitSellOrder(
-    coinpair: string,
-    quantity: number,
-    price: number,
-    exchangeName: string,
-    requestOptions: {
-      url: string;
-      method: 'GET' | 'POST';
-      body?: string;
-      headers: Record<string, string>;
-    }
-  ): Promise<void>;
-
   sign(queryString: string, apiSecret: string): string;
   getAPIKey(exchange: string): string;
   getAPISecret(exchange: string): string;

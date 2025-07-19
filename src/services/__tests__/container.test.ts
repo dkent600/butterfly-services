@@ -31,7 +31,7 @@ describe('Dependency Injection Container', () => {
     expect(typeof exchangeApiService.sign).toBe('function');
     expect(typeof exchangeApiService.getAPIKey).toBe('function');
     expect(typeof exchangeApiService.getAPISecret).toBe('function');
-    expect(typeof exchangeApiService.createMarketSellOrder).toBe('function');
+    expect(typeof exchangeApiService.createSellOrder).toBe('function');
   });
 
   it('should provide singleton instances', () => {

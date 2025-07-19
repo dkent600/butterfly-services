@@ -73,48 +73,4 @@ export class ExchangeApiService implements IExchangeApiService {
       throw error;
     }
   }
-
-  /**
-   * Create a market sell order. This is a wrapper around createSellOrder.
-   * @param coinpair Trading pair (e.g., BTCUSDT, XXBTUSDT)
-   * @param quantity Amount of tokens to sell
-   * @param exchangeName The exchange to use for the order
-   * @param requestOptions Request configuration (URL, method, body, headers)
-   */
-  async createMarketSellOrder(
-    coinpair: string,
-    quantity: number,
-    exchangeName: string,
-    requestOptions: {
-      url: string;
-      method: 'POST' | 'GET';
-      body?: string;
-      headers: Record<string, string>;
-    },
-  ): Promise<void> {
-    return this.createSellOrder(coinpair, quantity, exchangeName, requestOptions);
-  }
-
-  /**
-   * Create a limit sell order. This is a wrapper around createSellOrder.
-   * @param coinpair Trading pair (e.g., BTCUSDT, XXBTUSDT)
-   * @param quantity Amount of tokens to sell
-   * @param price Price per unit for the limit order
-   * @param exchangeName The exchange to use for the order
-   * @param requestOptions Request configuration (URL, method, body, headers)
-   */
-  async createLimitSellOrder(
-    coinpair: string,
-    quantity: number,
-    price: number,
-    exchangeName: string,
-    requestOptions: {
-      url: string;
-      method: 'POST' | 'GET';
-      body?: string;
-      headers: Record<string, string>;
-    },
-  ): Promise<void> {
-    return this.createSellOrder(coinpair, quantity, exchangeName, requestOptions);
-  }
 }

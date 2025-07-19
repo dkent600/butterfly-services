@@ -38,8 +38,6 @@ describe('KrakenApiService', () => {
       getAPIKey: vi.fn(),
       getAPISecret: vi.fn(),
       createSellOrder: vi.fn(),
-      createMarketSellOrder: vi.fn(),
-      createLimitSellOrder: vi.fn(),
     };
 
     // Create mock environment service
@@ -270,7 +268,7 @@ describe('KrakenApiService', () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
       vi.mocked(mockEnvService.get).mockReturnValue('development');
 
-      // Mock server time for the first call in createMarketSellOrder
+      // Mock server time for the first call in createSellOrder
       vi.mocked(axios.get).mockResolvedValue({
         data: { result: { unixtime: 1640995200 } }
       });

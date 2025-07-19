@@ -298,18 +298,15 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
 
       console.log(`[KRAKEN ORDER] Placing limit sell order - Pair: ${pair}, Volume: ${volume}, Price: ${price}, Test Mode: ${this.shouldUseTestMode()}`);
       
-      // Make direct axios call for limit orders (TODO: Add limit order support to IExchangeApiService)
-      const { data } = await axios.post(url, postData, { headers });
-
-      if (data.error && data.error.length > 0) {
-        const errorMessage = data.error.join(', ');
-        console.error(`[KRAKEN ERROR] Instance #${this.instanceId} Limit Order API Error: ${errorMessage}`);
-        console.error(`[KRAKEN ERROR] Order details - Nonce: ${nonce}, Pair: ${pair}, Volume: ${volume}, Price: ${price}`);
-        throw new Error(`Kraken API error: ${errorMessage}`);
-      }
-
-      console.log('[KRAKEN ORDER] Limit order placed successfully:', data.result);
-      return data.result;
+      // Use the existing architecture via ExchangeApiService
+      await this.exchangeApiService.createSellOrder(pair, volume, asset.exchange, {
+        url,
+        method: 'POST',
+        body: postData,
+        headers,
+      });
+      
+      return { success: true, message: 'Limit sell order created successfully' };
     } catch (error) {
       // If it's already a specific error we threw, preserve it
       if (error instanceof Error && error.message.includes('Kraken API error:')) {

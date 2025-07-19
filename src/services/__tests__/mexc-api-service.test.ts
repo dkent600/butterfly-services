@@ -38,8 +38,6 @@ describe('MexcApiService', () => {
       getAPIKey: vi.fn(),
       getAPISecret: vi.fn(),
       createSellOrder: vi.fn(),
-      createMarketSellOrder: vi.fn(),
-      createLimitSellOrder: vi.fn(),
     };
 
     // Create mock environment service

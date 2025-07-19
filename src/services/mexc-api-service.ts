@@ -186,10 +186,15 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
 
       console.log(`[MEXC ORDER] Placing limit sell order for ${asset.name} at ${price}`);
       
-      // Make direct axios call for limit orders (TODO: Add limit order support to IExchangeApiService)
-      const { data } = await axios.post(url, null, { headers });
-      console.log('[MEXC ORDER] Limit order placed successfully:', data);
-      return data;
+      // Use the existing architecture via ExchangeApiService
+      await this.exchangeApiService.createSellOrder(coinpair, quantity, asset.exchange, {
+        url,
+        method: 'POST',
+        body: undefined,
+        headers,
+      });
+      
+      return { success: true, message: 'Limit sell order created successfully' };
     } catch (error) {
       console.error(`Failed to create limit sell order for ${asset.name}:`, error);
       console.error('Order details:', {
