@@ -37,7 +37,9 @@ describe('KrakenApiService', () => {
       sign: vi.fn(),
       getAPIKey: vi.fn(),
       getAPISecret: vi.fn(),
+      createSellOrder: vi.fn(),
       createMarketSellOrder: vi.fn(),
+      createLimitSellOrder: vi.fn(),
     };
 
     // Create mock environment service
@@ -73,10 +75,10 @@ describe('KrakenApiService', () => {
       expect(result).toBe('XXBTXETH'); // Both BTC and ETH mapped
     });
 
-    it('should handle unmapped currencies', () => {
+    it('should map DOGE to XXDG', () => {
       const dogeAsset = { ...mockAsset, name: 'DOGE' };
       const result = krakenApiService.createPair(dogeAsset, 'USDT');
-      expect(result).toBe('DOGEUSDT'); // DOGE not in mapping, used as-is
+      expect(result).toBe('XXDGUSDT'); // DOGE mapped to XXDG
     });
 
     it('should map XRP to XXRP', () => {
@@ -245,21 +247,21 @@ describe('KrakenApiService', () => {
     });
   });
 
-  describe('createMarketSellOrder', () => {
+  describe('createSellOrder', () => {
     beforeEach(() => {
       // UNIT TEST SETUP: Mock external services for controlled testing
       // Note: Integration tests with real API calls are in separate test suite below
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
       
-      // CRITICAL: Mock createMarketSellOrder for unit testing (real calls in integration tests)
-      vi.mocked(mockExchangeApiService.createMarketSellOrder).mockImplementation(async () => {
+      // CRITICAL: Mock createSellOrder for unit testing (real calls in integration tests)
+      vi.mocked(mockExchangeApiService.createSellOrder).mockImplementation(async () => {
         return Promise.resolve();
       });
       
       // SAFETY VERIFICATION: Confirm our mocks are properly set up for unit testing
-      if (!vi.isMockFunction(mockExchangeApiService.createMarketSellOrder)) {
-        throw new Error('CRITICAL FAILURE: createMarketSellOrder is not mocked for unit tests!');
+      if (!vi.isMockFunction(mockExchangeApiService.createSellOrder)) {
+        throw new Error('CRITICAL FAILURE: createSellOrder is not mocked for unit tests!');
       }
     });
 
@@ -277,10 +279,10 @@ describe('KrakenApiService', () => {
       // Note: getSellAmount no longer exists - using asset.amount directly
       // const getSellAmountSpy = vi.spyOn(krakenApiService, 'getSellAmount').mockResolvedValue(0.5);
 
-      const result = await krakenApiService.createMarketSellOrder(mockAsset, 'USDT');
+      const result = await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
 
       // expect(getSellAmountSpy).toHaveBeenCalledWith(mockAsset);
-      expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalledWith(
+      expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
         'XXBTUSDT',
         50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
@@ -297,7 +299,7 @@ describe('KrakenApiService', () => {
       );
 
       // Verify validate=true is added for test mode
-      const requestOptions = vi.mocked(mockExchangeApiService.createMarketSellOrder).mock.calls[0][3];
+      const requestOptions = vi.mocked(mockExchangeApiService.createSellOrder).mock.calls[0][3];
       expect(requestOptions.body).toContain('validate=true');
     });
 
@@ -313,10 +315,11 @@ describe('KrakenApiService', () => {
         data: { result: { unixtime: 1640995200 } }
       });
 
-      await krakenApiService.createMarketSellOrder(mockAsset, 'USDT');
+      await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
 
       // Verify it would NOT include validate=true for production mode
-      const requestOptions = vi.mocked(mockExchangeApiService.createMarketSellOrder).mock.calls[0][3];
+      // Verify validate=false for production mode (test should verify logic but NOT make real calls)
+      const requestOptions = vi.mocked(mockExchangeApiService.createSellOrder).mock.calls[0][3];
       expect(requestOptions.body).not.toContain('validate=true');
     });
 
@@ -330,9 +333,9 @@ describe('KrakenApiService', () => {
       
       // Note: getSellAmount no longer exists - using asset.amount directly
 
-      await krakenApiService.createMarketSellOrder(mockAsset, 'ETH');
+      await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'ETH' });
 
-      expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalledWith(
+      expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
         'XXBTXETH', // Should create correct Kraken pair
         50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
@@ -355,9 +358,9 @@ describe('KrakenApiService', () => {
       
       // Note: getSellAmount no longer exists - using asset.amount directly
 
-      await krakenApiService.createMarketSellOrder(mockAsset); // No 'to' parameter
+      await krakenApiService.createSellOrder(mockAsset); // No options parameter - should default to market/USDT
 
-      expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalledWith(
+      expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
         'XXBTUSDT', // Should default to USDT
         50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
@@ -379,12 +382,12 @@ describe('KrakenApiService', () => {
       });
       
       // Note: getSellAmount no longer exists - mocking a different error
-      vi.mocked(mockExchangeApiService.createMarketSellOrder).mockRejectedValue(new Error('API Error'));
+      vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(krakenApiService.createMarketSellOrder(mockAsset)).rejects.toThrow('API Error');
+      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market' })).rejects.toThrow('API Error');
     });
 
-    it('should handle API errors from createMarketSellOrder', async () => {
+    it('should handle API errors from createSellOrder', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
       
       // Mock server time
@@ -393,9 +396,9 @@ describe('KrakenApiService', () => {
       });
       
       // Note: getSellAmount no longer exists - directly testing error handling
-      vi.mocked(mockExchangeApiService.createMarketSellOrder).mockRejectedValue(new Error('API Error'));
+      vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(krakenApiService.createMarketSellOrder(mockAsset)).rejects.toThrow('API Error');
+      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market' })).rejects.toThrow('API Error');
     });
   });
 
@@ -556,7 +559,7 @@ describe('KrakenApiService Integration Tests', () => {
       try {
         // This makes a real API call but with validate=true (test mode)
         // No real trade will be executed
-        await krakenApiService.createMarketSellOrder(mockAsset, 'USDT');
+        await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
         console.log('✅ Test order successfully validated with Kraken');
       } catch (error) {
         console.log('Test order result:', error.message);

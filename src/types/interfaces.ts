@@ -18,9 +18,34 @@ export interface IEnvService {
 }
 
 export interface IExchangeApiService {
+  createSellOrder(
+    coinpair: string,
+    quantity: number,
+    exchangeName: string,
+    requestOptions: {
+      url: string;
+      method: 'GET' | 'POST';
+      body?: string;
+      headers: Record<string, string>;
+    }
+  ): Promise<void>;
+
   createMarketSellOrder(
     coinpair: string,
     quantity: number,
+    exchangeName: string,
+    requestOptions: {
+      url: string;
+      method: 'GET' | 'POST';
+      body?: string;
+      headers: Record<string, string>;
+    }
+  ): Promise<void>;
+
+  createLimitSellOrder(
+    coinpair: string,
+    quantity: number,
+    price: number,
     exchangeName: string,
     requestOptions: {
       url: string;
@@ -39,7 +64,16 @@ export interface IExchangeService {
   createPair(asset: IAsset, to?: string): string;
   fetchPrice(asset: IAsset): Promise<number>;
   fetchBalance(asset: IAsset): Promise<number>;
+  createSellOrder(
+    asset: IAsset, 
+    options?: {
+      orderType: 'market' | 'limit';
+      price?: number;
+      to?: string;
+    },
+  ): Promise<any>;
   createMarketSellOrder(asset: IAsset, to?: string): Promise<any>;
+  createLimitSellOrder(asset: IAsset, price: number, to?: string): Promise<any>;
 }
 
 export interface IExchangeTimeSyncer {

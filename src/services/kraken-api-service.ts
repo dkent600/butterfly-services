@@ -202,16 +202,32 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     }
   }
 
-  async createMarketSellOrder(asset: IAsset, to: string = 'USDT'): Promise<any> {
-    try {
+  async createSellOrder(
+    asset: IAsset, 
+    options: {
+      orderType: 'market' | 'limit';
+      price?: number;
+      to?: string;
+    } = { orderType: 'market', to: 'USDT' },
+  ): Promise<any> {
+    const { orderType, price, to = 'USDT' } = options;
+    
+    // Validate required parameters based on order type
+    if (orderType === 'limit' && !price) {
+      throw new Error('Price is required for limit orders');
+    }
+    
+    // For market orders, use the existing architecture directly via exchangeApiService
+    if (orderType === 'market') {
+      // Prepare request for ExchangeApiService
       const pair = this.createPair(asset, to);
-      const volume = asset.amount;  // Fixed - removed incorrect await
-      const nonce = this.generateUniqueNonce(); // Use unique nonce method
+      const volume = asset.amount;
+      const nonce = this.generateUniqueNonce();
       
-      console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}`);
+      console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}`);
       
       // Kraken API parameters for market sell order
-      const orderParams = {
+      const orderParams: Record<string, string> = {
         nonce: nonce.toString(),
         ordertype: 'market',
         type: 'sell',
@@ -224,7 +240,6 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       const path = '/0/private/AddOrder';
       const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
       const signature = this.signKrakenRequest(path, postData, apiSecret);
-
       const url = this.getApiUrl(path);
 
       const headers = {
@@ -233,33 +248,84 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         'Content-Type': 'application/x-www-form-urlencoded',
       };
 
-      // Use the exchangeApiService to make the call
-      const result = await this.exchangeApiService.createMarketSellOrder(
+      // Use the existing architecture via ExchangeApiService
+      await this.exchangeApiService.createSellOrder(pair, volume, asset.exchange, {
+        url,
+        method: 'POST',
+        body: postData,
+        headers,
+      });
+      
+      return { success: true, message: 'Market sell order created successfully' };
+    }
+    
+    // For limit orders, we need to implement this functionality
+    // For now, fall back to direct implementation until we add limit order support to IExchangeApiService
+    try {
+      const pair = this.createPair(asset, to);
+      const volume = asset.amount;
+      const nonce = this.generateUniqueNonce();
+      
+      console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}, price: ${price}`);
+      
+      // For limit orders, price must be defined (validated above)
+      if (!price) {
+        throw new Error('Price is required for limit orders');
+      }
+      
+      // Kraken API parameters for limit sell order
+      const orderParams: Record<string, string> = {
+        nonce: nonce.toString(),
+        ordertype: 'limit',
+        type: 'sell',
+        volume: volume.toString(),
         pair,
-        volume,
-        asset.exchange,
-        {
-          url,
-          method: 'POST',
-          body: postData,
-          headers,
-        },
-      );
+        price: price.toString(),
+        ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
+      };
 
-      return result;
+      const postData = new URLSearchParams(orderParams).toString();
+      const path = '/0/private/AddOrder';
+      const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
+      const signature = this.signKrakenRequest(path, postData, apiSecret);
+      const url = this.getApiUrl(path);
+
+      const headers = {
+        'API-Key': this.exchangeApiService.getAPIKey(asset.exchange),
+        'API-Sign': signature,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      };
+
+      console.log(`[KRAKEN ORDER] Placing limit sell order - Pair: ${pair}, Volume: ${volume}, Price: ${price}, Test Mode: ${this.shouldUseTestMode()}`);
+      
+      // Make direct axios call for limit orders (TODO: Add limit order support to IExchangeApiService)
+      const { data } = await axios.post(url, postData, { headers });
+
+      if (data.error && data.error.length > 0) {
+        const errorMessage = data.error.join(', ');
+        console.error(`[KRAKEN ERROR] Instance #${this.instanceId} Limit Order API Error: ${errorMessage}`);
+        console.error(`[KRAKEN ERROR] Order details - Nonce: ${nonce}, Pair: ${pair}, Volume: ${volume}, Price: ${price}`);
+        throw new Error(`Kraken API error: ${errorMessage}`);
+      }
+
+      console.log('[KRAKEN ORDER] Limit order placed successfully:', data.result);
+      return data.result;
     } catch (error) {
       // If it's already a specific error we threw, preserve it
       if (error instanceof Error && error.message.includes('Kraken API error:')) {
         throw error;
       }
       
-      // Check if it's an error from exchangeApiService that should be preserved
-      if (error instanceof Error && error.message.includes('API Error')) {
-        throw error;
-      }
-      
-      console.error(`Failed to create sell order for ${asset.name}:`, error);
-      throw new Error(`Could not create sell order for ${asset.name}`);
+      console.error(`Failed to create limit sell order for ${asset.name}:`, error);
+      console.error('Order details:', {
+        pair: this.createPair(asset, to),
+        volume: asset.amount,
+        price,
+        hasApiKey: !!this.exchangeApiService.getAPIKey(asset.exchange),
+        hasApiSecret: !!this.exchangeApiService.getAPISecret(asset.exchange),
+        errorResponse: (error as any).response?.data,
+      });
+      throw new Error(`Could not create limit sell order for ${asset.name}`);
     }
   }
 
@@ -298,5 +364,24 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     const apiSignature = apiSha512.toString('base64');
     
     return apiSignature;
+  }
+
+  /**
+   * Create a market sell order. This is a wrapper around createSellOrder.
+   * @param asset The asset to sell
+   * @param to The target currency (defaults to 'USDT')
+   */
+  async createMarketSellOrder(asset: IAsset, to?: string): Promise<any> {
+    return this.createSellOrder(asset, { orderType: 'market', to });
+  }
+
+  /**
+   * Create a limit sell order. This is a wrapper around createSellOrder.
+   * @param asset The asset to sell
+   * @param price The limit price
+   * @param to The target currency (defaults to 'USDT')
+   */
+  async createLimitSellOrder(asset: IAsset, price: number, to?: string): Promise<any> {
+    return this.createSellOrder(asset, { orderType: 'limit', price, to });
   }
 }

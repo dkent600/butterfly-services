@@ -206,7 +206,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         // Use singleton service instances to prevent multiple service creation
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        await exchangeService.createMarketSellOrder(asset, to.toUpperCase());
+        await exchangeService.createSellOrder(asset, { orderType: 'market', to: to.toUpperCase() });
 
         return {
           success: true,

@@ -105,34 +105,121 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     }
   }
 
-  async createMarketSellOrder(asset: IAsset, to: string = 'USDT'): Promise<any> {
-    const coinpair = this.createPair(asset, to);
-    const quantity = asset.amount;
-    // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
-    const timeSyncer = await this.getTimeSyncer(asset);
-    const timestamp = this.ensureUniqueNonce(timeSyncer.now());
-    const queryString = `symbol=${coinpair}&side=SELL&type=MARKET&quantity=${quantity}&timestamp=${timestamp}`;
+  async createSellOrder(
+    asset: IAsset, 
+    options: {
+      orderType: 'market' | 'limit';
+      price?: number;
+      to?: string;
+    } = { orderType: 'market', to: 'USDT' },
+  ): Promise<any> {
+    const { orderType, price, to = 'USDT' } = options;
+    
+    // Validate required parameters based on order type
+    if (orderType === 'limit' && !price) {
+      throw new Error('Price is required for limit orders');
+    }
+    
+    // For market orders, use the existing architecture directly via exchangeApiService
+    if (orderType === 'market') {
+      // Prepare request for ExchangeApiService
+      const coinpair = this.createPair(asset, to);
+      const quantity = asset.amount;
 
-    const signature = this.exchangeApiService.sign(queryString, this.exchangeApiService.getAPISecret(asset.exchange));
+      // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
+      const timeSyncer = await this.getTimeSyncer(asset);
+      const timestamp = this.ensureUniqueNonce(timeSyncer.now());
+      
+      // Build query string for market order
+      const queryString = `symbol=${coinpair}&side=SELL&type=MARKET&quantity=${quantity}&timestamp=${timestamp}`;
 
-    // Use test mode based on environment configuration
-    const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
-    const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
+      const signature = this.exchangeApiService.sign(queryString, this.exchangeApiService.getAPISecret(asset.exchange));
 
-    const headers = {
-      'X-MEXC-APIKEY': this.exchangeApiService.getAPIKey(asset.exchange),
-      'Content-Type': 'application/json',
-    };
+      // Use test mode based on environment configuration
+      const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
+      const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
 
-    return this.exchangeApiService.createMarketSellOrder(
-      coinpair,
-      quantity,
-      asset.exchange,
-      {
+      const headers = {
+        'X-MEXC-APIKEY': this.exchangeApiService.getAPIKey(asset.exchange),
+        'Content-Type': 'application/json',
+      };
+
+      // Use the existing architecture via ExchangeApiService
+      await this.exchangeApiService.createSellOrder(coinpair, quantity, asset.exchange, {
         url,
         method: 'POST',
+        body: undefined,
         headers,
-      },
-    );
+      });
+      
+      return { success: true, message: 'Market sell order created successfully' };
+    }
+    
+    // For limit orders, we need to implement this functionality
+    // For now, fall back to direct implementation until we add limit order support to IExchangeApiService
+    try {
+      // For limit orders, price must be defined (validated above)
+      if (!price) {
+        throw new Error('Price is required for limit orders');
+      }
+      
+      const coinpair = this.createPair(asset, to);
+      const quantity = asset.amount;
+
+      // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
+      const timeSyncer = await this.getTimeSyncer(asset);
+      const timestamp = this.ensureUniqueNonce(timeSyncer.now());
+      
+      // Build query string for limit order
+      const queryString = `symbol=${coinpair}&side=SELL&type=LIMIT&quantity=${quantity}&price=${price}&timestamp=${timestamp}`;
+
+      const signature = this.exchangeApiService.sign(queryString, this.exchangeApiService.getAPISecret(asset.exchange));
+
+      // Use test mode based on environment configuration
+      const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
+      const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
+
+      const headers = {
+        'X-MEXC-APIKEY': this.exchangeApiService.getAPIKey(asset.exchange),
+        'Content-Type': 'application/json',
+      };
+
+      console.log(`[MEXC ORDER] Placing limit sell order for ${asset.name} at ${price}`);
+      
+      // Make direct axios call for limit orders (TODO: Add limit order support to IExchangeApiService)
+      const { data } = await axios.post(url, null, { headers });
+      console.log('[MEXC ORDER] Limit order placed successfully:', data);
+      return data;
+    } catch (error) {
+      console.error(`Failed to create limit sell order for ${asset.name}:`, error);
+      console.error('Order details:', {
+        coinpair: this.createPair(asset, to),
+        quantity: asset.amount,
+        price,
+        hasApiKey: !!this.exchangeApiService.getAPIKey(asset.exchange),
+        hasApiSecret: !!this.exchangeApiService.getAPISecret(asset.exchange),
+        errorResponse: (error as any).response?.data,
+      });
+      throw new Error(`Could not create limit sell order for ${asset.name}`);
+    }
+  }
+
+  /**
+   * Create a market sell order. This is a wrapper around createSellOrder.
+   * @param asset The asset to sell
+   * @param to The target currency (defaults to 'USDT')
+   */
+  async createMarketSellOrder(asset: IAsset, to?: string): Promise<any> {
+    return this.createSellOrder(asset, { orderType: 'market', to });
+  }
+
+  /**
+   * Create a limit sell order. This is a wrapper around createSellOrder.
+   * @param asset The asset to sell
+   * @param price The limit price
+   * @param to The target currency (defaults to 'USDT')
+   */
+  async createLimitSellOrder(asset: IAsset, price: number, to?: string): Promise<any> {
+    return this.createSellOrder(asset, { orderType: 'limit', price, to });
   }
 }
