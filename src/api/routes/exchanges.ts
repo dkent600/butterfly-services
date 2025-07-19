@@ -28,7 +28,7 @@ interface ExchangeConfig {
  * Endpoints:
  * - GET /api/v1/{exchange}/balance/:asset - Retrieve asset balance from exchange
  * - GET /api/v1/{exchange}/price/:asset - Get current market price for an asset
- * - POST /api/v1/{exchange}/orders/sell - Create a market sell order
+ * - POST /api/v1/{exchange}/orders/sell/market - Create a market sell order
  * - POST /api/v1/{exchange}/orders/sell/limit - Create a limit sell order
  * 
  * Features:
@@ -69,13 +69,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           },
           required: ['asset'],
         },
-        querystring: {
-          type: 'object',
-          properties: {
-            amout: { type: 'number', minimum: 0, default: 0 },
-          },
-          required: [],
-        },
+
         response: {
           200: BalanceResponseSchema,
           400: ErrorResponseSchema,
@@ -85,12 +79,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }, async (request, reply) => {
       try {
         const { asset } = request.params as { asset: string };
-        const { amount = 0 } = request.query as { amount?: number };
 
         const assetConfig: IAsset = {
           name: asset.toUpperCase(),
           exchange: exchange.name,
-          amount,
+          amount: 0, // Not used for balance fetching, only required by interface
         };
 
         // Use singleton service instances to prevent multiple service creation
@@ -182,7 +175,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
    * Generic function to create market sell order route for an exchange
    */
   function createMarketSellOrderRoute(exchange: ExchangeConfig) {
-    fastify.post(`/${exchange.name}/orders/sell`, {
+    fastify.post(`/${exchange.name}/orders/sell/market`, {
       schema: {
         description: `Create a market sell order on ${exchange.displayName} exchange`,
         tags: ['exchanges'],

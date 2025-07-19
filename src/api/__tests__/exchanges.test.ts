@@ -116,7 +116,7 @@ describe('Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/v1/mexc/balance/btc?amount=75',
+        url: '/api/v1/mexc/balance/btc',
       });
 
       if (response.statusCode !== 200) {
@@ -133,7 +133,7 @@ describe('Exchange Routes', () => {
     });
   });
 
-  describe('POST /api/v1/mexc/orders/sell', () => {
+  describe('POST /api/v1/mexc/orders/sell/market', () => {
     it('should create market sell order', async () => {
       // Set up flexible mocking based on URL patterns
       const mockAxiosGet = vi.mocked(axios.get);
@@ -179,7 +179,7 @@ describe('Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: '/api/v1/mexc/orders/sell',
+        url: '/api/v1/mexc/orders/sell/market',
         payload: { asset, to: 'USDT' },
       });
 
@@ -208,7 +208,7 @@ describe('Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'POST',
-        url: '/api/v1/mexc/orders/sell',
+        url: '/api/v1/mexc/orders/sell/market',
         payload: { asset },
       });
 
@@ -398,7 +398,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/balance/btc?amount=75',
+          url: '/api/v1/kraken/balance/btc',
         });
 
         if (response.statusCode !== 200) {
@@ -415,7 +415,7 @@ describe('Exchange Routes', () => {
       });
     });
 
-    describe('POST /api/v1/kraken/orders/sell', () => {
+    describe('POST /api/v1/kraken/orders/sell/market', () => {
       it('should create market sell order', async () => {
         // Set up flexible mocking based on URL patterns
         const mockAxiosGet = vi.mocked(axios.get);
@@ -475,7 +475,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'POST',
-          url: '/api/v1/kraken/orders/sell',
+          url: '/api/v1/kraken/orders/sell/market',
           payload: { asset, to: 'USDT' },
         });
 
@@ -504,7 +504,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'POST',
-          url: '/api/v1/kraken/orders/sell',
+          url: '/api/v1/kraken/orders/sell/market',
           payload: { asset },
         });
 

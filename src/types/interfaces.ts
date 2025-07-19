@@ -47,8 +47,6 @@ export interface IExchangeService {
       to?: string;
     },
   ): Promise<any>;
-  createMarketSellOrder(asset: IAsset, to?: string): Promise<any>;
-  createLimitSellOrder(asset: IAsset, price: number, to?: string): Promise<any>;
 }
 
 export interface IExchangeTimeSyncer {

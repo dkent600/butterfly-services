@@ -363,22 +363,4 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     return apiSignature;
   }
 
-  /**
-   * Create a market sell order. This is a wrapper around createSellOrder.
-   * @param asset The asset to sell
-   * @param to The target currency (defaults to 'USDT')
-   */
-  async createMarketSellOrder(asset: IAsset, to?: string): Promise<any> {
-    return this.createSellOrder(asset, { orderType: 'market', to });
-  }
-
-  /**
-   * Create a limit sell order. This is a wrapper around createSellOrder.
-   * @param asset The asset to sell
-   * @param price The limit price
-   * @param to The target currency (defaults to 'USDT')
-   */
-  async createLimitSellOrder(asset: IAsset, price: number, to?: string): Promise<any> {
-    return this.createSellOrder(asset, { orderType: 'limit', price, to });
-  }
 }
