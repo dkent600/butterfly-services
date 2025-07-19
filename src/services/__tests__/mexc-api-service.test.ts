@@ -64,7 +64,7 @@ describe('MexcApiService', () => {
 
   describe('createPair', () => {
     it('should create correct trading pair with default USDT', () => {
-      const result = mexcApiService.createPair(mockAsset);
+      const result = mexcApiService.createPair(mockAsset, 'USDT');
       expect(result).toBe('BTCUSDT');
     });
 
@@ -83,7 +83,7 @@ describe('MexcApiService', () => {
       // fetchPrice only makes one call to the price endpoint
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
-      const result = await mexcApiService.fetchPrice(mockAsset);
+      const result = await mexcApiService.fetchPrice(mockAsset, 'USDT');
 
       expect(result).toBe(50000);
       expect(axios.get).toHaveBeenCalledWith(
@@ -96,7 +96,7 @@ describe('MexcApiService', () => {
       // Mock the price call to fail
       vi.mocked(axios.get).mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(mexcApiService.fetchPrice(mockAsset)).rejects.toThrow(
+      await expect(mexcApiService.fetchPrice(mockAsset, 'USDT')).rejects.toThrow(
         'Could not fetch price for BTC',
       );
     });

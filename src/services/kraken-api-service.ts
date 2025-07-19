@@ -62,7 +62,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * Only maps assets that have different names on Kraken.
    * Most assets (like SOL, ADA, DOGE, etc.) use their standard names and don't need mapping.
    */
-  createPair(asset: IAsset, to: string = 'USDT'): string {
+  createPair(asset: IAsset, to: string): string {
     const krakenAsset = this.mapAssetToKraken(asset.name);
     const krakenTo = this.mapAssetToKraken(to);
     return `${krakenAsset}${krakenTo}`;
@@ -90,8 +90,8 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     }
   }
 
-  async fetchPrice(asset: IAsset): Promise<number> {
-    const pair = this.createPair(asset);
+  async fetchPrice(asset: IAsset, to: string): Promise<number> {
+    const pair = this.createPair(asset, to);
     const url = this.getApiUrl('/0/public/Ticker');
     
     try {
@@ -174,7 +174,8 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       }
 
       // Map asset name to Kraken format for balance lookup
-      const krakenAssetName = this.createPair({ ...asset, name: asset.name }, '').replace(/USDT$|USD$/, '');
+      const krakenAssetName = this.mapAssetToKraken(asset.name);
+
       let balance = 0;
 
       if (data.result?.[krakenAssetName]) {

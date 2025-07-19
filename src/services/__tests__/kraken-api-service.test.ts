@@ -64,7 +64,7 @@ describe('KrakenApiService', () => {
 
   describe('createPair', () => {
     it('should create correct trading pair with default USDT', () => {
-      const result = krakenApiService.createPair(mockAsset);
+      const result = krakenApiService.createPair(mockAsset, 'USDT');
       expect(result).toBe('XXBTUSDT'); // Kraken maps BTC to XXBT
     });
 
@@ -100,7 +100,7 @@ describe('KrakenApiService', () => {
       
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
-      const result = await krakenApiService.fetchPrice(mockAsset);
+      const result = await krakenApiService.fetchPrice(mockAsset, 'USDT');
 
       expect(result).toBe(50000);
       expect(axios.get).toHaveBeenCalledWith(
@@ -122,7 +122,7 @@ describe('KrakenApiService', () => {
       
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
-      const result = await krakenApiService.fetchPrice(mockAsset);
+      const result = await krakenApiService.fetchPrice(mockAsset, 'USDT');
 
       expect(result).toBe(45000);
     });
@@ -130,7 +130,7 @@ describe('KrakenApiService', () => {
     it('should throw error when price fetch fails', async () => {
       vi.mocked(axios.get).mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(krakenApiService.fetchPrice(mockAsset)).rejects.toThrow(
+      await expect(krakenApiService.fetchPrice(mockAsset, 'USDT')).rejects.toThrow(
         'Could not fetch price for BTC',
       );
     });
@@ -142,7 +142,7 @@ describe('KrakenApiService', () => {
       
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
-      await expect(krakenApiService.fetchPrice(mockAsset)).rejects.toThrow(
+      await expect(krakenApiService.fetchPrice(mockAsset, 'USDT')).rejects.toThrow(
         'No price data found for pair XXBTUSDT',
       );
     });
@@ -521,7 +521,7 @@ describe('KrakenApiService Integration Tests', () => {
         // This makes a real API call to Kraken (public endpoint, no auth needed)
         // Use a more common pair that Kraken is likely to have
         const testAsset = { ...mockAsset, name: 'BTC' };
-        const price = await krakenApiService.fetchPrice(testAsset);
+        const price = await krakenApiService.fetchPrice(testAsset, 'USDT');
         
         expect(typeof price).toBe('number');
         expect(price).toBeGreaterThan(0);

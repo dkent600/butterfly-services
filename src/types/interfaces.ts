@@ -36,8 +36,8 @@ export interface IExchangeApiService {
 }
 
 export interface IExchangeService {
-  createPair(asset: IAsset, to?: string): string;
-  fetchPrice(asset: IAsset): Promise<number>;
+  createPair(asset: IAsset, to: string): string;
+  fetchPrice(asset: IAsset, to: string): Promise<number>;
   fetchBalance(asset: IAsset): Promise<number>;
   createSellOrder(
     asset: IAsset, 

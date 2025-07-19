@@ -149,7 +149,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         // Use singleton service instances to prevent multiple service creation
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        const price = await exchangeService.fetchPrice(assetConfig);
+        const price = await exchangeService.fetchPrice(assetConfig, to.toUpperCase());
         const pair = exchangeService.createPair(assetConfig, to.toUpperCase());
 
         return {

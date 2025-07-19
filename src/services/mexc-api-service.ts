@@ -36,11 +36,11 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     return this.lastNonce;
   }
 
-  async fetchPrice(asset: IAsset): Promise<number> {
+  async fetchPrice(asset: IAsset, to: string): Promise<number> {
     try {
       const url = this.getApiUrl('/api/v3/ticker/price');
       const { data } = await axios.get(url, {
-        params: { symbol: this.createPair(asset) },
+        params: { symbol: this.createPair(asset, to) },
       });
       return parseFloat(data.price);
     } catch (error) {
