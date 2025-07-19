@@ -5,6 +5,8 @@ import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
 export class MexcApiService extends BaseExchangeService implements IExchangeService {
+  private lastNonce: number = 0;
+
   constructor(
     @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
     @inject(TYPES.IEnvService) envService: IEnvService,
@@ -22,6 +24,16 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
 
   protected extractServerTime(responseData: any): number {
     return responseData.serverTime;
+  }
+
+  private ensureUniqueNonce(timestamp: number): number {
+    // MEXC requires strictly increasing nonces for authenticated requests
+    if (timestamp <= this.lastNonce) {
+      this.lastNonce = this.lastNonce + 1;
+    } else {
+      this.lastNonce = timestamp;
+    }
+    return this.lastNonce;
   }
 
   async fetchPrice(asset: IAsset): Promise<number> {
@@ -43,7 +55,9 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    * @returns number of coins free for the asset
    */
   async fetchBalance(asset: IAsset): Promise<number> {
-    const timestamp = await this.getServerTimestamp(asset);
+    // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
+    const timeSyncer = await this.getTimeSyncer(asset);
+    const timestamp = this.ensureUniqueNonce(timeSyncer.now());
     const queryString = `timestamp=${timestamp}`;
 
     const apiKey = this.exchangeApiService.getAPIKey(asset.exchange);
@@ -93,8 +107,10 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
 
   async createMarketSellOrder(asset: IAsset, to: string = 'USDT'): Promise<any> {
     const coinpair = this.createPair(asset, to);
-    const quantity = await this.getSellAmount(asset);
-    const timestamp = await this.getServerTimestamp(asset);
+    const quantity = asset.amount;
+    // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
+    const timeSyncer = await this.getTimeSyncer(asset);
+    const timestamp = this.ensureUniqueNonce(timeSyncer.now());
     const queryString = `symbol=${coinpair}&side=SELL&type=MARKET&quantity=${quantity}&timestamp=${timestamp}`;
 
     const signature = this.exchangeApiService.sign(queryString, this.exchangeApiService.getAPISecret(asset.exchange));

@@ -2,8 +2,6 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { container } from '../../container.js';
 import { IAsset, IExchangeService } from '../../types/interfaces.js';
-import { MexcApiService } from '../../services/mexc-api-service.js';
-import { KrakenApiService } from '../../services/kraken-api-service.js';
 import {
   BalanceResponseSchema,
   PriceResponseSchema,
@@ -16,7 +14,7 @@ import {
 interface ExchangeConfig {
   name: string;
   displayName: string;
-  serviceClass: new (...args: any[]) => IExchangeService;
+  serviceToken: string; // Token for DI container resolution
 }
 
 /**
@@ -49,8 +47,8 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
   // Exchange configurations
   const exchanges: ExchangeConfig[] = [
-    { name: 'mexc', displayName: 'MEXC', serviceClass: MexcApiService },
-    { name: 'kraken', displayName: 'Kraken', serviceClass: KrakenApiService },
+    { name: 'mexc', displayName: 'MEXC', serviceToken: 'MexcApiService' },
+    { name: 'kraken', displayName: 'Kraken', serviceToken: 'KrakenApiService' },
   ];
 
   /**
@@ -71,7 +69,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         querystring: {
           type: 'object',
           properties: {
-            percentage: { type: 'number', minimum: 0, maximum: 100, default: 100 },
+            amout: { type: 'number', minimum: 0, default: 0 },
           },
           required: [],
         },
@@ -84,15 +82,16 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }, async (request, reply) => {
       try {
         const { asset } = request.params as { asset: string };
-        const { percentage = 100 } = request.query as { percentage?: number };
+        const { amount = 0 } = request.query as { amount?: number };
 
         const assetConfig: IAsset = {
           name: asset.toUpperCase(),
           exchange: exchange.name,
-          percentage,
+          amount,
         };
 
-        const exchangeService = container.resolve(exchange.serviceClass);
+        // Use singleton service instances to prevent multiple service creation
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
         const balance = await exchangeService.fetchBalance(assetConfig);
 
         return {
@@ -149,10 +148,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const assetConfig: IAsset = {
           name: asset.toUpperCase(),
           exchange: exchange.name,
-          percentage: 100, // Not used for price fetching
+          amount: 0, // Not used for price fetching
         };
 
-        const exchangeService = container.resolve(exchange.serviceClass);
+        // Use singleton service instances to prevent multiple service creation
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
         const price = await exchangeService.fetchPrice(assetConfig);
         const pair = exchangeService.createPair(assetConfig, to.toUpperCase());
 
@@ -204,16 +204,16 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           });
         }
 
-        const exchangeService = container.resolve(exchange.serviceClass);
+        // Use singleton service instances to prevent multiple service creation
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
         await exchangeService.createMarketSellOrder(asset, to.toUpperCase());
-        const quantity = await exchangeService.getSellAmount(asset);
 
         return {
           success: true,
           message: 'Market sell order created successfully',
           asset: asset.name.toUpperCase(),
           exchange: exchange.name,
-          quantity,
+          quantity: asset.amount, // Include the quantity in the response
           timestamp: new Date().toISOString(),
         };
       } catch (error) {

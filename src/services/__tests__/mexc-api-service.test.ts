@@ -52,7 +52,7 @@ describe('MexcApiService', () => {
     mockAsset = {
       name: 'BTC',
       exchange: 'mexc',
-      percentage: 50,
+      amount: 50,
     };
 
     // Create service with mocked dependencies
@@ -102,18 +102,6 @@ describe('MexcApiService', () => {
     });
   });
 
-  describe('getSellAmount', () => {
-    it('should calculate sell amount based on percentage and balance', async () => {
-      // Mock fetchBalance to return 1 BTC
-      const fetchBalanceSpy = vi.spyOn(mexcApiService, 'fetchBalance').mockResolvedValue(1.0);
-
-      const result = await mexcApiService.getSellAmount(mockAsset);
-
-      expect(result).toBe(0.5); // 50% of 1 BTC
-      expect(fetchBalanceSpy).toHaveBeenCalledWith(mockAsset);
-    });
-  });
-
   describe('createMarketSellOrder', () => {
     beforeEach(() => {
       // SAFETY FIRST: Ensure ALL external calls are stubbed to prevent real transactions
@@ -146,15 +134,16 @@ describe('MexcApiService', () => {
       });
 
       // Mock getSellAmount
-      const getSellAmountSpy = vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.5);
+      // Note: getSellAmount no longer exists - using asset.amount directly
+      // const getSellAmountSpy = // Note: getSellAmount no longer exists - using asset.amount directly
 
       const result = await mexcApiService.createMarketSellOrder(mockAsset, 'USDT');
 
-      expect(getSellAmountSpy).toHaveBeenCalledWith(mockAsset);
+      // expect(getSellAmountSpy).toHaveBeenCalledWith(mockAsset);
       expect(mockExchangeApiService.sign).toHaveBeenCalled();
       expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalledWith(
         'BTCUSDT',
-        0.5,
+        50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'mexc',
         expect.objectContaining({
           method: 'POST',
@@ -181,7 +170,7 @@ describe('MexcApiService', () => {
       });
 
       // Mock getSellAmount
-      vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.5);
+      // Note: getSellAmount no longer exists - using asset.amount directly
 
       // CRITICAL SAFETY VERIFICATION: Confirm our mock is in place before the dangerous call
       // This ensures that when MexcApiService.createMarketSellOrder() calls 
@@ -207,7 +196,7 @@ describe('MexcApiService', () => {
       // Verify it would select the production endpoint (but no real call is made)
       expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalledWith(
         'BTCUSDT',
-        0.5,
+        50,
         'mexc',
         expect.objectContaining({
           method: 'POST',
@@ -232,7 +221,7 @@ describe('MexcApiService', () => {
         data: { serverTime: 1640995200000 }
       });
       
-      vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.1);
+      // Note: getSellAmount no longer exists - using asset.amount directly
 
       // PRE-CALL SAFETY VERIFICATION: Confirm mocks are properly set up
       expect(vi.isMockFunction(mockExchangeApiService.createMarketSellOrder)).toBe(true);
@@ -280,7 +269,7 @@ describe('MexcApiService', () => {
         data: { serverTime: 1640995200000 }
       });
 
-      vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.5);
+      // Note: getSellAmount no longer exists - using asset.amount directly
 
       await mexcApiService.createMarketSellOrder(mockAsset, 'USDT');
 
@@ -304,17 +293,17 @@ describe('MexcApiService', () => {
         data: { serverTime: 1640995200000 }
       });
       
-      vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(1.5);
+      // Note: getSellAmount no longer exists - using asset.amount directly
 
       await mexcApiService.createMarketSellOrder(mockAsset, 'ETH');
 
       expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalledWith(
         'BTCETH', // Should create correct pair
-        1.5,
+        50,
         'mexc',
         expect.objectContaining({
           method: 'POST',
-          url: expect.stringContaining('symbol=BTCETH&side=SELL&type=MARKET&quantity=1.5'), // Correct query params
+          url: expect.stringContaining('symbol=BTCETH&side=SELL&type=MARKET&quantity=50'), // Correct query params
           headers: expect.any(Object)
         })
       );
@@ -328,13 +317,13 @@ describe('MexcApiService', () => {
         data: { serverTime: 1640995200000 }
       });
       
-      vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.75);
+      // Note: getSellAmount no longer exists - using asset.amount directly
 
       await mexcApiService.createMarketSellOrder(mockAsset); // No 'to' parameter
 
       expect(mockExchangeApiService.createMarketSellOrder).toHaveBeenCalledWith(
         'BTCUSDT', // Should default to USDT
-        0.75,
+        50,
         'mexc',
         expect.objectContaining({
           method: 'POST',
@@ -352,12 +341,12 @@ describe('MexcApiService', () => {
         data: { serverTime: 1640995200000 }
       });
       
-      vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.25);
+      // Note: getSellAmount no longer exists - using asset.amount directly
 
       await mexcApiService.createMarketSellOrder(mockAsset);
 
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
-        expect.stringMatching(/symbol=BTCUSDT&side=SELL&type=MARKET&quantity=0\.25&timestamp=\d+/),
+        expect.stringMatching(/symbol=BTCUSDT&side=SELL&type=MARKET&quantity=50&timestamp=\d+/),
         'test-api-secret'
       );
 
@@ -381,9 +370,10 @@ describe('MexcApiService', () => {
         data: { serverTime: 1640995200000 }
       });
       
-      vi.spyOn(mexcApiService, 'getSellAmount').mockRejectedValue(new Error('Balance fetch failed'));
+      // Note: getSellAmount no longer exists - mocking a different error
+      vi.mocked(mockExchangeApiService.createMarketSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(mexcApiService.createMarketSellOrder(mockAsset)).rejects.toThrow('Balance fetch failed');
+      await expect(mexcApiService.createMarketSellOrder(mockAsset)).rejects.toThrow('API Error');
     });
 
     it('should handle API errors from createMarketSellOrder', async () => {
@@ -394,7 +384,7 @@ describe('MexcApiService', () => {
         data: { serverTime: 1640995200000 }
       });
       
-      vi.spyOn(mexcApiService, 'getSellAmount').mockResolvedValue(0.5);
+      // Note: getSellAmount no longer exists - using asset.amount directly
       vi.mocked(mockExchangeApiService.createMarketSellOrder).mockRejectedValue(new Error('API Error'));
 
       await expect(mexcApiService.createMarketSellOrder(mockAsset)).rejects.toThrow('API Error');

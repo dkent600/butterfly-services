@@ -6,13 +6,29 @@ import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
 export class KrakenApiService extends BaseExchangeService implements IExchangeService {
+  private static instanceCount = 0;
+  private static globalLastNonce = 0; // Shared nonce counter across all instances
+  private static initialized = false; // Track if we've initialized the nonce
+  private instanceId: number;
+
   constructor(
     @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
     @inject(TYPES.IEnvService) envService: IEnvService,
   ) {
     super(envService);
+    this.instanceId = ++KrakenApiService.instanceCount;
+    
+    // Initialize nonce on first instance to avoid conflicts with previous sessions
+    if (!KrakenApiService.initialized) {
+      // Start with current timestamp to avoid conflicts with previous sessions
+      KrakenApiService.globalLastNonce = Date.now();
+      KrakenApiService.initialized = true;
+      console.log(`[KRAKEN SERVICE] Initialized global nonce to: ${KrakenApiService.globalLastNonce}`);
+    }
+    
+    console.log(`[KRAKEN SERVICE] Created instance #${this.instanceId}, Total instances: ${KrakenApiService.instanceCount}`);
   }
-
+  
   protected getTimeEndpoint(): string {
     return '/0/public/Time';
   }
@@ -24,6 +40,19 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   protected extractServerTime(responseData: any): number {
     // Kraken returns time in seconds, convert to milliseconds to match other exchanges
     return responseData.result.unixtime * 1000;
+  }
+
+  private generateUniqueNonce(): number {
+    // Kraken requires strictly increasing nonces in milliseconds
+    // ATOMIC operation: always increment, never duplicate
+    KrakenApiService.globalLastNonce = Math.max(Date.now(), KrakenApiService.globalLastNonce + 1);
+    
+    const generatedNonce = KrakenApiService.globalLastNonce;
+    
+    // Enhanced debug logging with timing analysis
+    console.log(`[KRAKEN NONCE] Instance #${this.instanceId} Generated: ${generatedNonce} (time: ${Date.now()})`);
+    
+    return generatedNonce;
   }
 
   /**
@@ -103,9 +132,10 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
 
   async fetchBalance(asset: IAsset): Promise<number> {
     try {
-      // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
-      const timeSyncer = await this.getTimeSyncer(asset);
-      const nonce = timeSyncer.now(); // Server-synchronized timestamp in milliseconds
+      // Enhanced nonce generation for concurrent request safety
+      const nonce = this.generateUniqueNonce(); // Use unique nonce method
+      
+      console.log(`[KRAKEN BALANCE] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name}`);
       
       const path = '/0/private/Balance';
       const postData = `nonce=${nonce}`;
@@ -113,10 +143,14 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       const apiKey = this.exchangeApiService.getAPIKey(asset.exchange).trim();
       const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange).trim();
 
+      // Enhanced credential validation with environment info
       if (!apiKey || !apiSecret) {
         throw new Error(`Missing API credentials for ${asset.exchange}. API Key: ${!!apiKey}, API Secret: ${!!apiSecret}`);
       }
 
+      // Log environment context (without exposing secrets)
+      console.log(`[KRAKEN AUTH] Using credentials - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
+      
       const signature = this.signKrakenRequest(path, postData, apiSecret);
       const url = this.getApiUrl(path);
 
@@ -130,7 +164,11 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       });
 
       if (data.error && data.error.length > 0) {
-        throw new Error(`Kraken API error: ${data.error.join(', ')}`);
+        const errorMessage = data.error.join(', ');
+        console.error(`[KRAKEN ERROR] Instance #${this.instanceId} API Error: ${errorMessage}`);
+        console.error(`[KRAKEN ERROR] Request details - Nonce: ${nonce}, URL: ${url}, PostData: ${postData}`);
+        console.error(`[KRAKEN ERROR] Headers: ${JSON.stringify({ 'API-Key': `${apiKey.substring(0, 10)}...`, 'API-Sign': `${signature.substring(0, 20)}...` })}`);
+        throw new Error(`Kraken API error: ${errorMessage}`);
       }
 
       // Map asset name to Kraken format for balance lookup
@@ -165,9 +203,10 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   async createMarketSellOrder(asset: IAsset, to: string = 'USDT'): Promise<any> {
     try {
       const pair = this.createPair(asset, to);
-      const volume = await this.getSellAmount(asset);
-      const timeSyncer = await this.getTimeSyncer(asset);
-      const nonce = timeSyncer.now(); // Use server-synchronized timestamp
+      const volume = asset.amount;  // Fixed - removed incorrect await
+      const nonce = this.generateUniqueNonce(); // Use unique nonce method
+      
+      console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}`);
       
       // Kraken API parameters for market sell order
       const orderParams = {
@@ -217,14 +256,6 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         throw error;
       }
       
-      // Check if it's from getSellAmount or other internal methods
-      if (error instanceof Error && (
-        error.message.includes('Balance fetch failed') ||
-        error.message.includes('Could not fetch balance')
-      )) {
-        throw error;
-      }
-      
       console.error(`Failed to create sell order for ${asset.name}:`, error);
       throw new Error(`Could not create sell order for ${asset.name}`);
     }
@@ -243,8 +274,9 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     // Extract nonce from postData (assumes format: "nonce=123456...")
     const nonceMatch = postData.match(/nonce=(\d+)/);
     if (!nonceMatch) {
-      // Fallback for test environments or edge cases - use current timestamp
-      const fallbackNonce = Date.now().toString();
+      // Fallback for test environments or edge cases - use simple increment
+      const fallbackNonce = Math.max(Date.now(), KrakenApiService.globalLastNonce + 1);
+      KrakenApiService.globalLastNonce = fallbackNonce;
       console.warn(`[KRAKEN] Nonce not found in postData "${postData}", using fallback: ${fallbackNonce}`);
       const apiSha256 = crypto.createHash('sha256').update(`${fallbackNonce}${postData}`).digest();
       const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))

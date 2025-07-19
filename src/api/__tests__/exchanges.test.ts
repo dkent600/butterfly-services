@@ -116,7 +116,7 @@ describe('Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/v1/mexc/balance/btc?percentage=75',
+        url: '/api/v1/mexc/balance/btc?amount=75',
       });
 
       if (response.statusCode !== 200) {
@@ -174,7 +174,7 @@ describe('Exchange Routes', () => {
       const asset = {
         name: 'BTC',
         exchange: 'mexc',
-        percentage: 50,
+        amount: 50,
       };
 
       const response = await server.inject({
@@ -196,14 +196,14 @@ describe('Exchange Routes', () => {
       expect(body.success).toBe(true);
       expect(body.asset).toBe('BTC');
       expect(body.exchange).toBe('mexc');
-      expect(body.quantity).toBe(0.5); // 50% of 1.0 BTC
+      expect(body.quantity).toBe(50); // Using asset.amount directly (asset.amount = 50)
     });
 
     it('should reject non-MEXC assets', async () => {
       const asset = {
         name: 'BTC',
         exchange: 'binance',
-        percentage: 50,
+        amount: 50,
       };
 
       const response = await server.inject({
@@ -298,7 +298,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/balance/btc?percentage=75',
+          url: '/api/v1/kraken/balance/btc?amount=75',
         });
 
         if (response.statusCode !== 200) {
@@ -370,7 +370,7 @@ describe('Exchange Routes', () => {
         const asset = {
           name: 'BTC',
           exchange: 'kraken',
-          percentage: 50,
+          amount: 50,
         };
 
         const response = await server.inject({
@@ -392,14 +392,14 @@ describe('Exchange Routes', () => {
         expect(body.success).toBe(true);
         expect(body.asset).toBe('BTC');
         expect(body.exchange).toBe('kraken');
-        expect(body.quantity).toBe(0.5); // 50% of 1.0 BTC
+        expect(body.quantity).toBe(50); // Using asset.amount directly (asset.amount = 50)
       });
 
       it('should reject non-Kraken assets', async () => {
         const asset = {
           name: 'BTC',
           exchange: 'binance',
-          percentage: 50,
+          amount: 50,
         };
 
         const response = await server.inject({

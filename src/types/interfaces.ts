@@ -1,7 +1,7 @@
 export interface IAsset {
   name: string;
   exchange: string;
-  percentage: number;
+  amount: number;
 }
 
 export interface ILogService {
@@ -37,7 +37,6 @@ export interface IExchangeApiService {
 
 export interface IExchangeService {
   createPair(asset: IAsset, to?: string): string;
-  getSellAmount(asset: IAsset): Promise<number>;
   fetchPrice(asset: IAsset): Promise<number>;
   fetchBalance(asset: IAsset): Promise<number>;
   createMarketSellOrder(asset: IAsset, to?: string): Promise<any>;

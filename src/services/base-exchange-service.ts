@@ -130,18 +130,6 @@ export abstract class BaseExchangeService {
   }
 
   /**
-   * Calculates the sell amount based on the asset's percentage and current balance.
-   * This logic is shared across all exchanges.
-   * 
-   * @param asset - The asset configuration containing percentage
-   * @returns Promise<number> - The amount to sell
-   */
-  async getSellAmount(asset: IAsset): Promise<number> {
-    const balance = await this.fetchBalance(asset);
-    return asset.percentage / 100 * balance;
-  }
-
-  /**
    * Abstract method to fetch the balance for an asset.
    * Each exchange has its own API for getting account balances.
    * 
