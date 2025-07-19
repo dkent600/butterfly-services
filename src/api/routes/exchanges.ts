@@ -7,6 +7,8 @@ import {
   PriceResponseSchema,
   MarketSellOrderRequestSchema,
   MarketSellOrderResponseSchema,
+  LimitSellOrderRequestSchema,
+  LimitSellOrderResponseSchema,
   ErrorResponseSchema,
 } from '../schemas/exchange-schemas.js';
 
@@ -27,6 +29,7 @@ interface ExchangeConfig {
  * - GET /api/v1/{exchange}/balance/:asset - Retrieve asset balance from exchange
  * - GET /api/v1/{exchange}/price/:asset - Get current market price for an asset
  * - POST /api/v1/{exchange}/orders/sell - Create a market sell order
+ * - POST /api/v1/{exchange}/orders/sell/limit - Create a limit sell order
  * 
  * Features:
  * - Comprehensive input validation using JSON Schema
@@ -176,9 +179,9 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   }
 
   /**
-   * Generic function to create sell order route for an exchange
+   * Generic function to create market sell order route for an exchange
    */
-  function createSellOrderRoute(exchange: ExchangeConfig) {
+  function createMarketSellOrderRoute(exchange: ExchangeConfig) {
     fastify.post(`/${exchange.name}/orders/sell`, {
       schema: {
         description: `Create a market sell order on ${exchange.displayName} exchange`,
@@ -228,11 +231,76 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     });
   }
 
+  /**
+   * Generic function to create limit sell order route for an exchange
+   */
+  function createLimitSellOrderRoute(exchange: ExchangeConfig) {
+    fastify.post(`/${exchange.name}/orders/sell/limit`, {
+      schema: {
+        description: `Create a limit sell order on ${exchange.displayName} exchange`,
+        tags: ['exchanges'],
+        body: LimitSellOrderRequestSchema,
+        response: {
+          200: LimitSellOrderResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        const { asset, price, to = 'USDT' } = request.body as { asset: IAsset; price: number; to?: string };
+
+        // Ensure it's the correct exchange
+        if (asset.exchange.toLowerCase() !== exchange.name) {
+          return reply.status(400).send({
+            error: 'InvalidExchange',
+            message: `Asset exchange must be '${exchange.name}', got '${asset.exchange}'`,
+            statusCode: 400,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        // Validate price
+        if (price <= 0) {
+          return reply.status(400).send({
+            error: 'InvalidPrice',
+            message: 'Price must be greater than 0',
+            statusCode: 400,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        // Use singleton service instances to prevent multiple service creation
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        await exchangeService.createSellOrder(asset, { orderType: 'limit', price, to: to.toUpperCase() });
+
+        return {
+          success: true,
+          message: 'Limit sell order created successfully',
+          asset: asset.name.toUpperCase(),
+          exchange: exchange.name,
+          quantity: asset.amount,
+          price,
+          timestamp: new Date().toISOString(),
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
   // Register all routes for all exchanges
   for (const exchange of exchanges) {
     createBalanceRoute(exchange);
     createPriceRoute(exchange);
-    createSellOrderRoute(exchange);
+    createMarketSellOrderRoute(exchange);
+    createLimitSellOrderRoute(exchange);
   }
 };
 

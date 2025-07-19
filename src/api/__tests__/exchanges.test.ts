@@ -220,6 +220,106 @@ describe('Exchange Routes', () => {
     });
   });
 
+  describe('POST /api/v1/mexc/orders/sell/limit', () => {
+    it('should create limit sell order', async () => {
+      // Set up flexible mocking based on URL patterns
+      const mockAxiosGet = vi.mocked(axios.get);
+      const mockAxiosPost = vi.mocked(axios.post);
+
+      // Clear any previous calls
+      mockAxiosGet.mockClear();
+      mockAxiosPost.mockClear();
+
+      // Mock based on URL patterns instead of call order
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+        if (urlStr.includes('/api/v3/time')) {
+          // Server time endpoint
+          return Promise.resolve({ data: { serverTime: Date.now() } });
+        } else if (urlStr.includes('/api/v3/account')) {
+          // Balance endpoint
+          return Promise.resolve({
+            data: {
+              balances: [
+                { asset: 'BTC', free: '1.0' },
+              ],
+            },
+          });
+        }
+
+        // Default fallback
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      // Mock limit order creation
+      mockAxiosPost.mockResolvedValue({
+        data: { orderId: '12345' },
+        statusText: 'OK',
+      });
+
+      const asset = {
+        name: 'BTC',
+        exchange: 'mexc',
+        amount: 50,
+      };
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/mexc/orders/sell/limit',
+        payload: { asset, price: 45000.50, to: 'USDT' },
+      });
+
+      if (response.statusCode !== 200) {
+        console.log('Limit sell order test error response:', response.body);
+        console.log('axios.get call count:', mockAxiosGet.mock.calls.length);
+        console.log('axios.post call count:', mockAxiosPost.mock.calls.length);
+        console.log('Get call URLs:', mockAxiosGet.mock.calls.map(call => call[0]));
+      }
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body.success).toBe(true);
+      expect(body.asset).toBe('BTC');
+      expect(body.exchange).toBe('mexc');
+      expect(body.quantity).toBe(50);
+      expect(body.price).toBe(45000.50);
+    });
+
+    it('should reject limit order without price', async () => {
+      const asset = {
+        name: 'BTC',
+        exchange: 'mexc',
+        amount: 50,
+      };
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/mexc/orders/sell/limit',
+        payload: { asset },  // Missing price
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('should reject limit order with invalid price', async () => {
+      const asset = {
+        name: 'BTC',
+        exchange: 'mexc',
+        amount: 50,
+      };
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/mexc/orders/sell/limit',
+        payload: { asset, price: -100 },  // Invalid negative price
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
   describe('Kraken Exchange Routes', () => {
     describe('GET /api/v1/kraken/price/:asset', () => {
       it('should fetch price for BTC on Kraken', async () => {
@@ -413,6 +513,120 @@ describe('Exchange Routes', () => {
 
         expect(body.error).toBe('InvalidExchange');
         expect(body.message).toContain('kraken');
+      });
+    });
+
+    describe('POST /api/v1/kraken/orders/sell/limit', () => {
+      it('should create limit sell order', async () => {
+        // Set up flexible mocking based on URL patterns
+        const mockAxiosGet = vi.mocked(axios.get);
+        const mockAxiosPost = vi.mocked(axios.post);
+
+        // Clear any previous calls
+        mockAxiosGet.mockClear();
+        mockAxiosPost.mockClear();
+
+        // Mock based on URL patterns instead of call order
+        mockAxiosGet.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+          if (urlStr.includes('/0/public/Time')) {
+            // Server time endpoint
+            return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+          }
+
+          // Default fallback
+          return Promise.resolve({ data: { result: { unixtime: Date.now() / 1000 } } });
+        });
+
+        // Mock POST for balance and order endpoints
+        mockAxiosPost.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+          if (urlStr.includes('/0/private/Balance')) {
+            // Balance endpoint
+            return Promise.resolve({
+              data: {
+                error: [],
+                result: {
+                  'XXBT': '1.0',
+                },
+              },
+            });
+          } else if (urlStr.includes('/0/private/AddOrder')) {
+            // Order creation endpoint
+            return Promise.resolve({
+              data: { 
+                error: [],
+                result: { txid: ['OQCLML-BW3P3-BUCMWZ'] },
+              },
+              statusText: 'OK',
+            });
+          }
+
+          // Default fallback
+          return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
+        });
+
+        const asset = {
+          name: 'BTC',
+          exchange: 'kraken',
+          amount: 50,
+        };
+
+        const response = await server.inject({
+          method: 'POST',
+          url: '/api/v1/kraken/orders/sell/limit',
+          payload: { asset, price: 48000.75, to: 'USDT' },
+        });
+
+        if (response.statusCode !== 200) {
+          console.log('Kraken limit sell order test error response:', response.body);
+          console.log('axios.get call count:', mockAxiosGet.mock.calls.length);
+          console.log('axios.post call count:', mockAxiosPost.mock.calls.length);
+          console.log('Get call URLs:', mockAxiosGet.mock.calls.map(call => call[0]));
+        }
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body);
+
+        expect(body.success).toBe(true);
+        expect(body.asset).toBe('BTC');
+        expect(body.exchange).toBe('kraken');
+        expect(body.quantity).toBe(50);
+        expect(body.price).toBe(48000.75);
+      });
+
+      it('should reject limit order without price', async () => {
+        const asset = {
+          name: 'BTC',
+          exchange: 'kraken',
+          amount: 50,
+        };
+
+        const response = await server.inject({
+          method: 'POST',
+          url: '/api/v1/kraken/orders/sell/limit',
+          payload: { asset },  // Missing price
+        });
+
+        expect(response.statusCode).toBe(400);
+      });
+
+      it('should reject limit order with invalid price', async () => {
+        const asset = {
+          name: 'BTC',
+          exchange: 'kraken',
+          amount: 50,
+        };
+
+        const response = await server.inject({
+          method: 'POST',
+          url: '/api/v1/kraken/orders/sell/limit',
+          payload: { asset, price: 0 },  // Invalid zero price
+        });
+
+        expect(response.statusCode).toBe(400);
       });
     });
   });

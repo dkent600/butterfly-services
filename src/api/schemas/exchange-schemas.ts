@@ -42,6 +42,17 @@ export const MarketSellOrderRequestSchema = {
   additionalProperties: false,
 } as const;
 
+export const LimitSellOrderRequestSchema = {
+  type: 'object',
+  properties: {
+    asset: AssetSchema,
+    price: { type: 'number', minimum: 0, description: 'Limit price for the order' },
+    to: { type: 'string', default: 'USDT', description: 'Target currency (default: USDT)' },
+  },
+  required: ['asset', 'price'],
+  additionalProperties: false,
+} as const;
+
 export const MarketSellOrderResponseSchema = {
   type: 'object',
   properties: {
@@ -51,6 +62,21 @@ export const MarketSellOrderResponseSchema = {
     asset: { type: 'string' },
     exchange: { type: 'string' },
     quantity: { type: 'number' },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['success', 'message', 'timestamp'],
+} as const;
+
+export const LimitSellOrderResponseSchema = {
+  type: 'object',
+  properties: {
+    success: { type: 'boolean' },
+    message: { type: 'string' },
+    orderId: { type: 'string' },
+    asset: { type: 'string' },
+    exchange: { type: 'string' },
+    quantity: { type: 'number' },
+    price: { type: 'number' },
     timestamp: { type: 'string', format: 'date-time' },
   },
   required: ['success', 'message', 'timestamp'],
