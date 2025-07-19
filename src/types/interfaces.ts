@@ -44,7 +44,7 @@ export interface IExchangeService {
     options?: {
       orderType: 'market' | 'limit';
       price?: number;
-      to?: string;
+      to: string;
     },
   ): Promise<any>;
 }

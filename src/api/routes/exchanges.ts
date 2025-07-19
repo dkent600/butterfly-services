@@ -126,7 +126,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         querystring: {
           type: 'object',
           properties: {
-            to: { type: 'string', default: 'USDT', description: 'Target currency for price quote' },
+            to: { type: 'string', description: 'Target currency for price quote' },
           },
           required: [],
         },
@@ -139,7 +139,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }, async (request, reply) => {
       try {
         const { asset } = request.params as { asset: string };
-        const { to = 'USDT' } = request.query as { to?: string };
+        const { to } = request.query as { to: string };
 
         const assetConfig: IAsset = {
           name: asset.toUpperCase(),
@@ -188,7 +188,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        const { asset, to = 'USDT' } = request.body as { asset: IAsset; to?: string };
+        const { asset, to } = request.body as { asset: IAsset; to: string };
 
         // Ensure it's the correct exchange
         if (asset.exchange.toLowerCase() !== exchange.name) {
@@ -241,7 +241,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        const { asset, price, to = 'USDT' } = request.body as { asset: IAsset; price: number; to?: string };
+        const { asset, price, to } = request.body as { asset: IAsset; price: number; to: string };
 
         // Ensure it's the correct exchange
         if (asset.exchange.toLowerCase() !== exchange.name) {

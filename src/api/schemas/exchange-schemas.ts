@@ -36,7 +36,7 @@ export const MarketSellOrderRequestSchema = {
   type: 'object',
   properties: {
     asset: AssetSchema,
-    to: { type: 'string', default: 'USDT', description: 'Target currency (default: USDT)' },
+    to: { type: 'string', description: 'Target currency' },
   },
   required: ['asset'],
   additionalProperties: false,
@@ -47,7 +47,7 @@ export const LimitSellOrderRequestSchema = {
   properties: {
     asset: AssetSchema,
     price: { type: 'number', minimum: 0, description: 'Limit price for the order' },
-    to: { type: 'string', default: 'USDT', description: 'Target currency (default: USDT)' },
+    to: { type: 'string', description: 'Target currency' },
   },
   required: ['asset', 'price'],
   additionalProperties: false,

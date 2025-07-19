@@ -110,10 +110,10 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     options: {
       orderType: 'market' | 'limit';
       price?: number;
-      to?: string;
-    } = { orderType: 'market', to: 'USDT' },
+      to: string;
+    },
   ): Promise<any> {
-    const { orderType, price, to = 'USDT' } = options;
+    const { orderType, price, to } = options;
     
     // Validate required parameters based on order type
     if (orderType === 'limit' && !price) {
