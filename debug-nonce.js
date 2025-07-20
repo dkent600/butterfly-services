@@ -1,63 +1,153 @@
-import crypto from 'crypto';
+#!/usr/bin/env node
 
-// Your actual Kraken credentials
-const apiSecret = 'dxrEWMJ1ozSeyhAwzu4VC7rpakyWWJ0Bfyx7XQBiXXnGNavWgVMT+yQTSkGcfzCvTRjERarb453nri8/K1U9Og==';
-const apiKey = 'm6oCuKQNTKE8J8ZsAeXL49t5hkcJfXh54alFVoYwSivKhd0hLQ37TxLY';
+/**
+ * Enhanced debug script to test nonce generation and identify issues
+ * Run this to simulate the concurrent request scenario and capture detailed logs
+ */
 
-function generateNonce() {
-  const now = Date.now();
-  console.log('Generated nonce:', now);
-  console.log('Nonce length:', now.toString().length);
-  return now;
-}
+const { setTimeout } = require('timers/promises');
 
-function signKrakenRequest(path, postData, apiSecret) {
-  // Extract nonce from postData
-  const nonceMatch = postData.match(/nonce=(\d+)/);
-  if (!nonceMatch) {
-    throw new Error('No nonce found in postData');
-  }
-  const nonce = nonceMatch[1];
-  console.log('Using nonce from postData:', nonce);
-  
-  // Follow Kraken's exact algorithm from their docs
-  const apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
-  console.log('SHA256 input:', `${nonce}${postData}`);
-  console.log('SHA256 hash length:', apiSha256.length);
-  
-  const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
-    .update(path)
-    .update(apiSha256)
-    .digest();
+async function simulateConcurrentRequests() {
+  console.log('=== ENHANCED NONCE DEBUG SIMULATION ===');
+  console.log('This script simulates concurrent API requests to help debug nonce issues.');
+  console.log('Monitor the console output for detailed nonce generation logs.\n');
+
+  try {
+    // Dynamic import for ES modules
+    const { container } = await import('./dist/container.js');
+    const { TYPES } = await import('./dist/types/interfaces.js');
     
-  console.log('HMAC input path:', path);
-  console.log('API secret decoded length:', Buffer.from(apiSecret, 'base64').length);
-  
-  const apiSignature = apiSha512.toString('base64');
-  console.log('Final signature length:', apiSignature.length);
-  
-  return apiSignature;
+    const krakenService = container.resolve(TYPES.IKrakenApiService);
+    console.log('✅ Kraken service resolved successfully\n');
+    
+    // Test asset for balance check
+    const testAsset = {
+      name: 'BTC',
+      exchange: 'kraken'
+    };
+    
+    console.log('🚀 Starting concurrent request simulation...');
+    console.log(`Testing with ${testAsset.name} on ${testAsset.exchange}\n`);
+    
+    // Create multiple concurrent requests to trigger nonce conflicts
+    const requestCount = 12;
+    const requests = [];
+    
+    console.log('📊 Launching requests with detailed timing...\n');
+    
+    for (let i = 0; i < requestCount; i++) {
+      const startTime = Date.now();
+      const request = krakenService.fetchBalance(testAsset)
+        .then(balance => {
+          const duration = Date.now() - startTime;
+          console.log(`✅ Request ${i + 1} succeeded in ${duration}ms: Balance = ${balance}`);
+          return { success: true, balance, requestId: i + 1, duration };
+        })
+        .catch(error => {
+          const duration = Date.now() - startTime;
+          console.error(`❌ Request ${i + 1} failed in ${duration}ms:`, error.message);
+          return { success: false, error: error.message, requestId: i + 1, duration };
+        });
+      
+      requests.push(request);
+    }
+    
+    console.log(`Launched ${requestCount} concurrent requests...\n`);
+    
+    // Wait for all requests to complete
+    const results = await Promise.all(requests);
+    
+    // Analyze results
+    const successful = results.filter(r => r.success);
+    const failed = results.filter(r => !r.success);
+    
+    console.log('\n=== DETAILED RESULTS ANALYSIS ===');
+    console.log(`Total requests: ${requestCount}`);
+    console.log(`Successful: ${successful.length}`);
+    console.log(`Failed: ${failed.length}`);
+    console.log(`Success rate: ${((successful.length / requestCount) * 100).toFixed(1)}%`);
+    
+    if (successful.length > 0) {
+      const avgDuration = successful.reduce((sum, r) => sum + r.duration, 0) / successful.length;
+      console.log(`Average successful request duration: ${avgDuration.toFixed(1)}ms`);
+    }
+    
+    if (failed.length > 0) {
+      console.log('\n=== FAILED REQUESTS ANALYSIS ===');
+      failed.forEach(result => {
+        console.log(`Request ${result.requestId} (${result.duration}ms): ${result.error}`);
+      });
+      
+      const nonceErrors = failed.filter(r => r.error.toLowerCase().includes('nonce'));
+      const authErrors = failed.filter(r => r.error.toLowerCase().includes('auth') || r.error.toLowerCase().includes('key'));
+      const networkErrors = failed.filter(r => r.error.toLowerCase().includes('network') || r.error.toLowerCase().includes('timeout'));
+      
+      console.log(`\nError breakdown:`);
+      console.log(`  Nonce-related: ${nonceErrors.length}`);
+      console.log(`  Authentication: ${authErrors.length}`);
+      console.log(`  Network/Timeout: ${networkErrors.length}`);
+      console.log(`  Other: ${failed.length - nonceErrors.length - authErrors.length - networkErrors.length}`);
+    }
+    
+    console.log('\n=== DIAGNOSTIC RECOMMENDATIONS ===');
+    
+    if (failed.length === 0) {
+      console.log('🎉 All requests succeeded! The nonce generation appears to be working correctly.');
+      console.log('💡 If you\'re still seeing issues in production, they may be:');
+      console.log('   - Environment-specific (different server time sync)');
+      console.log('   - Load-related (higher concurrency than this test)');
+      console.log('   - API key specific (different nonce requirements per key)');
+    } else {
+      const nonceErrorCount = failed.filter(r => r.error.toLowerCase().includes('nonce')).length;
+      
+      if (nonceErrorCount > 0) {
+        console.log('⚠️  Nonce errors detected. Review the enhanced logs above for:');
+        console.log('   - Atomic nonce generation timing');
+        console.log('   - Server time synchronization status');
+        console.log('   - Global nonce reference consistency');
+        console.log('   - Time difference warnings');
+        console.log('\n💡 Potential fixes to try:');
+        console.log('   1. Increase the buffer time in nonce initialization');
+        console.log('   2. Check if API key has been used recently with higher nonces');
+        console.log('   3. Verify server time synchronization is working');
+        console.log('   4. Consider implementing a delay between requests');
+      } else {
+        console.log('ℹ️  Non-nonce related errors detected. Check:');
+        console.log('   - API credentials are correct and active');
+        console.log('   - Network connectivity is stable');
+        console.log('   - Account permissions for balance requests');
+      }
+    }
+    
+    console.log('\n=== NEXT STEPS ===');
+    console.log('1. Review the detailed logs above for patterns');
+    console.log('2. If nonce errors persist, increase the buffer in KrakenApiService constructor');
+    console.log('3. Consider adding artificial delays between requests if needed');
+    console.log('4. Test with different request counts to find the breaking point');
+    
+  } catch (error) {
+    console.error('❌ Failed to run debug simulation:', error);
+    console.error('\nTroubleshooting:');
+    console.error('1. Make sure the project is built: npm run build');
+    console.error('2. Check that all dependencies are installed: npm install');
+    console.error('3. Verify environment variables are set correctly');
+    console.error('4. Ensure API credentials are valid');
+  }
 }
 
-// Test with your actual use case
-console.log('=== Testing Kraken API Signature ===');
-const nonce = generateNonce();
-const path = '/0/private/Balance';
-const postData = `nonce=${nonce}`;
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 Debug simulation interrupted by user');
+  process.exit(0);
+});
 
-console.log('Path:', path);
-console.log('PostData:', postData);
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('🚨 Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
 
-try {
-  const signature = signKrakenRequest(path, postData, apiSecret);
-  console.log('Generated signature:', signature);
-  console.log('API Key:', apiKey);
-  
-  // Test if the nonce is within reasonable bounds
-  const now = Date.now();
-  console.log('Current time:', now);
-  console.log('Nonce vs current time diff:', Math.abs(nonce - now), 'ms');
-  
-} catch (error) {
-  console.error('Error generating signature:', error.message);
-}
+console.log('Starting enhanced nonce debugging...\n');
+simulateConcurrentRequests().catch(error => {
+  console.error('🚨 Unexpected error:', error);
+  process.exit(1);
+});

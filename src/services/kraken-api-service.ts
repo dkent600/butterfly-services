@@ -16,14 +16,15 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     @inject(TYPES.IEnvService) envService: IEnvService,
   ) {
     super(envService);
+    
     this.instanceId = ++KrakenApiService.instanceCount;
     
-    // Initialize nonce on first instance to avoid conflicts with previous sessions
-    if (!KrakenApiService.initialized) {
-      // Start with current timestamp to avoid conflicts with previous sessions
+    // NO BUFFER NEEDED - Time syncer provides accurate server time
+    // Initialize with current time, let time syncer handle accuracy
+    if (KrakenApiService.globalNonceRef.value === 0) {
       KrakenApiService.globalNonceRef.value = Date.now();
-      KrakenApiService.initialized = true;
-      console.log(`[KRAKEN SERVICE] Initialized global nonce to: ${KrakenApiService.globalNonceRef.value}`);
+      console.log(`[KRAKEN SERVICE] Initialized global nonce to current time: ${KrakenApiService.globalNonceRef.value}`);
+      console.log('[KRAKEN SERVICE] Using time syncer for accurate server-synchronized nonces');
     }
     
     console.log(`[KRAKEN SERVICE] Created instance #${this.instanceId}, Total instances: ${KrakenApiService.instanceCount}`);
@@ -52,6 +53,14 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       this.getExchangeName(),
       this.instanceId,
     );
+  }
+
+  /**
+   * Test method to expose nonce generation for testing purposes
+   * This allows us to test nonce generation without making API calls
+   */
+  public async testGenerateNonce(): Promise<number> {
+    return this.generateUniqueNonce();
   }
 
   /**
@@ -169,6 +178,24 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         console.error(`[KRAKEN ERROR] Instance #${this.instanceId} API Error: ${errorMessage}`);
         console.error(`[KRAKEN ERROR] Request details - Nonce: ${nonce}, URL: ${url}, PostData: ${postData}`);
         console.error(`[KRAKEN ERROR] Headers: ${JSON.stringify({ 'API-Key': `${apiKey.substring(0, 10)}...`, 'API-Sign': `${signature.substring(0, 20)}...` })}`);
+        
+        // Special handling for nonce-related errors
+        if (errorMessage.toLowerCase().includes('nonce')) {
+          console.error('[KRAKEN NONCE ERROR] Detailed analysis:');
+          console.error(`  - Generated nonce: ${nonce}`);
+          console.error(`  - Current global nonce: ${KrakenApiService.globalNonceRef.value}`);
+          console.error(`  - Current time: ${Date.now()}`);
+          console.error(`  - Time syncer available: ${await this.getTimeSyncer() ? 'YES' : 'NO'}`);
+          console.error(`  - Nonce as string: "${nonce}"`);
+          console.error(`  - Nonce length: ${nonce.toString().length}`);
+          console.error(`  - Server time vs nonce: ${nonce >= Date.now() ? 'FUTURE' : 'PAST'}`);
+          
+          // Check if this might be a replay attack detection
+          if (errorMessage.toLowerCase().includes('used') || errorMessage.toLowerCase().includes('duplicate')) {
+            console.error('  - Possible nonce replay detected. Consider increasing nonce base value.');
+          }
+        }
+        
         throw new Error(`Kraken API error: ${errorMessage}`);
       }
 

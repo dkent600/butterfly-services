@@ -112,8 +112,13 @@ export class ExchangeTimeSyncer implements IExchangeTimeSyncer {
    * @returns the current server time in milliseconds
    * This method is used to synchronize the local time with the server time.
    * It can be used to calculate the time offset between the server and the local machine.
+   * If not initialized, falls back to local time with a warning.
    */
   now(): number {
+    if (!this.isInitialized) {
+      console.warn('[TIME SYNCER] Warning: Time syncer not initialized, using local time. This may cause nonce issues.');
+      return Date.now();
+    }
     return this.getSynchronizedTimestamp();
   }
 
