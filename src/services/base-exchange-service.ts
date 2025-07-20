@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { IAsset, IExchangeTimeSyncer, IEnvService } from '../types/interfaces.js';
-import { ExchangeTimeSyncer } from './exchange-time-syncer.js';
+import { ExchangeTimeSyncer, ExchangeTimeConfig, TimeUnit } from './exchange-time-syncer.js';
 
 /**
  * Abstract base class for exchange services that provides common time synchronization functionality.
@@ -14,7 +14,6 @@ import { ExchangeTimeSyncer } from './exchange-time-syncer.js';
  * Exchange-specific services extend this class and implement the abstract methods for their specific APIs.
  */
 export abstract class BaseExchangeService {
-  private timeSyncer?: IExchangeTimeSyncer;
 
   constructor(
     protected readonly envService: IEnvService,
@@ -41,7 +40,7 @@ export abstract class BaseExchangeService {
    * Each exchange has its own response format.
    * 
    * @param responseData - The response data from the exchange API
-   * @returns number - Server time in milliseconds since epoch
+   * @returns number - Server time in configured units (milliseconds or seconds) since epoch
    */
   protected abstract extractServerTime(responseData: any): number;
 
@@ -49,45 +48,65 @@ export abstract class BaseExchangeService {
    * Concrete implementation to fetch server time from any exchange.
    * Uses the abstract methods to get exchange-specific endpoint and parse response.
    * 
-   * @param asset - The asset configuration for error logging
    * @returns Promise<number> - Server time in milliseconds since epoch
    */
-  protected async getRealServerTime(asset: IAsset): Promise<number> {
+  protected async getRealServerTime(): Promise<number> {
     try {
       const url = this.getApiUrl(this.getTimeEndpoint());
       const response = await axios.get(url);
       return this.extractServerTime(response.data);
     } catch (error) {
-      console.error(`Failed to fetch server time for ${asset.name}:`, error);
+      const exchangeName = this.getExchangeName();
+      console.error(`Failed to fetch server time for ${exchangeName}:`, error);
       console.error('Attempted URL was:', this.getApiUrl(this.getTimeEndpoint()));
-      throw new Error(`Could not fetch server time for ${asset.name}`);
+      throw new Error(`Could not fetch server time for ${exchangeName}`);
     }
   }
 
   /**
-   * Gets or creates a time syncer for this exchange.
-   * The time syncer is shared across all assets for this exchange.
+   * Abstract method to get the exchange name for this service.
+   * Each exchange service provides its own exchange identifier.
    * 
-   * @param asset - The asset configuration (used to get API URL for initial sync)
-   * @returns Promise<IExchangeTimeSyncer> - Time syncer instance for this exchange
+   * @returns string - The exchange name (e.g., 'kraken', 'mexc')
    */
-  protected async getTimeSyncer(asset: IAsset): Promise<IExchangeTimeSyncer> {
-    if (!this.timeSyncer) {
-      this.timeSyncer = new ExchangeTimeSyncer();
-      await this.timeSyncer.initFromServer(await this.getRealServerTime(asset));
-    }
-    return this.timeSyncer;
+  protected abstract getExchangeName(): string;
+
+  /**
+   * Abstract method to get the time unit for this exchange.
+   * Each exchange may require timestamps in different units (seconds vs milliseconds).
+   * 
+   * @returns TimeUnit - The time unit this exchange expects ('seconds' or 'milliseconds')
+   */
+  protected abstract getTimeUnit(): TimeUnit;
+
+  /**
+   * Gets the singleton time syncer for this exchange.
+   * Uses the factory method to ensure all service instances for the same exchange share one time syncer.
+   * 
+   * @returns Promise<IExchangeTimeSyncer> - Singleton time syncer instance for this exchange
+   */
+  protected async getTimeSyncer(): Promise<IExchangeTimeSyncer> {
+    const exchangeName = this.getExchangeName();
+    
+    // Pass server time provider function and time unit configuration to factory
+    const serverTimeProvider = () => this.getRealServerTime();
+    const config: ExchangeTimeConfig = {
+      timeUnit: this.getTimeUnit(),
+    };
+    
+    const timeSyncer = await ExchangeTimeSyncer.getForExchange(exchangeName, serverTimeProvider, config);
+    
+    return timeSyncer;
   }
 
   /**
-   * Gets a synchronized timestamp string for the given asset.
+   * Gets a synchronized timestamp string for this exchange.
    * Uses the cached time syncer to provide accurate timestamps for API requests.
    * 
-   * @param asset - The asset configuration
    * @returns Promise<string> - Synchronized timestamp string
    */
-  protected async getServerTimestamp(asset: IAsset): Promise<string> {
-    const timeSyncer = await this.getTimeSyncer(asset);
+  protected async getServerTimestamp(): Promise<string> {
+    const timeSyncer = await this.getTimeSyncer();
     return timeSyncer.getTimestampString();
   }
 

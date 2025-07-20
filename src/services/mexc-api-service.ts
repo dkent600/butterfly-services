@@ -22,6 +22,14 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     return 'https://api.mexc.com';
   }
 
+  protected getExchangeName(): string {
+    return 'mexc';
+  }
+
+  protected getTimeUnit() {
+    return 'milliseconds' as const;
+  }
+
   protected extractServerTime(responseData: any): number {
     return responseData.serverTime;
   }
@@ -56,7 +64,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    */
   async fetchBalance(asset: IAsset): Promise<number> {
     // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
-    const timeSyncer = await this.getTimeSyncer(asset);
+    const timeSyncer = await this.getTimeSyncer();
     const timestamp = this.ensureUniqueNonce(timeSyncer.now());
     const queryString = `timestamp=${timestamp}`;
 
@@ -127,7 +135,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       const quantity = asset.amount;
 
       // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
-      const timeSyncer = await this.getTimeSyncer(asset);
+      const timeSyncer = await this.getTimeSyncer();
       const timestamp = this.ensureUniqueNonce(timeSyncer.now());
       
       // Build query string for market order
@@ -167,7 +175,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       const quantity = asset.amount;
 
       // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
-      const timeSyncer = await this.getTimeSyncer(asset);
+      const timeSyncer = await this.getTimeSyncer();
       const timestamp = this.ensureUniqueNonce(timeSyncer.now());
       
       // Build query string for limit order

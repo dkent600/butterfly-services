@@ -37,20 +37,36 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     return 'https://api.kraken.com';
   }
 
-  protected extractServerTime(responseData: any): number {
-    // Kraken returns time in seconds, convert to milliseconds to match other exchanges
-    return responseData.result.unixtime * 1000;
+  protected getExchangeName(): string {
+    return 'kraken';
   }
 
-  private generateUniqueNonce(): number {
+  protected getTimeUnit() {
+    return 'seconds' as const;
+  }
+
+  protected extractServerTime(responseData: any): number {
+    // Kraken returns time in seconds, use directly since we're configured for seconds
+    return responseData.result.unixtime;
+  }
+
+  private async generateUniqueNonce(asset?: IAsset): Promise<number> {
     // Kraken requires strictly increasing nonces in milliseconds
-    // ATOMIC operation: always increment, never duplicate
-    KrakenApiService.globalLastNonce = Math.max(Date.now(), KrakenApiService.globalLastNonce + 1);
+    // Use time syncer for accurate server-synchronized time when asset is provided
+    let currentTime: number;
     
-    const generatedNonce = KrakenApiService.globalLastNonce;
+    if (asset) {
+      const timeSyncer = await this.getTimeSyncer();
+      currentTime = timeSyncer.now();
+    } else {
+      // Fallback for tests or when asset is not provided
+      currentTime = Date.now();
+    }
+    
+    const generatedNonce = KrakenApiService.globalLastNonce = Math.max(currentTime, KrakenApiService.globalLastNonce + 1);
     
     // Enhanced debug logging with timing analysis
-    console.log(`[KRAKEN NONCE] Instance #${this.instanceId} Generated: ${generatedNonce} (time: ${Date.now()})`);
+    console.log(`[KRAKEN NONCE] Instance #${this.instanceId} Generated: ${generatedNonce} (server time: ${currentTime})`);
     
     return generatedNonce;
   }
@@ -135,7 +151,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   async fetchBalance(asset: IAsset): Promise<number> {
     try {
       // Enhanced nonce generation for concurrent request safety
-      const nonce = this.generateUniqueNonce(); // Use unique nonce method
+      const nonce = await this.generateUniqueNonce(asset); // Use unique nonce method
       
       console.log(`[KRAKEN BALANCE] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name}`);
       
@@ -224,7 +240,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       // Prepare request for ExchangeApiService
       const pair = this.createPair(asset, to);
       const volume = asset.amount;
-      const nonce = this.generateUniqueNonce();
+      const nonce = await this.generateUniqueNonce(asset);
       
       console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}`);
       
@@ -264,7 +280,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     // For now, fall back to direct implementation until we add limit order support to IExchangeApiService
       const pair = this.createPair(asset, to);
       const volume = asset.amount;
-      const nonce = this.generateUniqueNonce();
+      const nonce = await this.generateUniqueNonce(asset);
       
       console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}, price: ${price}`);
       
