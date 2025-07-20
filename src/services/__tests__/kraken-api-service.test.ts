@@ -356,7 +356,7 @@ describe('KrakenApiService', () => {
       
       // Note: getSellAmount no longer exists - using asset.amount directly
 
-      await krakenApiService.createSellOrder(mockAsset); // No options parameter - should default to market/USDT
+      await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
 
       expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
         'XXBTUSDT', // Should default to USDT
@@ -382,7 +382,7 @@ describe('KrakenApiService', () => {
       // Note: getSellAmount no longer exists - mocking a different error
       vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market' })).rejects.toThrow('API Error');
+      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' })).rejects.toThrow('Could not create limit sell order for BTC');
     });
 
     it('should handle API errors from createSellOrder', async () => {
@@ -396,7 +396,7 @@ describe('KrakenApiService', () => {
       // Note: getSellAmount no longer exists - directly testing error handling
       vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market' })).rejects.toThrow('API Error');
+      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' })).rejects.toThrow('Could not create limit sell order for BTC');
     });
   });
 

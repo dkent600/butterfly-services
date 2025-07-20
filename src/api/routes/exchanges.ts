@@ -128,7 +128,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           properties: {
             to: { type: 'string', description: 'Target currency for price quote' },
           },
-          required: [],
+          required: ['to'],
         },
         response: {
           200: PriceResponseSchema,

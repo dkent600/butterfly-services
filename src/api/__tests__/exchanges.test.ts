@@ -57,7 +57,7 @@ describe('Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'GET',
-        url: '/api/v1/mexc/price/btc',
+        url: '/api/v1/mexc/price/btc?to=USDT',
       });
 
       expect(response.statusCode).toBe(200);
@@ -89,7 +89,7 @@ describe('Exchange Routes', () => {
     it('should fetch price with default parameters', async () => {
       const response = await server.inject({
         method: 'GET',
-        url: '/api/v1/mexc/price/btc',
+        url: '/api/v1/mexc/price/btc?to=USDT',
       });
 
       expect(response.statusCode).toBe(200);
@@ -336,7 +336,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/price/btc',
+          url: '/api/v1/kraken/price/btc?to=USDT',
         });
 
         expect(response.statusCode).toBe(200);
@@ -374,7 +374,7 @@ describe('Exchange Routes', () => {
       it('should fetch price with default parameters', async () => {
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/price/btc',
+          url: '/api/v1/kraken/price/btc?to=USDT',
         });
 
         expect(response.statusCode).toBe(200);

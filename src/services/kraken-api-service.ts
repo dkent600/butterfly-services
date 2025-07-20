@@ -212,6 +212,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     },
   ): Promise<any> {
     const { orderType, price, to } = options;
+    try {
     
     // Validate required parameters based on order type
     if (orderType === 'limit' && !price) {
@@ -258,11 +259,9 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       });
       
       return { success: true, message: 'Market sell order created successfully' };
-    }
-    
+    } else {
     // For limit orders, we need to implement this functionality
     // For now, fall back to direct implementation until we add limit order support to IExchangeApiService
-    try {
       const pair = this.createPair(asset, to);
       const volume = asset.amount;
       const nonce = this.generateUniqueNonce();
@@ -308,20 +307,22 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       });
       
       return { success: true, message: 'Limit sell order created successfully' };
-    } catch (error) {
+    }
+   } catch (error) {
       // If it's already a specific error we threw, preserve it
       if (error instanceof Error && error.message.includes('Kraken API error:')) {
         throw error;
       }
       
-      console.error(`Failed to create limit sell order for ${asset.name}:`, error);
+      console.error(`Failed to create sell order for ${asset.name}:`, error);
       console.error('Order details:', {
+        orderType,
         pair: this.createPair(asset, to),
         volume: asset.amount,
         price,
-        hasApiKey: !!this.exchangeApiService.getAPIKey(asset.exchange),
-        hasApiSecret: !!this.exchangeApiService.getAPISecret(asset.exchange),
-        errorResponse: (error as any).response?.data,
+        // hasApiKey: !!this.exchangeApiService.getAPIKey(asset.exchange),
+        // hasApiSecret: !!this.exchangeApiService.getAPISecret(asset.exchange),
+        // errorResponse: (error as any).response?.data,
       });
       throw new Error(`Could not create limit sell order for ${asset.name}`);
     }

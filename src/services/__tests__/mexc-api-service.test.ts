@@ -319,7 +319,7 @@ describe('MexcApiService', () => {
       
       // Note: getSellAmount no longer exists - using asset.amount directly
 
-      await mexcApiService.createSellOrder(mockAsset); // No 'to' parameter
+      await mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
 
       expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
         'BTCUSDT', // Should default to USDT
@@ -343,7 +343,7 @@ describe('MexcApiService', () => {
       
       // Note: getSellAmount no longer exists - using asset.amount directly
 
-      await mexcApiService.createSellOrder(mockAsset);
+      await mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
 
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
         expect.stringMatching(/symbol=BTCUSDT&side=SELL&type=MARKET&quantity=50&timestamp=\d+/),
@@ -373,7 +373,7 @@ describe('MexcApiService', () => {
       // Note: getSellAmount no longer exists - mocking a different error
       vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(mexcApiService.createSellOrder(mockAsset)).rejects.toThrow('API Error');
+      await expect(mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' })).rejects.toThrow('API Error');
     });
 
     it('should handle API errors from createSellOrder', async () => {
@@ -387,7 +387,7 @@ describe('MexcApiService', () => {
       // Note: getSellAmount no longer exists - using asset.amount directly
       vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(mexcApiService.createSellOrder(mockAsset)).rejects.toThrow('API Error');
+      await expect(mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' })).rejects.toThrow('API Error');
     });
   });
 
