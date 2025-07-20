@@ -8,7 +8,9 @@ import { BaseExchangeService } from './base-exchange-service.js';
 export class KrakenApiService extends BaseExchangeService implements IExchangeService {
   private static instanceCount = 0;
   private static globalNonceRef = { value: 0 }; // Wrapped in object for reference passing
-  private static initialized = false; // Track if we've initialized the nonce
+  private static assetPairsCache: any = null; // Cache for AssetPairs data
+  private static assetPairsCacheTime = 0; // Cache timestamp
+  private static readonly CACHE_TTL = 60 * 60 * 1000; // 1 hour cache TTL
   private instanceId: number;
 
   constructor(
@@ -25,6 +27,13 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       KrakenApiService.globalNonceRef.value = Date.now();
       console.log(`[KRAKEN SERVICE] Initialized global nonce to current time: ${KrakenApiService.globalNonceRef.value}`);
       console.log('[KRAKEN SERVICE] Using time syncer for accurate server-synchronized nonces');
+    }
+    
+    // Initialize AssetPairs cache in the background
+    if (!KrakenApiService.assetPairsCache) {
+      KrakenApiService.loadAssetPairs().catch(error => {
+        console.error('[KRAKEN SERVICE] Failed to initialize AssetPairs cache:', error);
+      });
     }
     
     console.log(`[KRAKEN SERVICE] Created instance #${this.instanceId}, Total instances: ${KrakenApiService.instanceCount}`);
@@ -70,14 +79,9 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * Only maps assets that have different names on Kraken.
    * Most assets (like SOL, ADA, DOGE, etc.) use their standard names and don't need mapping.
    */
-  createPair(asset: IAsset, to: string): string {
-    const krakenAsset = this.mapAssetToKraken(asset.name);
-    const krakenTo = this.mapAssetToKraken(to);
-    return `${krakenAsset}${krakenTo}`;
-  }
 
   /**
-   * Maps an asset name to Kraken's naming convention
+   * Maps an asset name to Kraken's naming convention for trading pairs
    */
   private mapAssetToKraken(assetName: string): string {
     switch (assetName.toUpperCase()) {
@@ -86,19 +90,85 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       case 'ETH':
         return 'XETH';  // Ethereum uses XETH on Kraken
       case 'USD':
-        return 'ZUSD';  // USD uses ZUSD on Kraken
+        return 'ZUSD';  // Default to ZUSD for legacy assets
+      case 'CAD':
+        return 'ZCAD';  // Default to ZCAD for legacy assets
+      case 'EUR':
+        return 'ZEUR';  // Default to ZEUR for legacy assets
       case 'XLM':
         return 'XXLM';  // XLM uses XXLM on Kraken
       case 'XRP':
         return 'XXRP';  // XRP uses XXRP on Kraken
-        case 'DOGE':
-          return 'XXDG';  // DOGE uses XXDG on Kraken
+      case 'DOGE':
+        return 'XXDG';  // DOGE uses XXDG on Kraken
       default:
         return assetName.toUpperCase();  // Most assets use their standard names
     }
   }
 
+  /**
+   * Loads and caches AssetPairs data from Kraken API
+   */
+  private static async loadAssetPairs(): Promise<any> {
+    const now = Date.now();
+    
+    // Return cached data if it's still fresh
+    if (this.assetPairsCache && (now - this.assetPairsCacheTime) < this.CACHE_TTL) {
+      return this.assetPairsCache;
+    }
+    
+    try {
+      const response = await axios.get('https://api.kraken.com/0/public/AssetPairs');
+      this.assetPairsCache = response.data?.result || {};
+      this.assetPairsCacheTime = now;
+      console.log(`[KRAKEN] Loaded ${Object.keys(this.assetPairsCache).length} asset pairs from API`);
+      return this.assetPairsCache;
+    } catch (error) {
+      console.error('[KRAKEN] Failed to load AssetPairs from API:', error);
+      // Return empty cache if API fails
+      return this.assetPairsCache || {};
+    }
+  }
+
+  /**
+   * Finds the correct trading pair using AssetPairs data
+   */
+  private static findTradingPair(krakenAsset: string, krakenTo: string): string | null {
+    for (const [pairKey, pairInfo] of Object.entries(KrakenApiService.assetPairsCache)) {
+      const pair = pairInfo as any;
+      if (pair.base === krakenAsset && pair.quote === krakenTo) {
+        // Return the altname if available, otherwise the key
+        return pair.altname || pairKey;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Creates trading pairs by looking up the correct pair from cached AssetPairs data
+   */
+  createPair(asset: IAsset, to: string): string {
+    const krakenAsset = this.mapAssetToKraken(asset.name);
+    const krakenTo = this.mapAssetToKraken(to);
+    
+    // Check if cache is loaded, if not throw error to indicate async loading needed
+    if (!KrakenApiService.assetPairsCache) {
+      throw new Error('AssetPairs cache is not loaded. Call loadAssetPairs() first.');
+    }
+    
+    // Try to find pair in cached data
+    const foundPair = KrakenApiService.findTradingPair(krakenAsset, krakenTo);
+    if (foundPair) {
+      return foundPair;
+    } else {
+      throw new Error(`No trading pair found for ${asset.name} to ${to}`);
+    }
+  }
+
   async fetchPrice(asset: IAsset, to: string): Promise<number> {
+    // Ensure AssetPairs cache is loaded before creating pair
+    await KrakenApiService.loadAssetPairs();
+    
     const pair = this.createPair(asset, to);
     const url = this.getApiUrl('/0/public/Ticker');
     

@@ -18,7 +18,7 @@ describe('KrakenApiService Nonce Stress Test', () => {
     
     // Simulate rapid sequential calls (like your client)
     for (let i = 0; i < iterations; i++) {
-      const nonce = (krakenService as any).generateUniqueNonce();
+      const nonce = await krakenService.testGenerateNonce(); // Use the public test method
       nonces.push(nonce);
       
       // Log every 10th nonce to see progression
@@ -62,7 +62,7 @@ describe('KrakenApiService Nonce Stress Test', () => {
     for (const asset of assets) {
       // Simulate the exact timing of balance requests
       const startTime = Date.now();
-      const nonce = (krakenService as any).generateUniqueNonce();
+      const nonce = await krakenService.testGenerateNonce(); // Use the public test method
       nonces.push(nonce);
       
       console.log(`${asset}: nonce=${nonce}, time=${startTime}, generated_at=${Date.now()}`);

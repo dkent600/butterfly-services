@@ -321,17 +321,112 @@ describe('Exchange Routes', () => {
   });
 
   describe('Kraken Exchange Routes', () => {
+    beforeEach(async () => {
+      // Mock AssetPairs and Ticker endpoints for Kraken
+      vi.mocked(axios.get).mockImplementation((url: string, config?: any) => {
+        if (url === 'https://api.kraken.com/0/public/AssetPairs') {
+          return Promise.resolve({
+            data: {
+              result: {
+                'XXBTZUSD': { 
+                  base: 'XXBT', 
+                  quote: 'ZUSD', 
+                  altname: 'XBTUSD' 
+                },
+                'XXBTUSDT': { 
+                  base: 'XXBT', 
+                  quote: 'USDT', 
+                  altname: 'BTCUSDT' 
+                },
+                'XETHXXBT': { 
+                  base: 'XETH', 
+                  quote: 'XXBT', 
+                  altname: 'ETHXBT'  // Real Kraken pair
+                },
+                'XETHZUSD': { 
+                  base: 'XETH', 
+                  quote: 'ZUSD', 
+                  altname: 'ETHUSD' 
+                },
+              }
+            }
+          });
+        } else if (url === 'https://api.kraken.com/0/public/Ticker') {
+          // Handle Ticker endpoint based on pair parameter
+          const pair = config?.params?.pair;
+          if (pair === 'BTCUSDT') {
+            return Promise.resolve({
+              data: {
+                result: {
+                  'BTCUSDT': {
+                    c: ['45000.00', '1.50000000'], // Last trade closed [price, lot volume]
+                  }
+                }
+              }
+            });
+          } else if (pair === 'ETHXBT') {
+            return Promise.resolve({
+              data: {
+                result: {
+                  'ETHXBT': {
+                    c: ['0.04000000', '2.50000000'], // ETH priced in BTC
+                  }
+                }
+              }
+            });
+          }
+        }
+        // For other URLs, return empty results for now
+        return Promise.resolve({ data: { result: {} } });
+      });
+    });
+
     describe('GET /api/v1/kraken/price/:asset', () => {
       it('should fetch price for BTC on Kraken', async () => {
-        // Mock the axios response for price endpoint
-        vi.mocked(axios.get).mockResolvedValue({
-          data: { 
-            result: {
-              'XXBTUSDT': {
-                c: ['50000.00', '0.5'], // Kraken format: [price, volume]
-              },
-            },
-          },
+        // Mock the axios response for AssetPairs and Ticker endpoints
+        vi.mocked(axios.get).mockImplementation((url: string, config?: any) => {
+          if (url === 'https://api.kraken.com/0/public/AssetPairs') {
+            return Promise.resolve({
+              data: {
+                result: {
+                  'XXBTZUSD': { 
+                    base: 'XXBT', 
+                    quote: 'ZUSD', 
+                    altname: 'XBTUSD' 
+                  },
+                  'XXBTUSDT': { 
+                    base: 'XXBT', 
+                    quote: 'USDT', 
+                    altname: 'BTCUSDT' 
+                  },
+                  'XXBTXETH': { 
+                    base: 'XXBT', 
+                    quote: 'XETH', 
+                    altname: 'BTCETH' 
+                  },
+                  'XETHZUSD': { 
+                    base: 'XETH', 
+                    quote: 'ZUSD', 
+                    altname: 'ETHUSD' 
+                  },
+                }
+              }
+            });
+          } else if (url === 'https://api.kraken.com/0/public/Ticker') {
+            const pair = config?.params?.pair;
+            if (pair === 'BTCUSDT') {
+              return Promise.resolve({
+                data: { 
+                  result: {
+                    'BTCUSDT': {  // Use altname since createPair returns altname
+                      c: ['50000.00', '0.5'], // Kraken format: [price, volume]
+                    },
+                  },
+                },
+              });
+            }
+          }
+          return Promise.resolve({ data: { result: {} } });
         });
 
         const response = await server.inject({
@@ -345,33 +440,108 @@ describe('Exchange Routes', () => {
         expect(body.asset).toBe('BTC');
         expect(body.exchange).toBe('kraken');
         expect(body.price).toBe(50000);
-        expect(body.pair).toBe('XXBTUSDT'); // Kraken maps BTC to XXBT
+        expect(body.pair).toBe('BTCUSDT'); // Returns altname, not full key
         expect(body.timestamp).toBeDefined();
       });
 
       it('should handle custom target currency', async () => {
-        vi.mocked(axios.get).mockResolvedValue({
-          data: { 
-            result: {
-              'XXBTXETH': {
-                c: ['2.5', '0.3'],
-              },
-            },
-          },
+        vi.mocked(axios.get).mockImplementation((url: string, config?: any) => {
+          if (url === 'https://api.kraken.com/0/public/AssetPairs') {
+            return Promise.resolve({
+              data: {
+                result: {
+                  'XXBTZUSD': { 
+                    base: 'XXBT', 
+                    quote: 'ZUSD', 
+                    altname: 'XBTUSD' 
+                  },
+                  'XXBTUSDT': { 
+                    base: 'XXBT', 
+                    quote: 'USDT', 
+                    altname: 'BTCUSDT' 
+                  },
+                  'XETHZUSD': { 
+                    base: 'XETH', 
+                    quote: 'ZUSD', 
+                    altname: 'ETHUSD'  // ETH to USD pair
+                  },
+                }
+              }
+            });
+          } else if (url === 'https://api.kraken.com/0/public/Ticker') {
+            const pair = config?.params?.pair;
+            if (pair === 'ETHUSD') {
+              return Promise.resolve({
+                data: { 
+                  result: {
+                    'ETHUSD': {  // Use altname since createPair returns altname
+                      c: ['2500.00', '1.5'],  // ETH priced in USD
+                    },
+                  },
+                },
+              });
+            }
+          }
+          return Promise.resolve({ data: { result: {} } });
         });
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/price/btc?to=ETH',
+          url: '/api/v1/kraken/price/eth?to=USD',  // ETH to USD (a real pair)
         });
 
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
 
-        expect(body.pair).toBe('XXBTXETH');
+        expect(body.pair).toBe('ETHUSD');  // Real Kraken pair
       });
 
       it('should fetch price with default parameters', async () => {
+        vi.mocked(axios.get).mockImplementation((url: string, config?: any) => {
+          if (url === 'https://api.kraken.com/0/public/AssetPairs') {
+            return Promise.resolve({
+              data: {
+                result: {
+                  'XXBTZUSD': { 
+                    base: 'XXBT', 
+                    quote: 'ZUSD', 
+                    altname: 'XBTUSD' 
+                  },
+                  'XXBTUSDT': { 
+                    base: 'XXBT', 
+                    quote: 'USDT', 
+                    altname: 'BTCUSDT' 
+                  },
+                  'XXBTXETH': { 
+                    base: 'XXBT', 
+                    quote: 'XETH', 
+                    altname: 'BTCETH' 
+                  },
+                  'XETHZUSD': { 
+                    base: 'XETH', 
+                    quote: 'ZUSD', 
+                    altname: 'ETHUSD' 
+                  },
+                }
+              }
+            });
+          } else if (url === 'https://api.kraken.com/0/public/Ticker') {
+            const pair = config?.params?.pair;
+            if (pair === 'BTCUSDT') {
+              return Promise.resolve({
+                data: { 
+                  result: {
+                    'BTCUSDT': {  // Use altname since createPair returns altname
+                      c: ['50000.00', '0.5'],
+                    },
+                  },
+                },
+              });
+            }
+          }
+          return Promise.resolve({ data: { result: {} } });
+        });
+
         const response = await server.inject({
           method: 'GET',
           url: '/api/v1/kraken/price/btc?to=USDT',
@@ -432,6 +602,34 @@ describe('Exchange Routes', () => {
           if (urlStr.includes('/0/public/Time')) {
             // Server time endpoint
             return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+          } else if (urlStr.includes('/0/public/AssetPairs')) {
+            // AssetPairs endpoint
+            return Promise.resolve({
+              data: {
+                result: {
+                  'XXBTZUSD': { 
+                    base: 'XXBT', 
+                    quote: 'ZUSD', 
+                    altname: 'XBTUSD' 
+                  },
+                  'XXBTUSDT': { 
+                    base: 'XXBT', 
+                    quote: 'USDT', 
+                    altname: 'BTCUSDT' 
+                  },
+                  'XXBTXETH': { 
+                    base: 'XXBT', 
+                    quote: 'XETH', 
+                    altname: 'BTCETH' 
+                  },
+                  'XETHZUSD': { 
+                    base: 'XETH', 
+                    quote: 'ZUSD', 
+                    altname: 'ETHUSD' 
+                  },
+                }
+              }
+            });
           }
 
           // Default fallback
@@ -533,6 +731,34 @@ describe('Exchange Routes', () => {
           if (urlStr.includes('/0/public/Time')) {
             // Server time endpoint
             return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+          } else if (urlStr.includes('/0/public/AssetPairs')) {
+            // AssetPairs endpoint
+            return Promise.resolve({
+              data: {
+                result: {
+                  'XXBTZUSD': { 
+                    base: 'XXBT', 
+                    quote: 'ZUSD', 
+                    altname: 'XBTUSD' 
+                  },
+                  'XXBTUSDT': { 
+                    base: 'XXBT', 
+                    quote: 'USDT', 
+                    altname: 'BTCUSDT' 
+                  },
+                  'XXBTXETH': { 
+                    base: 'XXBT', 
+                    quote: 'XETH', 
+                    altname: 'BTCETH' 
+                  },
+                  'XETHZUSD': { 
+                    base: 'XETH', 
+                    quote: 'ZUSD', 
+                    altname: 'ETHUSD' 
+                  },
+                }
+              }
+            });
           }
 
           // Default fallback

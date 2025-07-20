@@ -88,7 +88,7 @@ describe('KrakenApiService Sequential Balance Tests', () => {
     // Simulate the internal nonce generation that happens during balance calls
     for (let i = 0; i < assets.length; i++) {
       // Access the private method via reflection (for testing purposes)
-      const nonce = (krakenService as any).generateUniqueNonce();
+      const nonce = await krakenService.testGenerateNonce(); // Use the public test method
       generatedNonces.push(nonce);
       console.log(`Nonce ${i + 1}: ${nonce} (${assets[i]})`);
       

@@ -88,7 +88,7 @@ describe('KrakenApiService Race Condition Test', () => {
     
     // Simulate rapid sequential calls (like your client scenario)
     for (let i = 0; i < 10; i++) {
-      const nonce = (krakenService as any).generateUniqueNonce();
+      const nonce = await krakenService.testGenerateNonce(); // Use the public test method
       newNonces.push(nonce);
     }
     
@@ -122,7 +122,7 @@ describe('KrakenApiService Race Condition Test', () => {
     
     // Generate multiple nonces rapidly (simulating your 6 balance calls)
     for (let i = 0; i < 6; i++) {
-      const nonce = (krakenService as any).generateUniqueNonce();
+      const nonce = await krakenService.testGenerateNonce(); // Use the public test method
       nonces.push(nonce);
       console.log(`Call ${i + 1}: nonce=${nonce}, time=${Date.now()}`);
     }
@@ -163,7 +163,7 @@ describe('KrakenApiService Race Condition Test', () => {
         const startTime = Date.now();
         
         // Generate nonce exactly like the real fetchBalance method does
-        const nonce = (krakenService as any).generateUniqueNonce();
+        const nonce = await krakenService.testGenerateNonce(); // Use the public test method
         
         // Simulate the brief delay between nonce generation and API call
         await new Promise(resolve => setTimeout(resolve, Math.random() * 2));

@@ -55,6 +55,42 @@ describe('KrakenApiService', () => {
       amount: 50,
     };
 
+    // Mock AssetPairs response for cache
+    const mockAssetPairsResponse = {
+      data: {
+        result: {
+          'XXBTZUSD': {
+            base: 'XXBT',
+            quote: 'ZUSD',
+            altname: 'XBTUSD'
+          },
+          'XETHZUSD': {
+            base: 'XETH',
+            quote: 'ZUSD',
+            altname: 'ETHUSD'
+          },
+          'XDGZUSD': {
+            base: 'XXDG',
+            quote: 'ZUSD',
+            altname: 'DOGEUSD'
+          },
+          'XXRPZUSD': {
+            base: 'XXRP',
+            quote: 'ZUSD',
+            altname: 'XRPUSD'
+          },
+          'XETHXXBT': {
+            base: 'XETH',   // ETH is the base
+            quote: 'XXBT',  // BTC is the quote
+            altname: 'ETHXBT'  // ETH priced in BTC (the real Kraken pair)
+          }
+        }
+      }
+    };
+
+    // Mock axios.get to return AssetPairs data
+    vi.mocked(axios.get).mockResolvedValue(mockAssetPairsResponse);
+
     // Create service with mocked dependencies
     krakenApiService = new KrakenApiService(mockExchangeApiService, mockEnvService);
 
@@ -63,35 +99,47 @@ describe('KrakenApiService', () => {
   });
 
   describe('createPair', () => {
+    beforeEach(async () => {
+      // Ensure AssetPairs cache is loaded before running createPair tests
+      await (KrakenApiService as any).loadAssetPairs();
+    });
+
     it('should create correct trading pair with default USDT', () => {
-      const result = krakenApiService.createPair(mockAsset, 'USDT');
-      expect(result).toBe('XXBTUSDT'); // Kraken maps BTC to XXBT
+      const result = krakenApiService.createPair(mockAsset, 'USD');
+      expect(result).toBe('XBTUSD'); // Maps to XXBT/ZUSD, returns altname XBTUSD
     });
 
     it('should create correct trading pair with custom base currency', () => {
-      const result = krakenApiService.createPair(mockAsset, 'ETH');
-      expect(result).toBe('XXBTXETH'); // Both BTC and ETH mapped
+      const ethAsset = { ...mockAsset, name: 'ETH' };
+      const result = krakenApiService.createPair(ethAsset, 'BTC');
+      // ETH (XETH) to BTC (XXBT) - this is the real pair that exists on Kraken
+      expect(result).toBe('ETHXBT'); // Returns altname ETHXBT from XETHXXBT
     });
 
     it('should map DOGE to XXDG', () => {
       const dogeAsset = { ...mockAsset, name: 'DOGE' };
-      const result = krakenApiService.createPair(dogeAsset, 'USDT');
-      expect(result).toBe('XXDGUSDT'); // DOGE mapped to XXDG
+      const result = krakenApiService.createPair(dogeAsset, 'USD');
+      expect(result).toBe('DOGEUSD'); // Maps to XXDG/ZUSD, returns altname DOGEUSD
     });
 
     it('should map XRP to XXRP', () => {
       const xrpAsset = { ...mockAsset, name: 'XRP' };
-      const result = krakenApiService.createPair(xrpAsset, 'USDT');
-      expect(result).toBe('XXRPUSDT'); // XRP mapped to XXRP
+      const result = krakenApiService.createPair(xrpAsset, 'USD');
+      expect(result).toBe('XRPUSD'); // Maps to XXRP/ZUSD, returns altname XRPUSD
     });
   });
 
   describe('fetchPrice', () => {
+    beforeEach(async () => {
+      // Ensure AssetPairs cache is loaded before running fetchPrice tests
+      await (KrakenApiService as any).loadAssetPairs();
+    });
+
     it('should fetch and return price for asset', async () => {
       const mockPriceResponse = {
         data: {
           result: {
-            'XXBTUSDT': {
+            'XBTUSD': {
               c: ['50000.00', '0.5'], // Last trade closed array [price, volume]
             },
           },
@@ -100,12 +148,12 @@ describe('KrakenApiService', () => {
       
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
-      const result = await krakenApiService.fetchPrice(mockAsset, 'USDT');
+      const result = await krakenApiService.fetchPrice(mockAsset, 'USD');
 
       expect(result).toBe(50000);
       expect(axios.get).toHaveBeenCalledWith(
         'https://api.kraken.com/0/public/Ticker',
-        { params: { pair: 'XXBTUSDT' } }
+        { params: { pair: 'XBTUSD' } }
       );
     });
 
@@ -122,15 +170,16 @@ describe('KrakenApiService', () => {
       
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
-      const result = await krakenApiService.fetchPrice(mockAsset, 'USDT');
+      const result = await krakenApiService.fetchPrice(mockAsset, 'USD');
 
       expect(result).toBe(45000);
     });
 
     it('should throw error when price fetch fails', async () => {
+      // First call is for AssetPairs (already loaded), second call is for Ticker which fails
       vi.mocked(axios.get).mockRejectedValueOnce(new Error('Network error'));
 
-      await expect(krakenApiService.fetchPrice(mockAsset, 'USDT')).rejects.toThrow(
+      await expect(krakenApiService.fetchPrice(mockAsset, 'USD')).rejects.toThrow(
         'Could not fetch price for BTC',
       );
     });
@@ -142,8 +191,8 @@ describe('KrakenApiService', () => {
       
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
-      await expect(krakenApiService.fetchPrice(mockAsset, 'USDT')).rejects.toThrow(
-        'No price data found for pair XXBTUSDT',
+      await expect(krakenApiService.fetchPrice(mockAsset, 'USD')).rejects.toThrow(
+        'No price data found for pair XBTUSD',
       );
     });
   });
@@ -246,7 +295,7 @@ describe('KrakenApiService', () => {
   });
 
   describe('createSellOrder', () => {
-    beforeEach(() => {
+    beforeEach(async () => {
       // UNIT TEST SETUP: Mock external services for controlled testing
       // Note: Integration tests with real API calls are in separate test suite below
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
@@ -261,6 +310,9 @@ describe('KrakenApiService', () => {
       if (!vi.isMockFunction(mockExchangeApiService.createSellOrder)) {
         throw new Error('CRITICAL FAILURE: createSellOrder is not mocked for unit tests!');
       }
+
+      // Ensure AssetPairs cache is loaded before running createSellOrder tests
+      await (KrakenApiService as any).loadAssetPairs();
     });
 
     it('should create market sell order in test mode by default', async () => {
@@ -277,11 +329,11 @@ describe('KrakenApiService', () => {
       // Note: getSellAmount no longer exists - using asset.amount directly
       // const getSellAmountSpy = vi.spyOn(krakenApiService, 'getSellAmount').mockResolvedValue(0.5);
 
-      const result = await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
+      const result = await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' });
 
       // expect(getSellAmountSpy).toHaveBeenCalledWith(mockAsset);
       expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
-        'XXBTUSDT',
+        'XBTUSD',
         50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
         expect.objectContaining({
@@ -313,7 +365,7 @@ describe('KrakenApiService', () => {
         data: { result: { unixtime: 1640995200 } }
       });
 
-      await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
+      await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' });
 
       // Verify it would NOT include validate=true for production mode
       // Verify validate=false for production mode (test should verify logic but NOT make real calls)
@@ -330,23 +382,11 @@ describe('KrakenApiService', () => {
       });
       
       // Note: getSellAmount no longer exists - using asset.amount directly
-
-      await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'ETH' });
-
-      expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
-        'XXBTXETH', // Should create correct Kraken pair
-        50, // Using mockAsset.amount directly (mockAsset.amount = 50)
-        'kraken',
-        expect.objectContaining({
-          method: 'POST',
-          url: 'https://api.kraken.com/0/private/AddOrder',
-          body: expect.stringContaining('pair=XXBTXETH'), // Correct query params
-          headers: expect.any(Object)
-        })
-      );
+      // This test should fail since SOL pair doesn't exist in our mock cache
+      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'SOL' })).rejects.toThrow('No trading pair found for BTC to SOL');
     });
 
-    it('should use USDT as default target currency', async () => {
+    it('should use USD as default target currency', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
       
       // Mock server time
@@ -356,16 +396,16 @@ describe('KrakenApiService', () => {
       
       // Note: getSellAmount no longer exists - using asset.amount directly
 
-      await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
+      await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' });
 
       expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
-        'XXBTUSDT', // Should default to USDT
+        'XBTUSD', // Should default to USD
         50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
         expect.objectContaining({
           method: 'POST',
           url: 'https://api.kraken.com/0/private/AddOrder',
-          body: expect.stringContaining('pair=XXBTUSDT'),
+          body: expect.stringContaining('pair=XBTUSD'),
           headers: expect.any(Object)
         })
       );
@@ -382,7 +422,7 @@ describe('KrakenApiService', () => {
       // Note: getSellAmount no longer exists - mocking a different error
       vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' })).rejects.toThrow('Could not create limit sell order for BTC');
+      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' })).rejects.toThrow('Could not create limit sell order for BTC');
     });
 
     it('should handle API errors from createSellOrder', async () => {
@@ -396,7 +436,7 @@ describe('KrakenApiService', () => {
       // Note: getSellAmount no longer exists - directly testing error handling
       vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
 
-      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' })).rejects.toThrow('Could not create limit sell order for BTC');
+      await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' })).rejects.toThrow('Could not create limit sell order for BTC');
     });
   });
 
@@ -521,7 +561,7 @@ describe('KrakenApiService Integration Tests', () => {
         // This makes a real API call to Kraken (public endpoint, no auth needed)
         // Use a more common pair that Kraken is likely to have
         const testAsset = { ...mockAsset, name: 'BTC' };
-        const price = await krakenApiService.fetchPrice(testAsset, 'USDT');
+        const price = await krakenApiService.fetchPrice(testAsset, 'USD');
         
         expect(typeof price).toBe('number');
         expect(price).toBeGreaterThan(0);
@@ -531,7 +571,7 @@ describe('KrakenApiService Integration Tests', () => {
         console.log('Real API call result:', error.message);
         console.log('This helps us understand the real Kraken API behavior');
         // The test validates that we can make real API calls, even if the pair is wrong
-        expect(error.message).toContain('XXBTUSDT');
+        expect(error.message).toContain('BTC');
       } finally {
         // Restore the mock
         axios.get = originalGet;
@@ -557,12 +597,12 @@ describe('KrakenApiService Integration Tests', () => {
       try {
         // This makes a real API call but with validate=true (test mode)
         // No real trade will be executed
-        await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
+        await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' });
         console.log('✅ Test order successfully validated with Kraken');
       } catch (error) {
         console.log('Test order result:', error.message);
         // Some validation errors are expected in test mode
-        expect(error.message).toContain('kraken');
+        expect(error.message).toContain('BTC');
       } finally {
         // Restore the mocks
         axios.get = originalGet;
