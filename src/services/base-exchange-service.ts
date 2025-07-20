@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { IAsset, IExchangeTimeSyncer, IEnvService } from '../types/interfaces.js';
-import { ExchangeTimeSyncer, ExchangeTimeConfig, TimeUnit } from './exchange-time-syncer.js';
+import { ExchangeTimeSyncer } from './exchange-time-syncer.js';
 
 /**
  * Abstract base class for exchange services that provides common time synchronization functionality.
@@ -40,7 +40,7 @@ export abstract class BaseExchangeService {
    * Each exchange has its own response format.
    * 
    * @param responseData - The response data from the exchange API
-   * @returns number - Server time in configured units (milliseconds or seconds) since epoch
+   * @returns number - Server time in milliseconds since epoch
    */
   protected abstract extractServerTime(responseData: any): number;
 
@@ -72,29 +72,19 @@ export abstract class BaseExchangeService {
   protected abstract getExchangeName(): string;
 
   /**
-   * Abstract method to get the time unit for this exchange.
-   * Each exchange may require timestamps in different units (seconds vs milliseconds).
-   * 
-   * @returns TimeUnit - The time unit this exchange expects ('seconds' or 'milliseconds')
-   */
-  protected abstract getTimeUnit(): TimeUnit;
-
-  /**
    * Gets the singleton time syncer for this exchange.
    * Uses the factory method to ensure all service instances for the same exchange share one time syncer.
+   * Time syncer always returns milliseconds for consistency.
    * 
    * @returns Promise<IExchangeTimeSyncer> - Singleton time syncer instance for this exchange
    */
   protected async getTimeSyncer(): Promise<IExchangeTimeSyncer> {
     const exchangeName = this.getExchangeName();
     
-    // Pass server time provider function and time unit configuration to factory
+    // Pass server time provider function to factory
     const serverTimeProvider = () => this.getRealServerTime();
-    const config: ExchangeTimeConfig = {
-      timeUnit: this.getTimeUnit(),
-    };
     
-    const timeSyncer = await ExchangeTimeSyncer.getForExchange(exchangeName, serverTimeProvider, config);
+    const timeSyncer = await ExchangeTimeSyncer.getForExchange(exchangeName, serverTimeProvider);
     
     return timeSyncer;
   }
@@ -108,6 +98,54 @@ export abstract class BaseExchangeService {
   protected async getServerTimestamp(): Promise<string> {
     const timeSyncer = await this.getTimeSyncer();
     return timeSyncer.getTimestampString();
+  }
+
+  /**
+   * Generates a unique, strictly increasing nonce using atomic compare-and-swap pattern.
+   * This method is thread-safe and prevents race conditions in concurrent scenarios.
+   * 
+   * @param globalNonceRef - Reference to the global nonce counter for this exchange
+   * @param exchangeName - Name of the exchange for logging purposes
+   * @param instanceId - Optional instance ID for debugging
+   * @returns Promise<number> - Unique nonce in milliseconds
+   */
+  protected async generateAtomicNonce(
+    globalNonceRef: { value: number },
+    exchangeName: string,
+    instanceId?: number,
+  ): Promise<number> {
+    // Get server-synchronized time in milliseconds
+    const timeSyncer = await this.getTimeSyncer();
+    const currentTimeMs = Math.floor(timeSyncer.now());
+    
+    // Atomic nonce generation to prevent race conditions
+    // Use a loop to ensure we get a unique nonce even under high concurrency
+    let generatedNonce = 0;
+    let attempts = 0;
+    const maxAttempts = 100; // Prevent infinite loops
+    
+    while (attempts < maxAttempts) {
+      const currentGlobalNonce = globalNonceRef.value;
+      generatedNonce = Math.max(currentTimeMs, currentGlobalNonce + 1);
+      
+      // Only update if the global nonce hasn't changed (atomic compare-and-swap pattern)
+      if (globalNonceRef.value === currentGlobalNonce) {
+        globalNonceRef.value = generatedNonce;
+        break;
+      }
+      // If it changed, retry with the new global value
+      attempts++;
+    }
+    
+    if (attempts >= maxAttempts) {
+      throw new Error(`Failed to generate unique nonce after ${maxAttempts} attempts`);
+    }
+    
+    // Enhanced debug logging with timing analysis
+    const instanceStr = instanceId ? ` Instance #${instanceId}` : '';
+    console.log(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} Generated: ${generatedNonce} (server time: ${currentTimeMs}ms)`);
+    
+    return generatedNonce;
   }
 
   /**

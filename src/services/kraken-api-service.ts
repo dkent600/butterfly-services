@@ -7,7 +7,7 @@ import { BaseExchangeService } from './base-exchange-service.js';
 @injectable()
 export class KrakenApiService extends BaseExchangeService implements IExchangeService {
   private static instanceCount = 0;
-  private static globalLastNonce = 0; // Shared nonce counter across all instances
+  private static globalNonceRef = { value: 0 }; // Wrapped in object for reference passing
   private static initialized = false; // Track if we've initialized the nonce
   private instanceId: number;
 
@@ -21,9 +21,9 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     // Initialize nonce on first instance to avoid conflicts with previous sessions
     if (!KrakenApiService.initialized) {
       // Start with current timestamp to avoid conflicts with previous sessions
-      KrakenApiService.globalLastNonce = Date.now();
+      KrakenApiService.globalNonceRef.value = Date.now();
       KrakenApiService.initialized = true;
-      console.log(`[KRAKEN SERVICE] Initialized global nonce to: ${KrakenApiService.globalLastNonce}`);
+      console.log(`[KRAKEN SERVICE] Initialized global nonce to: ${KrakenApiService.globalNonceRef.value}`);
     }
     
     console.log(`[KRAKEN SERVICE] Created instance #${this.instanceId}, Total instances: ${KrakenApiService.instanceCount}`);
@@ -41,34 +41,17 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     return 'kraken';
   }
 
-  protected getTimeUnit() {
-    return 'seconds' as const;
-  }
-
   protected extractServerTime(responseData: any): number {
-    // Kraken returns time in seconds, use directly since we're configured for seconds
-    return responseData.result.unixtime;
+    // Kraken returns time in seconds, convert to milliseconds for time syncer
+    return responseData.result.unixtime * 1000;
   }
 
-  private async generateUniqueNonce(asset?: IAsset): Promise<number> {
-    // Kraken requires strictly increasing nonces in milliseconds
-    // Use time syncer for accurate server-synchronized time when asset is provided
-    let currentTime: number;
-    
-    if (asset) {
-      const timeSyncer = await this.getTimeSyncer();
-      currentTime = timeSyncer.now();
-    } else {
-      // Fallback for tests or when asset is not provided
-      currentTime = Date.now();
-    }
-    
-    const generatedNonce = KrakenApiService.globalLastNonce = Math.max(currentTime, KrakenApiService.globalLastNonce + 1);
-    
-    // Enhanced debug logging with timing analysis
-    console.log(`[KRAKEN NONCE] Instance #${this.instanceId} Generated: ${generatedNonce} (server time: ${currentTime})`);
-    
-    return generatedNonce;
+  private async generateUniqueNonce(): Promise<number> {
+    return this.generateAtomicNonce(
+      KrakenApiService.globalNonceRef,
+      this.getExchangeName(),
+      this.instanceId,
+    );
   }
 
   /**
@@ -151,7 +134,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   async fetchBalance(asset: IAsset): Promise<number> {
     try {
       // Enhanced nonce generation for concurrent request safety
-      const nonce = await this.generateUniqueNonce(asset); // Use unique nonce method
+      const nonce = await this.generateUniqueNonce(); // Use unique nonce method
       
       console.log(`[KRAKEN BALANCE] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name}`);
       
@@ -240,7 +223,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       // Prepare request for ExchangeApiService
       const pair = this.createPair(asset, to);
       const volume = asset.amount;
-      const nonce = await this.generateUniqueNonce(asset);
+      const nonce = await this.generateUniqueNonce();
       
       console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}`);
       
@@ -280,7 +263,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     // For now, fall back to direct implementation until we add limit order support to IExchangeApiService
       const pair = this.createPair(asset, to);
       const volume = asset.amount;
-      const nonce = await this.generateUniqueNonce(asset);
+      const nonce = await this.generateUniqueNonce();
       
       console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}, price: ${price}`);
       
@@ -358,8 +341,8 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     const nonceMatch = postData.match(/nonce=(\d+)/);
     if (!nonceMatch) {
       // Fallback for test environments or edge cases - use simple increment
-      const fallbackNonce = Math.max(Date.now(), KrakenApiService.globalLastNonce + 1);
-      KrakenApiService.globalLastNonce = fallbackNonce;
+      const fallbackNonce = Math.max(Date.now(), KrakenApiService.globalNonceRef.value + 1);
+      KrakenApiService.globalNonceRef.value = fallbackNonce;
       console.warn(`[KRAKEN] Nonce not found in postData "${postData}", using fallback: ${fallbackNonce}`);
       const apiSha256 = crypto.createHash('sha256').update(`${fallbackNonce}${postData}`).digest();
       const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))

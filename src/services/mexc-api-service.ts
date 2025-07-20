@@ -5,7 +5,7 @@ import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
 export class MexcApiService extends BaseExchangeService implements IExchangeService {
-  private lastNonce: number = 0;
+  private static globalNonceRef = { value: 0 }; // Wrapped in object for reference passing
 
   constructor(
     @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
@@ -26,22 +26,15 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     return 'mexc';
   }
 
-  protected getTimeUnit() {
-    return 'milliseconds' as const;
-  }
-
   protected extractServerTime(responseData: any): number {
     return responseData.serverTime;
   }
 
-  private ensureUniqueNonce(timestamp: number): number {
-    // MEXC requires strictly increasing nonces for authenticated requests
-    if (timestamp <= this.lastNonce) {
-      this.lastNonce = this.lastNonce + 1;
-    } else {
-      this.lastNonce = timestamp;
-    }
-    return this.lastNonce;
+  private async generateUniqueNonce(): Promise<number> {
+    return this.generateAtomicNonce(
+      MexcApiService.globalNonceRef,
+      this.getExchangeName(),
+    );
   }
 
   async fetchPrice(asset: IAsset, to: string): Promise<number> {
@@ -63,9 +56,8 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    * @returns number of coins free for the asset
    */
   async fetchBalance(asset: IAsset): Promise<number> {
-    // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
-    const timeSyncer = await this.getTimeSyncer();
-    const timestamp = this.ensureUniqueNonce(timeSyncer.now());
+    // Enhanced nonce generation: Use atomic nonce generation for concurrent request safety
+    const timestamp = await this.generateUniqueNonce();
     const queryString = `timestamp=${timestamp}`;
 
     const apiKey = this.exchangeApiService.getAPIKey(asset.exchange);
@@ -134,9 +126,8 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       const coinpair = this.createPair(asset, to);
       const quantity = asset.amount;
 
-      // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
-      const timeSyncer = await this.getTimeSyncer();
-      const timestamp = this.ensureUniqueNonce(timeSyncer.now());
+      // Enhanced nonce generation: Use atomic nonce generation for concurrent request safety
+      const timestamp = await this.generateUniqueNonce();
       
       // Build query string for market order
       const queryString = `symbol=${coinpair}&side=SELL&type=MARKET&quantity=${quantity}&timestamp=${timestamp}`;
@@ -174,9 +165,8 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       const coinpair = this.createPair(asset, to);
       const quantity = asset.amount;
 
-      // Enhanced nonce generation: Use time syncer for accurate server-synchronized timestamp
-      const timeSyncer = await this.getTimeSyncer();
-      const timestamp = this.ensureUniqueNonce(timeSyncer.now());
+      // Enhanced nonce generation: Use atomic nonce generation for concurrent request safety
+      const timestamp = await this.generateUniqueNonce();
       
       // Build query string for limit order
       const queryString = `symbol=${coinpair}&side=SELL&type=LIMIT&quantity=${quantity}&price=${price}&timestamp=${timestamp}`;

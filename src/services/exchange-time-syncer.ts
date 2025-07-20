@@ -2,20 +2,8 @@ import { injectable } from 'tsyringe';
 import { IExchangeTimeSyncer } from '../types/interfaces.js';
 
 /**
- * Time unit configuration for different exchanges
- */
-export type TimeUnit = 'seconds' | 'milliseconds';
-
-/**
- * Configuration for exchange-specific time synchronization
- */
-export interface ExchangeTimeConfig {
-  /** The time unit this exchange expects for nonces and timestamps */
-  timeUnit: TimeUnit;
-}
-
-/**
  * ExchangeTimeSyncer is used to synchronize the local time with the server time for a specific exchange.
+ * Always returns time in milliseconds for consistency and simplicity.
  */
 @injectable()
 export class ExchangeTimeSyncer implements IExchangeTimeSyncer {
@@ -23,7 +11,6 @@ export class ExchangeTimeSyncer implements IExchangeTimeSyncer {
   private static initializationPromises: Map<string, Promise<void>> = new Map();
   private cachedTimeOffset: number = 0;
   private isInitialized: boolean = false;
-  private timeUnit: TimeUnit = 'milliseconds'; // Default to milliseconds
 
   /**
    * Factory method to get or create a singleton ExchangeTimeSyncer for a specific exchange.
@@ -31,28 +18,18 @@ export class ExchangeTimeSyncer implements IExchangeTimeSyncer {
    * 
    * @param exchangeName - The name of the exchange (e.g., 'kraken', 'mexc')
    * @param serverTimeProvider - Optional function to get server time for initialization
-   * @param config - Optional configuration for the exchange time syncer
    * @returns ExchangeTimeSyncer - Singleton instance for the specified exchange
    */
   static async getForExchange(
     exchangeName: string, 
     serverTimeProvider?: () => Promise<number>,
-    config?: ExchangeTimeConfig,
   ): Promise<ExchangeTimeSyncer> {
     const key = exchangeName.toLowerCase();
     
     // Create instance if it doesn't exist
     if (!this.instances.has(key)) {
       const instance = new ExchangeTimeSyncer();
-      
-      // Configure time unit based on exchange requirements
-      if (config?.timeUnit) {
-        instance.timeUnit = config.timeUnit;
-        console.log(`[TIME SYNCER] Created singleton for exchange: ${exchangeName} with time unit: ${config.timeUnit}`);
-      } else {
-        console.log(`[TIME SYNCER] Created singleton for exchange: ${exchangeName} with default time unit: milliseconds`);
-      }
-      
+      console.log(`[TIME SYNCER] Created singleton for exchange: ${exchangeName} (always returns milliseconds)`);
       this.instances.set(key, instance);
     }
     
@@ -132,19 +109,12 @@ export class ExchangeTimeSyncer implements IExchangeTimeSyncer {
   }
 
   /**
-   * @returns the current server time in the configured time unit for this exchange
+   * @returns the current server time in milliseconds
    * This method is used to synchronize the local time with the server time.
    * It can be used to calculate the time offset between the server and the local machine.
    */
   now(): number {
-    const timestampMs = this.getSynchronizedTimestamp();
-    
-    // Return time in the appropriate unit for this exchange
-    if (this.timeUnit === 'seconds') {
-      return Math.floor(timestampMs / 1000);
-    }
-    
-    return timestampMs;
+    return this.getSynchronizedTimestamp();
   }
 
   getSynchronizedTimestamp(): number {
