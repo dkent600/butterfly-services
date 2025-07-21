@@ -307,9 +307,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
         const result = await krakenService.getOpenOrders();
 
-        // Return only the orders data with timestamp, no metadata
+        // Convert Kraken's object-based orders to array format
+        const ordersArray = result.orders.open ? Object.values(result.orders.open) : [];
+
         return {
-          orders: result.orders,
+          orders: ordersArray,
           timestamp: result.timestamp,
         };
       } catch (error) {
@@ -350,9 +352,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
         const result = await krakenService.getClosedOrders();
 
-        // Return only the orders data with timestamp, no metadata
+        // Convert Kraken's object-based orders to array format
+        const ordersArray = result.orders.closed ? Object.values(result.orders.closed) : [];
+
         return {
-          orders: result.orders,
+          orders: ordersArray,
           timestamp: result.timestamp,
         };
       } catch (error) {

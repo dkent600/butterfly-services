@@ -846,10 +846,10 @@ describe('Exchange Routes', () => {
 
         expect(body.orders).toBeDefined();
         expect(body.timestamp).toBeDefined();
-        expect(body.orders.open).toBeDefined();
-        expect(body.orders.open['OGTT3Y-C6I3P-XRI6HX']).toBeDefined();
-        expect(body.orders.open['OGTT3Y-C6I3P-XRI6HX'].status).toBe('open');
-        expect(body.orders.open['OGTT3Y-C6I3P-XRI6HX'].descr.type).toBe('sell');
+        expect(Array.isArray(body.orders)).toBe(true);
+        expect(body.orders.length).toBe(1);
+        expect(body.orders[0].status).toBe('open');
+        expect(body.orders[0].descr.type).toBe('sell');
       });
 
       it('should handle empty open orders response', async () => {
@@ -886,7 +886,8 @@ describe('Exchange Routes', () => {
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
 
-        expect(body.orders.open).toEqual({});
+        expect(Array.isArray(body.orders)).toBe(true);
+        expect(body.orders).toEqual([]);
         expect(body.timestamp).toBeDefined();
       });
     });
@@ -981,11 +982,11 @@ describe('Exchange Routes', () => {
 
         expect(body.orders).toBeDefined();
         expect(body.timestamp).toBeDefined();
-        expect(body.orders.closed).toBeDefined();
-        expect(body.orders.closed['OGTT3Y-C6I3P-XRI6HX']).toBeDefined();
-        expect(body.orders.closed['OGTT3Y-C6I3P-XRI6HX'].status).toBe('closed');
-        expect(body.orders.closed['OGTT3Y-C6I3P-XRI6HX'].reason).toBe('User requested');
-        expect(body.orders.closed['OGTT3Y-C6I3P-XRI6HX'].vol_exec).toBe('0.50000000');
+        expect(Array.isArray(body.orders)).toBe(true);
+        expect(body.orders.length).toBe(1);
+        expect(body.orders[0].status).toBe('closed');
+        expect(body.orders[0].reason).toBe('User requested');
+        expect(body.orders[0].vol_exec).toBe('0.50000000');
       });
 
       it('should handle empty closed orders response', async () => {
@@ -1022,8 +1023,8 @@ describe('Exchange Routes', () => {
         expect(response.statusCode).toBe(200);
         const body = JSON.parse(response.body);
 
-        expect(body.orders.closed).toEqual({});
-        expect(body.orders.count).toBe(0);
+        expect(Array.isArray(body.orders)).toBe(true);
+        expect(body.orders).toEqual([]);
         expect(body.timestamp).toBeDefined();
       });
     });
