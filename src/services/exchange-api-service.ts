@@ -51,6 +51,12 @@ export class ExchangeApiService implements IExchangeApiService {
     },
   ): Promise<void> {
     try {
+      // Debug logging for URL and body
+      console.log(`[${exchangeName.toUpperCase()} ORDER DEBUG] URL: ${requestOptions.url}`);
+      console.log(`[${exchangeName.toUpperCase()} ORDER DEBUG] Method: ${requestOptions.method}`);
+      console.log(`[${exchangeName.toUpperCase()} ORDER DEBUG] Body: ${requestOptions.body || 'null'}`);
+      console.log(`[${exchangeName.toUpperCase()} ORDER DEBUG] Headers: ${JSON.stringify(requestOptions.headers, null, 2)}`);
+
       let response;
       
       if (requestOptions.method === 'POST') {
