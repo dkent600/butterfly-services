@@ -64,7 +64,6 @@ describe('Exchange Routes', () => {
       const body = JSON.parse(response.body);
 
       expect(body.asset).toBe('BTC');
-      expect(body.exchange).toBe('mexc');
       expect(body.price).toBe(50000);
       expect(body.pair).toBe('BTCUSDT');
       expect(body.timestamp).toBeDefined();
@@ -95,7 +94,6 @@ describe('Exchange Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.asset).toBe('BTC');
-      expect(body.exchange).toBe('mexc');
       expect(body.price).toBeDefined();
       expect(body.pair).toBe('BTCUSDT'); // Default to USDT
     });
@@ -127,7 +125,6 @@ describe('Exchange Routes', () => {
       const body = JSON.parse(response.body);
 
       expect(body.asset).toBe('BTC');
-      expect(body.exchange).toBe('mexc');
       expect(body.balance).toBe(1.5);
       expect(body.timestamp).toBeDefined();
     });
@@ -171,16 +168,10 @@ describe('Exchange Routes', () => {
         statusText: 'OK',
       });
 
-      const asset = {
-        name: 'BTC',
-        exchange: 'mexc',
-        amount: 50,
-      };
-
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/mexc/orders/sell/market',
-        payload: { asset, to: 'USDT' },
+        payload: { name: 'BTC', amount: 50, to: 'USDT' },
       });
 
       if (response.statusCode !== 200) {
@@ -195,28 +186,7 @@ describe('Exchange Routes', () => {
 
       expect(body.success).toBe(true);
       expect(body.asset).toBe('BTC');
-      expect(body.exchange).toBe('mexc');
-      expect(body.quantity).toBe(50); // Using asset.amount directly (asset.amount = 50)
-    });
-
-    it('should reject non-MEXC assets', async () => {
-      const asset = {
-        name: 'BTC',
-        exchange: 'binance',
-        amount: 50,
-      };
-
-      const response = await server.inject({
-        method: 'POST',
-        url: '/api/v1/mexc/orders/sell/market',
-        payload: { asset },
-      });
-
-      expect(response.statusCode).toBe(400);
-      const body = JSON.parse(response.body);
-
-      expect(body.error).toBe('InvalidExchange');
-      expect(body.message).toContain('mexc');
+      expect(body.quantity).toBe(50);
     });
   });
 
@@ -258,16 +228,10 @@ describe('Exchange Routes', () => {
         statusText: 'OK',
       });
 
-      const asset = {
-        name: 'BTC',
-        exchange: 'mexc',
-        amount: 50,
-      };
-
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/mexc/orders/sell/limit',
-        payload: { asset, price: 45000.50, to: 'USDT' },
+        payload: { name: 'BTC', amount: 50, price: 45000.50, to: 'USDT' },
       });
 
       if (response.statusCode !== 200) {
@@ -282,38 +246,25 @@ describe('Exchange Routes', () => {
 
       expect(body.success).toBe(true);
       expect(body.asset).toBe('BTC');
-      expect(body.exchange).toBe('mexc');
       expect(body.quantity).toBe(50);
       expect(body.price).toBe(45000.50);
     });
 
     it('should reject limit order without price', async () => {
-      const asset = {
-        name: 'BTC',
-        exchange: 'mexc',
-        amount: 50,
-      };
-
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/mexc/orders/sell/limit',
-        payload: { asset },  // Missing price
+        payload: { name: 'BTC', amount: 50, to: 'USDT' },  // Missing price
       });
 
       expect(response.statusCode).toBe(400);
     });
 
     it('should reject limit order with invalid price', async () => {
-      const asset = {
-        name: 'BTC',
-        exchange: 'mexc',
-        amount: 50,
-      };
-
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/mexc/orders/sell/limit',
-        payload: { asset, price: -100 },  // Invalid negative price
+        payload: { name: 'BTC', amount: 50, price: -100, to: 'USDT' },  // Invalid negative price
       });
 
       expect(response.statusCode).toBe(400);
@@ -438,7 +389,6 @@ describe('Exchange Routes', () => {
         const body = JSON.parse(response.body);
 
         expect(body.asset).toBe('BTC');
-        expect(body.exchange).toBe('kraken');
         expect(body.price).toBe(50000);
         expect(body.pair).toBe('BTCUSDT'); // Returns altname, not full key
         expect(body.timestamp).toBeDefined();
@@ -579,7 +529,6 @@ describe('Exchange Routes', () => {
         const body = JSON.parse(response.body);
 
         expect(body.asset).toBe('BTC');
-        expect(body.exchange).toBe('kraken');
         expect(body.balance).toBe(1.5);
         expect(body.timestamp).toBeDefined();
       });
@@ -665,16 +614,10 @@ describe('Exchange Routes', () => {
           return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
         });
 
-        const asset = {
-          name: 'BTC',
-          exchange: 'kraken',
-          amount: 50,
-        };
-
         const response = await server.inject({
           method: 'POST',
           url: '/api/v1/kraken/orders/sell/market',
-          payload: { asset, to: 'USDT' },
+          payload: { name: 'BTC', amount: 50, to: 'USDT' },
         });
 
         if (response.statusCode !== 200) {
@@ -689,28 +632,7 @@ describe('Exchange Routes', () => {
 
         expect(body.success).toBe(true);
         expect(body.asset).toBe('BTC');
-        expect(body.exchange).toBe('kraken');
-        expect(body.quantity).toBe(50); // Using asset.amount directly (asset.amount = 50)
-      });
-
-      it('should reject non-Kraken assets', async () => {
-        const asset = {
-          name: 'BTC',
-          exchange: 'binance',
-          amount: 50,
-        };
-
-        const response = await server.inject({
-          method: 'POST',
-          url: '/api/v1/kraken/orders/sell/market',
-          payload: { asset },
-        });
-
-        expect(response.statusCode).toBe(400);
-        const body = JSON.parse(response.body);
-
-        expect(body.error).toBe('InvalidExchange');
-        expect(body.message).toContain('kraken');
+        expect(body.quantity).toBe(50);
       });
     });
 
@@ -794,16 +716,10 @@ describe('Exchange Routes', () => {
           return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
         });
 
-        const asset = {
-          name: 'BTC',
-          exchange: 'kraken',
-          amount: 50,
-        };
-
         const response = await server.inject({
           method: 'POST',
           url: '/api/v1/kraken/orders/sell/limit',
-          payload: { asset, price: 48000.75, to: 'USDT' },
+          payload: { name: 'BTC', amount: 50, price: 48000.75, to: 'USDT' },
         });
 
         if (response.statusCode !== 200) {
@@ -818,41 +734,297 @@ describe('Exchange Routes', () => {
 
         expect(body.success).toBe(true);
         expect(body.asset).toBe('BTC');
-        expect(body.exchange).toBe('kraken');
         expect(body.quantity).toBe(50);
         expect(body.price).toBe(48000.75);
       });
 
       it('should reject limit order without price', async () => {
-        const asset = {
-          name: 'BTC',
-          exchange: 'kraken',
-          amount: 50,
-        };
-
         const response = await server.inject({
           method: 'POST',
           url: '/api/v1/kraken/orders/sell/limit',
-          payload: { asset },  // Missing price
+          payload: { name: 'BTC', amount: 50, to: 'USDT' },  // Missing price
         });
 
         expect(response.statusCode).toBe(400);
       });
 
       it('should reject limit order with invalid price', async () => {
-        const asset = {
-          name: 'BTC',
-          exchange: 'kraken',
-          amount: 50,
-        };
-
         const response = await server.inject({
           method: 'POST',
           url: '/api/v1/kraken/orders/sell/limit',
-          payload: { asset, price: 0 },  // Invalid zero price
+          payload: { name: 'BTC', amount: 50, price: 0, to: 'USDT' },  // Invalid zero price
         });
 
         expect(response.statusCode).toBe(400);
+      });
+    });
+
+    describe('GET /api/v1/kraken/orders/open', () => {
+      it('should fetch open orders from Kraken', async () => {
+        // Set up flexible mocking based on URL patterns
+        const mockAxiosGet = vi.mocked(axios.get);
+        const mockAxiosPost = vi.mocked(axios.post);
+
+        // Clear any previous calls
+        mockAxiosGet.mockClear();
+        mockAxiosPost.mockClear();
+
+        // Mock based on URL patterns
+        mockAxiosGet.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+          if (urlStr.includes('/0/public/Time')) {
+            return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+          } else if (urlStr.includes('/0/public/AssetPairs')) {
+            return Promise.resolve({
+              data: {
+                result: {
+                  'XXBTZUSD': { base: 'XXBT', quote: 'ZUSD', altname: 'XBTUSD' },
+                  'XXBTUSDT': { base: 'XXBT', quote: 'USDT', altname: 'BTCUSDT' },
+                }
+              }
+            });
+          }
+
+          return Promise.resolve({ data: { result: { unixtime: Date.now() / 1000 } } });
+        });
+
+        // Mock POST for open orders endpoint
+        mockAxiosPost.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+          if (urlStr.includes('/0/private/OpenOrders')) {
+            return Promise.resolve({
+              data: {
+                error: [],
+                result: {
+                  open: {
+                    'OGTT3Y-C6I3P-XRI6HX': {
+                      refid: null,
+                      userref: 0,
+                      status: 'open',
+                      opentm: 1688635200.123,
+                      starttm: 0,
+                      expiretm: 0,
+                      descr: {
+                        pair: 'XBTUSD',
+                        type: 'sell',
+                        ordertype: 'limit',
+                        price: '50000.0',
+                        price2: '0',
+                        leverage: 'none',
+                        order: 'sell 0.5 XBTUSD @ limit 50000.0',
+                        close: ''
+                      },
+                      vol: '0.50000000',
+                      vol_exec: '0.00000000',
+                      cost: '0.00000000',
+                      fee: '0.00000000',
+                      price: '0.00000000',
+                      stopprice: '0.00000000',
+                      limitprice: '0.00000000',
+                      misc: '',
+                      oflags: 'fciq'
+                    }
+                  }
+                }
+              },
+              statusText: 'OK',
+            });
+          }
+
+          return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
+        });
+
+        const response = await server.inject({
+          method: 'GET',
+          url: '/api/v1/kraken/orders/open',
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body);
+
+        expect(body.orders).toBeDefined();
+        expect(body.timestamp).toBeDefined();
+        expect(body.orders.open).toBeDefined();
+        expect(body.orders.open['OGTT3Y-C6I3P-XRI6HX']).toBeDefined();
+        expect(body.orders.open['OGTT3Y-C6I3P-XRI6HX'].status).toBe('open');
+        expect(body.orders.open['OGTT3Y-C6I3P-XRI6HX'].descr.type).toBe('sell');
+      });
+
+      it('should handle empty open orders response', async () => {
+        const mockAxiosGet = vi.mocked(axios.get);
+        const mockAxiosPost = vi.mocked(axios.post);
+
+        mockAxiosGet.mockClear();
+        mockAxiosPost.mockClear();
+
+        mockAxiosGet.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+          if (urlStr.includes('/0/public/Time')) {
+            return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+          }
+          return Promise.resolve({ data: { result: { unixtime: Date.now() / 1000 } } });
+        });
+
+        mockAxiosPost.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+          if (urlStr.includes('/0/private/OpenOrders')) {
+            return Promise.resolve({
+              data: { error: [], result: { open: {} } },
+              statusText: 'OK',
+            });
+          }
+          return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
+        });
+
+        const response = await server.inject({
+          method: 'GET',
+          url: '/api/v1/kraken/orders/open',
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body);
+
+        expect(body.orders.open).toEqual({});
+        expect(body.timestamp).toBeDefined();
+      });
+    });
+
+    describe('GET /api/v1/kraken/orders/closed', () => {
+      it('should fetch closed orders from Kraken', async () => {
+        // Set up flexible mocking based on URL patterns
+        const mockAxiosGet = vi.mocked(axios.get);
+        const mockAxiosPost = vi.mocked(axios.post);
+
+        // Clear any previous calls
+        mockAxiosGet.mockClear();
+        mockAxiosPost.mockClear();
+
+        // Mock based on URL patterns
+        mockAxiosGet.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+          if (urlStr.includes('/0/public/Time')) {
+            return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+          } else if (urlStr.includes('/0/public/AssetPairs')) {
+            return Promise.resolve({
+              data: {
+                result: {
+                  'XXBTZUSD': { base: 'XXBT', quote: 'ZUSD', altname: 'XBTUSD' },
+                  'XXBTUSDT': { base: 'XXBT', quote: 'USDT', altname: 'BTCUSDT' },
+                }
+              }
+            });
+          }
+
+          return Promise.resolve({ data: { result: { unixtime: Date.now() / 1000 } } });
+        });
+
+        // Mock POST for closed orders endpoint
+        mockAxiosPost.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+          if (urlStr.includes('/0/private/ClosedOrders')) {
+            return Promise.resolve({
+              data: {
+                error: [],
+                result: {
+                  closed: {
+                    'OGTT3Y-C6I3P-XRI6HX': {
+                      refid: null,
+                      userref: 0,
+                      status: 'closed',
+                      reason: 'User requested',
+                      opentm: 1688635200.123,
+                      closetm: 1688635260.456,
+                      starttm: 0,
+                      expiretm: 0,
+                      descr: {
+                        pair: 'XBTUSD',
+                        type: 'sell',
+                        ordertype: 'market',
+                        price: '0',
+                        price2: '0',
+                        leverage: 'none',
+                        order: 'sell 0.5 XBTUSD @ market',
+                        close: ''
+                      },
+                      vol: '0.50000000',
+                      vol_exec: '0.50000000',
+                      cost: '25000.00000',
+                      fee: '65.00000',
+                      price: '50000.00000',
+                      stopprice: '0.00000000',
+                      limitprice: '0.00000000',
+                      misc: '',
+                      oflags: 'fciq'
+                    }
+                  },
+                  count: 1
+                }
+              },
+              statusText: 'OK',
+            });
+          }
+
+          return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
+        });
+
+        const response = await server.inject({
+          method: 'GET',
+          url: '/api/v1/kraken/orders/closed',
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body);
+
+        expect(body.orders).toBeDefined();
+        expect(body.timestamp).toBeDefined();
+        expect(body.orders.closed).toBeDefined();
+        expect(body.orders.closed['OGTT3Y-C6I3P-XRI6HX']).toBeDefined();
+        expect(body.orders.closed['OGTT3Y-C6I3P-XRI6HX'].status).toBe('closed');
+        expect(body.orders.closed['OGTT3Y-C6I3P-XRI6HX'].reason).toBe('User requested');
+        expect(body.orders.closed['OGTT3Y-C6I3P-XRI6HX'].vol_exec).toBe('0.50000000');
+      });
+
+      it('should handle empty closed orders response', async () => {
+        const mockAxiosGet = vi.mocked(axios.get);
+        const mockAxiosPost = vi.mocked(axios.post);
+
+        mockAxiosGet.mockClear();
+        mockAxiosPost.mockClear();
+
+        mockAxiosGet.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+          if (urlStr.includes('/0/public/Time')) {
+            return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+          }
+          return Promise.resolve({ data: { result: { unixtime: Date.now() / 1000 } } });
+        });
+
+        mockAxiosPost.mockImplementation((url: any) => {
+          const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+          if (urlStr.includes('/0/private/ClosedOrders')) {
+            return Promise.resolve({
+              data: { error: [], result: { closed: {}, count: 0 } },
+              statusText: 'OK',
+            });
+          }
+          return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
+        });
+
+        const response = await server.inject({
+          method: 'GET',
+          url: '/api/v1/kraken/orders/closed',
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body);
+
+        expect(body.orders.closed).toEqual({});
+        expect(body.orders.count).toBe(0);
+        expect(body.timestamp).toBeDefined();
       });
     });
   });

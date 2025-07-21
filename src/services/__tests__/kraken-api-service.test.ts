@@ -482,6 +482,283 @@ describe('KrakenApiService', () => {
       expect(result).toMatch(/^[A-Za-z0-9+/]+=*$/);
     });
   });
+
+  describe('getOpenOrders', () => {
+    beforeEach(() => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+    });
+
+    it('should successfully fetch open orders', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock successful open orders response
+      vi.mocked(axios.post).mockResolvedValue({
+        data: {
+          error: [],
+          result: {
+            open: {
+              'ORDER123': {
+                refid: null,
+                userref: 0,
+                status: 'open',
+                opentm: 1640995200.1234,
+                starttm: 0,
+                expiretm: 0,
+                descr: {
+                  pair: 'XBTUSD',
+                  type: 'sell',
+                  ordertype: 'limit',
+                  price: '45000.0',
+                  volume: '0.5'
+                },
+                vol: '0.5',
+                vol_exec: '0.0',
+                cost: '0.0',
+                fee: '0.0',
+                price: '45000.0',
+                misc: '',
+                oflags: 'fciq'
+              }
+            }
+          }
+        }
+      });
+
+      const result = await krakenApiService.getOpenOrders();
+
+      expect(result).toEqual({
+        orders: {
+          open: {
+            'ORDER123': expect.any(Object)
+          }
+        },
+        timestamp: expect.any(String)
+      });
+
+      expect(axios.post).toHaveBeenCalledWith(
+        'https://api.kraken.com/0/private/OpenOrders',
+        expect.stringContaining('nonce='),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'API-Key': 'test-api-key',
+            'API-Sign': expect.any(String),
+            'Content-Type': 'application/x-www-form-urlencoded'
+          })
+        })
+      );
+    });
+
+    it('should handle empty open orders response', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock empty open orders response
+      vi.mocked(axios.post).mockResolvedValue({
+        data: {
+          error: [],
+          result: {
+            open: {}
+          }
+        }
+      });
+
+      const result = await krakenApiService.getOpenOrders();
+
+      expect(result).toEqual({
+        orders: {
+          open: {}
+        },
+        timestamp: expect.any(String)
+      });
+    });
+
+    it('should handle Kraken API errors', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock API error response
+      vi.mocked(axios.post).mockResolvedValue({
+        data: {
+          error: ['EGeneral:Invalid signature'],
+          result: null
+        }
+      });
+
+      await expect(krakenApiService.getOpenOrders()).rejects.toThrow('Kraken API error: EGeneral:Invalid signature');
+    });
+
+    it('should handle missing API credentials', async () => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-secret');
+
+      await expect(krakenApiService.getOpenOrders()).rejects.toThrow('kraken API credentials not configured');
+    });
+
+    it('should handle network errors', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock network error
+      vi.mocked(axios.post).mockRejectedValue(new Error('Network error'));
+
+      await expect(krakenApiService.getOpenOrders()).rejects.toThrow('Failed to get kraken open orders: Network error');
+    });
+  });
+
+  describe('getClosedOrders', () => {
+    beforeEach(() => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+    });
+
+    it('should successfully fetch closed orders', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock successful closed orders response
+      vi.mocked(axios.post).mockResolvedValue({
+        data: {
+          error: [],
+          result: {
+            closed: {
+              'ORDER456': {
+                refid: null,
+                userref: 0,
+                status: 'closed',
+                reason: 'User requested',
+                opentm: 1640995200.1234,
+                closetm: 1640995300.5678,
+                starttm: 0,
+                expiretm: 0,
+                descr: {
+                  pair: 'XBTUSD',
+                  type: 'sell',
+                  ordertype: 'market',
+                  price: '44500.0',
+                  volume: '0.25'
+                },
+                vol: '0.25',
+                vol_exec: '0.25',
+                cost: '11125.0',
+                fee: '22.25',
+                price: '44500.0',
+                misc: '',
+                oflags: 'fciq'
+              }
+            },
+            count: 1
+          }
+        }
+      });
+
+      const result = await krakenApiService.getClosedOrders();
+
+      expect(result).toEqual({
+        orders: {
+          closed: {
+            'ORDER456': expect.any(Object)
+          },
+          count: 1
+        },
+        timestamp: expect.any(String)
+      });
+
+      expect(axios.post).toHaveBeenCalledWith(
+        'https://api.kraken.com/0/private/ClosedOrders',
+        expect.stringContaining('nonce='),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'API-Key': 'test-api-key',
+            'API-Sign': expect.any(String),
+            'Content-Type': 'application/x-www-form-urlencoded'
+          })
+        })
+      );
+    });
+
+    it('should handle empty closed orders response', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock empty closed orders response
+      vi.mocked(axios.post).mockResolvedValue({
+        data: {
+          error: [],
+          result: {
+            closed: {},
+            count: 0
+          }
+        }
+      });
+
+      const result = await krakenApiService.getClosedOrders();
+
+      expect(result).toEqual({
+        orders: {
+          closed: {},
+          count: 0
+        },
+        timestamp: expect.any(String)
+      });
+    });
+
+    it('should handle Kraken API errors', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock API error response
+      vi.mocked(axios.post).mockResolvedValue({
+        data: {
+          error: ['EOrder:Invalid order'],
+          result: null
+        }
+      });
+
+      await expect(krakenApiService.getClosedOrders()).rejects.toThrow('Kraken API error: EOrder:Invalid order');
+    });
+
+    it('should handle missing API credentials', async () => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('');
+
+      await expect(krakenApiService.getClosedOrders()).rejects.toThrow('kraken API credentials not configured');
+    });
+
+    it('should handle network errors with detailed error response', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock Axios error with Kraken-specific error format
+      const axiosError = {
+        response: {
+          data: {
+            error: ['EGeneral:Temporary lockout']
+          }
+        }
+      };
+      vi.mocked(axios.post).mockRejectedValue(axiosError);
+
+      await expect(krakenApiService.getClosedOrders()).rejects.toThrow('kraken API error: EGeneral:Temporary lockout');
+    });
+  });
 });
 
 /**

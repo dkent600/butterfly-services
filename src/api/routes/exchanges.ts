@@ -2,6 +2,7 @@
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { container } from '../../container.js';
 import { IAsset, IExchangeService } from '../../types/interfaces.js';
+import { KrakenApiService } from '../../services/kraken-api-service.js';
 import {
   BalanceResponseSchema,
   PriceResponseSchema,
@@ -9,6 +10,8 @@ import {
   MarketSellOrderResponseSchema,
   LimitSellOrderRequestSchema,
   LimitSellOrderResponseSchema,
+  OpenOrdersResponseSchema,
+  ClosedOrdersResponseSchema,
   ErrorResponseSchema,
 } from '../schemas/exchange-schemas.js';
 
@@ -92,7 +95,6 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         return {
           asset: asset.toUpperCase(),
-          exchange: exchange.name,
           balance,
           timestamp: new Date().toISOString(),
         };
@@ -154,7 +156,6 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         return {
           asset: asset.toUpperCase(),
-          exchange: exchange.name,
           price,
           pair,
           timestamp: new Date().toISOString(),
@@ -188,28 +189,24 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        const { asset, to } = request.body as { asset: IAsset; to: string };
+        const { name, amount, to } = request.body as { name: string; amount: number; to: string };
 
-        // Ensure it's the correct exchange
-        if (asset.exchange.toLowerCase() !== exchange.name) {
-          return reply.status(400).send({
-            error: 'InvalidExchange',
-            message: `Asset exchange must be '${exchange.name}', got '${asset.exchange}'`,
-            statusCode: 400,
-            timestamp: new Date().toISOString(),
-          });
-        }
+        // Create the full asset object with exchange from URL path
+        const fullAsset: IAsset = {
+          name,
+          amount,
+          exchange: exchange.name,
+        };
 
         // Use singleton service instances to prevent multiple service creation
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        await exchangeService.createSellOrder(asset, { orderType: 'market', to: to.toUpperCase() });
+        await exchangeService.createSellOrder(fullAsset, { orderType: 'market', to: to.toUpperCase() });
 
         return {
           success: true,
           message: 'Market sell order created successfully',
-          asset: asset.name.toUpperCase(),
-          exchange: exchange.name,
-          quantity: asset.amount, // Include the quantity in the response
+          asset: fullAsset.name.toUpperCase(),
+          quantity: fullAsset.amount, // Include the quantity in the response
           timestamp: new Date().toISOString(),
         };
       } catch (error) {
@@ -241,17 +238,14 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        const { asset, price, to } = request.body as { asset: IAsset; price: number; to: string };
+        const { name, amount, price, to } = request.body as { name: string; amount: number; price: number; to: string };
 
-        // Ensure it's the correct exchange
-        if (asset.exchange.toLowerCase() !== exchange.name) {
-          return reply.status(400).send({
-            error: 'InvalidExchange',
-            message: `Asset exchange must be '${exchange.name}', got '${asset.exchange}'`,
-            statusCode: 400,
-            timestamp: new Date().toISOString(),
-          });
-        }
+        // Create the full asset object with exchange from URL path
+        const fullAsset: IAsset = {
+          name,
+          amount,
+          exchange: exchange.name,
+        };
 
         // Validate price
         if (price <= 0) {
@@ -265,16 +259,101 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         // Use singleton service instances to prevent multiple service creation
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        await exchangeService.createSellOrder(asset, { orderType: 'limit', price, to: to.toUpperCase() });
+        await exchangeService.createSellOrder(fullAsset, { orderType: 'limit', price, to: to.toUpperCase() });
 
         return {
           success: true,
           message: 'Limit sell order created successfully',
-          asset: asset.name.toUpperCase(),
-          exchange: exchange.name,
-          quantity: asset.amount,
+          asset: fullAsset.name.toUpperCase(),
+          quantity: fullAsset.amount,
           price,
           timestamp: new Date().toISOString(),
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
+  /**
+   * Creates open orders route for Kraken exchange only
+   * This is Kraken-specific as different exchanges have different order management APIs
+   */
+  function createOpenOrdersRoute(exchange: ExchangeConfig) {
+    // Only create this route for Kraken
+    if (exchange.name !== 'kraken') {
+      return;
+    }
+
+    fastify.get(`/${exchange.name}/orders/open`, {
+      schema: {
+        description: `Get open orders from ${exchange.displayName} exchange`,
+        tags: ['exchanges'],
+        response: {
+          200: OpenOrdersResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        // Use the concrete KrakenApiService type for order-specific methods
+        const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
+        const result = await krakenService.getOpenOrders();
+
+        // Return only the orders data with timestamp, no metadata
+        return {
+          orders: result.orders,
+          timestamp: result.timestamp,
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
+  /**
+   * Creates closed orders route for Kraken exchange only
+   * This is Kraken-specific as different exchanges have different order management APIs
+   */
+  function createClosedOrdersRoute(exchange: ExchangeConfig) {
+    // Only create this route for Kraken
+    if (exchange.name !== 'kraken') {
+      return;
+    }
+
+    fastify.get(`/${exchange.name}/orders/closed`, {
+      schema: {
+        description: `Get closed orders from ${exchange.displayName} exchange`,
+        tags: ['exchanges'],
+        response: {
+          200: ClosedOrdersResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        // Use the concrete KrakenApiService type for order-specific methods
+        const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
+        const result = await krakenService.getClosedOrders();
+
+        // Return only the orders data with timestamp, no metadata
+        return {
+          orders: result.orders,
+          timestamp: result.timestamp,
         };
       } catch (error) {
         fastify.log.error(error);
@@ -294,6 +373,8 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     createPriceRoute(exchange);
     createMarketSellOrderRoute(exchange);
     createLimitSellOrderRoute(exchange);
+    createOpenOrdersRoute(exchange);
+    createClosedOrdersRoute(exchange);
   }
 };
 

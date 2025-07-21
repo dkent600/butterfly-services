@@ -425,6 +425,145 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   }
 
   /**
+   * Retrieves open orders from Kraken
+   * https://docs.kraken.com/api/docs/rest-api/list-open-orders
+   * Note: trades=false returns just order info, simpler and faster response
+   */
+  async getOpenOrders(): Promise<any> {
+    const exchangeName = this.getExchangeName();
+    
+    try {
+      const nonce = await this.generateUniqueNonce();
+      const postData = `nonce=${nonce}&trades=false`;
+      const path = '/0/private/OpenOrders';
+      
+      const apiKey = this.exchangeApiService.getAPIKey(exchangeName).trim();
+      const apiSecret = this.exchangeApiService.getAPISecret(exchangeName).trim();
+      
+      if (!apiKey || !apiSecret) {
+        throw new Error(`${exchangeName} API credentials not configured`);
+      }
+
+      // Log environment context (without exposing secrets)
+      console.log(`[KRAKEN AUTH] Open Orders - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
+      
+      const signature = this.signKrakenRequest(path, postData, apiSecret);
+      const url = this.getApiUrl(path);
+      
+      console.log(`[KRAKEN DEBUG] Open Orders Request - URL: ${url}, PostData: ${postData}`);
+      console.log(`[KRAKEN DEBUG] Open Orders Headers: ${JSON.stringify({ 'API-Key': `${apiKey.substring(0, 10)}...`, 'API-Sign': `${signature.substring(0, 20)}...` })}`);
+      
+      const headers = {
+        'API-Key': apiKey,
+        'API-Sign': signature,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'butterfly-services/1.0',
+      };
+
+      const { data } = await axios.post(url, postData, { headers });
+      
+      if (data.error && data.error.length > 0) {
+        const errorMessage = data.error.join(', ');
+        console.error(`[KRAKEN ERROR] Open Orders API Error: ${errorMessage}`);
+        throw new Error(`Kraken API error: ${errorMessage}`);
+      }
+      
+      const response = data;
+      
+      if (response.result) {
+        return {
+          orders: response.result,
+          timestamp: new Date().toISOString(),
+        };
+      } else {
+        throw new Error(`${exchangeName} API returned empty result`);
+      }
+    } catch (error: any) {
+      console.error('[KRAKEN ERROR] Get open orders failed:', error);
+      
+      // Check for Kraken API error format
+      if (error.response?.data?.error?.length > 0) {
+        const krakenError = error.response.data.error[0];
+        console.error(`${exchangeName} get open orders error: ${krakenError}`);
+        throw new Error(`${exchangeName} API error: ${krakenError}`);
+      } else {
+        console.error(`Failed to get ${exchangeName} open orders: ${error.message}`);
+        throw new Error(`Failed to get ${exchangeName} open orders: ${error.message}`);
+      }
+    }
+  }
+
+  /**
+   * Retrieves closed orders from Kraken
+   * https://docs.kraken.com/api/docs/rest-api/get-orders-history
+   * Note: trades=false returns just order info, trades=true includes detailed execution data
+   */
+  async getClosedOrders(): Promise<any> {
+    const exchangeName = this.getExchangeName();
+
+    try {
+      const nonce = await this.generateUniqueNonce();
+      const postData = `nonce=${nonce}&trades=false`;
+      
+      const path = '/0/private/ClosedOrders';
+      
+      const apiKey = this.exchangeApiService.getAPIKey(exchangeName).trim();
+      const apiSecret = this.exchangeApiService.getAPISecret(exchangeName).trim();
+      
+      if (!apiKey || !apiSecret) {
+        throw new Error(`${exchangeName} API credentials not configured`);
+      }
+
+      // Log environment context (without exposing secrets)
+      console.log(`[KRAKEN AUTH] Closed Orders - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
+      
+      const signature = this.signKrakenRequest(path, postData, apiSecret);
+      const url = this.getApiUrl(path);
+      
+      console.log(`[KRAKEN DEBUG] Closed Orders Request - URL: ${url}, PostData: ${postData}`);
+      console.log(`[KRAKEN DEBUG] Closed Orders Headers: ${JSON.stringify({ 'API-Key': `${apiKey.substring(0, 10)}...`, 'API-Sign': `${signature.substring(0, 20)}...` })}`);
+      
+      const headers = {
+        'API-Key': apiKey,
+        'API-Sign': signature,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'butterfly-services/1.0',
+      };
+
+      const { data } = await axios.post(url, postData, { headers });
+      
+      if (data.error && data.error.length > 0) {
+        const errorMessage = data.error.join(', ');
+        console.error(`[KRAKEN ERROR] Closed Orders API Error: ${errorMessage}`);
+        throw new Error(`Kraken API error: ${errorMessage}`);
+      }
+      
+      const response = data;
+      
+      if (response.result) {
+        return {
+          orders: response.result,
+          timestamp: new Date().toISOString(),
+        };
+      } else {
+        throw new Error(`${exchangeName} API returned empty result`);
+      }
+    } catch (error: any) {
+      console.error('[KRAKEN ERROR] Get closed orders failed:', error);
+      
+      // Check for Kraken API error format
+      if (error.response?.data?.error?.length > 0) {
+        const krakenError = error.response.data.error[0];
+        console.error(`${exchangeName} get closed orders error: ${krakenError}`);
+        throw new Error(`${exchangeName} API error: ${krakenError}`);
+      } else {
+        console.error(`Failed to get ${exchangeName} closed orders: ${error.message}`);
+        throw new Error(`Failed to get ${exchangeName} closed orders: ${error.message}`);
+      }
+    }
+  }
+
+  /**
    * Creates Kraken-specific API signature
    * Based on Kraken's official algorithm: https://support.kraken.com/articles/360029054811
    * 

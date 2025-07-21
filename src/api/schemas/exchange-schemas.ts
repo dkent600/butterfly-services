@@ -1,55 +1,52 @@
-export const AssetSchema = {
-  type: 'object',
-  properties: {
-    name: { type: 'string', description: 'Asset symbol (e.g., BTC, ETH)' },
-    exchange: { type: 'string', description: 'Exchange name (e.g., mexc)' },
-    amount: { type: 'number', minimum: 0, description: 'Amount to sell (> 0)' },
-  },
-  required: ['name', 'exchange', 'amount'],
-  additionalProperties: false,
-} as const;
-
+/**
+ * All API responses should contain "timestamp".
+ * No responses should contain "exchange"
+ * No responses should contain "count" when they are returning arrays.
+ * All API requests should be flattened, no nested objects.
+ **/
 export const BalanceResponseSchema = {
   type: 'object',
   properties: {
     asset: { type: 'string' },
-    exchange: { type: 'string' },
     balance: { type: 'number', minimum: 0 },
     timestamp: { type: 'string', format: 'date-time' },
   },
-  required: ['asset', 'exchange', 'balance', 'timestamp'],
+  required: ['asset', 'balance', 'timestamp'],
 } as const;
 
 export const PriceResponseSchema = {
   type: 'object',
   properties: {
     asset: { type: 'string' },
-    exchange: { type: 'string' },
     price: { type: 'number', minimum: 0 },
     pair: { type: 'string' },
     timestamp: { type: 'string', format: 'date-time' },
   },
-  required: ['asset', 'exchange', 'price', 'pair', 'timestamp'],
+  required: ['asset', 'price', 'pair', 'timestamp'],
 } as const;
 
 export const MarketSellOrderRequestSchema = {
   type: 'object',
   properties: {
-    asset: AssetSchema,
+    name: { type: 'string', description: 'Asset symbol (e.g., BTC, ETH)' },
+    amount: { type: 'number', minimum: 0, description: 'Amount to sell (> 0)' },
     to: { type: 'string', description: 'Target currency' },
+    timestamp: { type: 'string', format: 'date-time' },
   },
-  required: ['asset'],
+  required: ['name', 'amount', 'to'],
   additionalProperties: false,
 } as const;
 
 export const LimitSellOrderRequestSchema = {
   type: 'object',
   properties: {
-    asset: AssetSchema,
+    name: { type: 'string', description: 'Asset symbol (e.g., BTC, ETH)' },
+    amount: { type: 'number', minimum: 0, description: 'Amount to sell (> 0)' },
     price: { type: 'number', minimum: 0, description: 'Limit price for the order' },
     to: { type: 'string', description: 'Target currency' },
+    timestamp: { type: 'string', format: 'date-time' },
   },
-  required: ['asset', 'price'],
+  required: ['name', 'amount', 'price', 'to'],
   additionalProperties: false,
 } as const;
 
@@ -60,7 +57,6 @@ export const MarketSellOrderResponseSchema = {
     message: { type: 'string' },
     orderId: { type: 'string' },
     asset: { type: 'string' },
-    exchange: { type: 'string' },
     quantity: { type: 'number' },
     timestamp: { type: 'string', format: 'date-time' },
   },
@@ -74,12 +70,37 @@ export const LimitSellOrderResponseSchema = {
     message: { type: 'string' },
     orderId: { type: 'string' },
     asset: { type: 'string' },
-    exchange: { type: 'string' },
     quantity: { type: 'number' },
     price: { type: 'number' },
     timestamp: { type: 'string', format: 'date-time' },
   },
   required: ['success', 'message', 'timestamp'],
+} as const;
+
+export const OpenOrdersResponseSchema = {
+  type: 'object',
+  properties: {
+    orders: { 
+      type: 'object',
+      description: 'Open orders keyed by order ID',
+      additionalProperties: true,
+    },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['orders', 'timestamp'],
+} as const;
+
+export const ClosedOrdersResponseSchema = {
+  type: 'object',
+  properties: {
+    orders: { 
+      type: 'object',
+      description: 'Closed orders keyed by order ID',
+      additionalProperties: true,
+    },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['orders', 'timestamp'],
 } as const;
 
 export const ErrorResponseSchema = {
