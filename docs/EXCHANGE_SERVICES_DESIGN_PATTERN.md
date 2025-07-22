@@ -136,20 +136,7 @@ When adding new operations, extend the `IExchangeApiService` interface:
 ```typescript
 export interface IExchangeApiService {
   // Existing methods...
-  createSellOrder(...): Promise<void>;
-  
-  // New methods should follow this pattern
-  cancelOrder(
-    txid: string,
-    exchangeName: string,
-    requestOptions: {
-      url: string;
-      method: 'GET' | 'POST' | 'DELETE';
-      body?: string;
-      headers: Record<string, string>;
-    }
-  ): Promise<any>;
-  
+  sendApiRequest(...): Promise<void>;
   // More methods as needed...
 }
 ```

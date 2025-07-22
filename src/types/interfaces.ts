@@ -39,12 +39,14 @@ export interface IExchangeService {
   fetchBalance(asset: IAsset): Promise<number>;
   createSellOrder(
     asset: IAsset, 
-    options?: {
+    options: {
       orderType: 'market' | 'limit';
       price?: number;
       to: string;
     },
   ): Promise<any>;
+  getOpenOrders(): Promise<any>;
+  getClosedOrders(): Promise<any>;
 }
 
 export interface IExchangeTimeSyncer {

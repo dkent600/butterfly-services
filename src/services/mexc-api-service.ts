@@ -206,4 +206,14 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       throw new Error(`Could not create limit sell order for ${asset.name}`);
     }
   }
+
+  getOpenOrders(): Promise<any> {
+    // This method should be implemented to fetch open orders from the exchange
+    throw new Error('getOpenOrders method not implemented yet');
+  }
+
+  getClosedOrders(): Promise<any> {
+    // This method should be implemented to fetch closed orders from the exchange
+    throw new Error('getClosedOrders method not implemented yet');
+  }
 }
