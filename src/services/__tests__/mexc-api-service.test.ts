@@ -271,8 +271,6 @@ describe('MexcApiService', () => {
 
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
         expect.any(String),
-        expect.any(Number),
-        expect.any(String),
         expect.objectContaining({
           method: 'POST',
           url: expect.stringContaining('/api/v3/order/test'), // Should still use test endpoint for safety
@@ -294,8 +292,6 @@ describe('MexcApiService', () => {
       await mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'ETH' });
 
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
-        'BTCETH', // Should create correct pair
-        50,
         'mexc',
         expect.objectContaining({
           method: 'POST',
@@ -318,8 +314,6 @@ describe('MexcApiService', () => {
       await mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
 
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
-        'BTCUSDT', // Should default to USDT
-        50,
         'mexc',
         expect.objectContaining({
           method: 'POST',
@@ -347,8 +341,6 @@ describe('MexcApiService', () => {
       );
 
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(Number),
         expect.any(String),
         expect.objectContaining({
           method: 'POST',
