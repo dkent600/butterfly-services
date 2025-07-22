@@ -142,8 +142,6 @@ describe('MexcApiService', () => {
       // expect(getSellAmountSpy).toHaveBeenCalledWith(mockAsset);
       expect(mockExchangeApiService.sign).toHaveBeenCalled();
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
-        'BTCUSDT',
-        50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'mexc',
         expect.objectContaining({
           method: 'POST',
@@ -195,8 +193,6 @@ describe('MexcApiService', () => {
 
       // Verify it would select the production endpoint (but no real call is made)
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
-        'BTCUSDT',
-        50,
         'mexc',
         expect.objectContaining({
           method: 'POST',

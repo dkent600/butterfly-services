@@ -334,8 +334,6 @@ describe('KrakenApiService', () => {
 
       // expect(getSellAmountSpy).toHaveBeenCalledWith(mockAsset);
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
-        'XBTUSD',
-        50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
         expect.objectContaining({
           method: 'POST',
@@ -350,7 +348,7 @@ describe('KrakenApiService', () => {
       );
 
       // Verify validate=true is added for test mode
-      const requestOptions = vi.mocked(mockExchangeApiService.sendApiRequest).mock.calls[0][3];
+      const requestOptions = vi.mocked(mockExchangeApiService.sendApiRequest).mock.calls[0][1];
       expect(requestOptions.body).toContain('validate=true');
     });
 
@@ -370,7 +368,7 @@ describe('KrakenApiService', () => {
 
       // Verify it would NOT include validate=true for production mode
       // Verify validate=false for production mode (test should verify logic but NOT make real calls)
-      const requestOptions = vi.mocked(mockExchangeApiService.sendApiRequest).mock.calls[0][3];
+      const requestOptions = vi.mocked(mockExchangeApiService.sendApiRequest).mock.calls[0][1];
       expect(requestOptions.body).not.toContain('validate=true');
     });
 
@@ -400,8 +398,6 @@ describe('KrakenApiService', () => {
       await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' });
 
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
-        'XBTUSD', // Should default to USD
-        50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
         expect.objectContaining({
           method: 'POST',
