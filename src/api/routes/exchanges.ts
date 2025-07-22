@@ -291,7 +291,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       return;
     }
 
-    fastify.get(`/${exchange.name}/orders/open`, {
+    fastify.get(`/${exchange.name}/orders/opened`, {
       schema: {
         description: `Get open orders from ${exchange.displayName} exchange`,
         tags: ['exchanges'],

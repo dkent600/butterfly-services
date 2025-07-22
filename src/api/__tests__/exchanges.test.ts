@@ -759,7 +759,7 @@ describe('Exchange Routes', () => {
       });
     });
 
-    describe('GET /api/v1/kraken/orders/open', () => {
+    describe('GET /api/v1/kraken/orders/opened', () => {
       it('should fetch open orders from Kraken', async () => {
         // Set up flexible mocking based on URL patterns
         const mockAxiosGet = vi.mocked(axios.get);
@@ -838,7 +838,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/orders/open',
+          url: '/api/v1/kraken/orders/opened',
         });
 
         expect(response.statusCode).toBe(200);
@@ -880,7 +880,7 @@ describe('Exchange Routes', () => {
 
         const response = await server.inject({
           method: 'GET',
-          url: '/api/v1/kraken/orders/open',
+          url: '/api/v1/kraken/orders/opened',
         });
 
         expect(response.statusCode).toBe(200);
