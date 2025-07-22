@@ -576,6 +576,77 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   }
 
   /**
+   * Cancels an order on Kraken by transaction ID
+   * https://docs.kraken.com/api/docs/rest-api/cancel-order
+   * @param txid The transaction ID of the order to cancel
+   */
+  async cancelOrder(txid: string): Promise<any> {
+    const exchangeName = this.getExchangeName();
+
+    try {
+      const nonce = await this.generateUniqueNonce();
+      const postData = `nonce=${nonce}&txid=${txid}`;
+      
+      const path = '/0/private/CancelOrder';
+      
+      const apiKey = this.exchangeApiService.getAPIKey(exchangeName).trim();
+      const apiSecret = this.exchangeApiService.getAPISecret(exchangeName).trim();
+      
+      if (!apiKey || !apiSecret) {
+        throw new Error(`${exchangeName} API credentials not configured`);
+      }
+
+      // Log environment context (without exposing secrets)
+      console.log(`[KRAKEN AUTH] Cancel Order - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
+      
+      const signature = this.signKrakenRequest(path, postData, apiSecret);
+      const url = this.getApiUrl(path);
+      
+      console.log(`[KRAKEN DEBUG] Cancel Order Request - URL: ${url}, PostData: ${postData}`);
+      console.log(`[KRAKEN DEBUG] Cancel Order Headers: ${JSON.stringify({ 'API-Key': `${apiKey.substring(0, 10)}...`, 'API-Sign': `${signature.substring(0, 20)}...` })}`);
+      
+      const headers = {
+        'API-Key': apiKey,
+        'API-Sign': signature,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'butterfly-services/1.0',
+      };
+
+      const { data } = await axios.post(url, postData, { headers });
+      
+      if (data.error && data.error.length > 0) {
+        const errorMessage = data.error.join(', ');
+        console.error(`[KRAKEN ERROR] Cancel Order API Error: ${errorMessage}`);
+        throw new Error(`Kraken API error: ${errorMessage}`);
+      }
+      
+      const response = data;
+      
+      if (response.result) {
+        return {
+          count: response.result.count,
+          pending: response.result.pending,
+          timestamp: new Date().toISOString(),
+        };
+      } else {
+        throw new Error(`${exchangeName} API returned empty result`);
+      }
+    } catch (error: any) {
+      console.error('[KRAKEN ERROR] Cancel order failed:', error);
+      
+      // Check for Kraken API error format
+      if (error.response?.data?.error?.length > 0) {
+        const krakenError = error.response.data.error[0];
+        console.error(`${exchangeName} cancel order error: ${krakenError}`);
+        throw new Error(`${exchangeName} API error: ${krakenError}`);
+      } else {
+        console.error(`Failed to cancel ${exchangeName} order: ${error.message}`);
+        throw new Error(`Failed to cancel ${exchangeName} order: ${error.message}`);
+      }
+    }
+  }
+
+  /**
    * Creates Kraken-specific API signature
    * Based on Kraken's official algorithm: https://support.kraken.com/articles/360029054811
    * 

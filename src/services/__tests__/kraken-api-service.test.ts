@@ -759,6 +759,118 @@ describe('KrakenApiService', () => {
       await expect(krakenApiService.getClosedOrders()).rejects.toThrow('kraken API error: EGeneral:Temporary lockout');
     });
   });
+
+  describe('cancelOrder', () => {
+    it('should cancel an order successfully', async () => {
+      const mockResponse = {
+        error: [],
+        result: {
+          count: 1,
+          pending: false,
+        },
+      };
+
+      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
+
+      expect(result.count).toBe(1);
+      expect(result.pending).toBe(false);
+      expect(result.timestamp).toBeDefined();
+
+      // Verify the API call was made with correct parameters
+      expect(axios.post).toHaveBeenCalledWith(
+        'https://api.kraken.com/0/private/CancelOrder',
+        expect.stringContaining('txid=OQCLML-BW3P3-BUCMWZ'),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'API-Key': 'test-api-key',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'butterfly-services/1.0',
+          }),
+        }),
+      );
+    });
+
+    it('should handle pending cancellation', async () => {
+      const mockResponse = {
+        error: [],
+        result: {
+          count: 1,
+          pending: true,
+        },
+      };
+
+      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
+
+      expect(result.count).toBe(1);
+      expect(result.pending).toBe(true);
+      expect(result.timestamp).toBeDefined();
+    });
+
+    it('should handle Kraken API error for invalid order', async () => {
+      const mockResponse = {
+        error: ['EOrder:Unknown order'],
+        result: null,
+      };
+
+      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      await expect(krakenApiService.cancelOrder('INVALID-ORDER-ID')).rejects.toThrow('Kraken API error: EOrder:Unknown order');
+    });
+
+    it('should handle missing API credentials', async () => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('kraken API credentials not configured');
+    });
+
+    it('should handle network errors', async () => {
+      vi.mocked(axios.post).mockRejectedValue(new Error('Network error'));
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Failed to cancel kraken order: Network error');
+    });
+
+    it('should handle empty result', async () => {
+      const mockResponse = {
+        error: [],
+        result: null,
+      };
+
+      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('kraken API returned empty result');
+    });
+
+    it('should handle HTTP error responses', async () => {
+      const mockErrorResponse = {
+        response: {
+          data: {
+            error: ['EGeneral:Temporary lockout'],
+          },
+        },
+      };
+
+      vi.mocked(axios.post).mockRejectedValue(mockErrorResponse);
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('kraken API error: EGeneral:Temporary lockout');
+    });
+  });
 });
 
 /**

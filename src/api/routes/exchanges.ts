@@ -371,6 +371,74 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     });
   }
 
+  /**
+   * Creates cancel order route for Kraken exchange only
+   * This is Kraken-specific as different exchanges have different order management APIs
+   */
+  function createCancelOrderRoute(exchange: ExchangeConfig) {
+    // Only create this route for Kraken
+    if (exchange.name !== 'kraken') {
+      return;
+    }
+
+    fastify.delete(`/${exchange.name}/orders/cancel/:txid`, {
+      schema: {
+        description: `Cancel an order on ${exchange.displayName} exchange by transaction ID`,
+        tags: ['exchanges'],
+        params: {
+          type: 'object',
+          properties: {
+            txid: { 
+              type: 'string',
+              description: 'Transaction ID of the order to cancel',
+            },
+          },
+          required: ['txid'],
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              count: { 
+                type: 'integer',
+                description: 'Number of orders cancelled',
+              },
+              pending: { 
+                type: 'boolean',
+                description: 'Whether cancellation is pending',
+              },
+              timestamp: { 
+                type: 'string',
+                description: 'Response timestamp in ISO format',
+              },
+            },
+            required: ['count', 'timestamp'],
+          },
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        const { txid } = request.params as { txid: string };
+
+        // Use the concrete KrakenApiService type for order-specific methods
+        const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
+        const result = await krakenService.cancelOrder(txid);
+
+        return result;
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
   // Register all routes for all exchanges
   for (const exchange of exchanges) {
     createBalanceRoute(exchange);
@@ -379,6 +447,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     createLimitSellOrderRoute(exchange);
     createOpenOrdersRoute(exchange);
     createClosedOrdersRoute(exchange);
+    createCancelOrderRoute(exchange);
   }
 };
 

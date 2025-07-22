@@ -1028,5 +1028,136 @@ describe('Exchange Routes', () => {
         expect(body.timestamp).toBeDefined();
       });
     });
+
+    describe('DELETE /api/v1/kraken/orders/cancel/:txid', () => {
+      it('should cancel an order successfully', async () => {
+        const mockCancelResponse = {
+          error: [],
+          result: {
+            count: 1,
+            pending: false,
+          },
+        };
+
+        (axios.post as any).mockImplementation(() => {
+          return Promise.resolve({ data: mockCancelResponse, statusText: 'OK' });
+        });
+
+        const response = await server.inject({
+          method: 'DELETE',
+          url: '/api/v1/kraken/orders/cancel/OQCLML-BW3P3-BUCMWZ',
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body);
+
+        expect(body.count).toBe(1);
+        expect(body.pending).toBe(false);
+        expect(body.timestamp).toBeDefined();
+
+        // Verify the API call was made correctly
+        expect(axios.post).toHaveBeenCalledWith(
+          'https://api.kraken.com/0/private/CancelOrder',
+          expect.stringContaining('nonce='),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              'API-Key': 'mock-kraken-api-key',
+              'API-Sign': expect.any(String),
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'User-Agent': 'butterfly-services/1.0',
+            }),
+          }),
+        );
+
+        // Verify the post data contains the transaction ID
+        const postData = (axios.post as any).mock.calls[0][1];
+        expect(postData).toContain('txid=OQCLML-BW3P3-BUCMWZ');
+      });
+
+      it('should handle Kraken API error for cancel order', async () => {
+        const mockErrorResponse = {
+          error: ['EOrder:Unknown order'],
+          result: null,
+        };
+
+        (axios.post as any).mockImplementation(() => {
+          return Promise.resolve({ data: mockErrorResponse, statusText: 'OK' });
+        });
+
+        const response = await server.inject({
+          method: 'DELETE',
+          url: '/api/v1/kraken/orders/cancel/INVALID-ORDER-ID',
+        });
+
+        expect(response.statusCode).toBe(500);
+        const body = JSON.parse(response.body);
+
+        expect(body.error).toBe('InternalServerError');
+        expect(body.message).toContain('Kraken API error: EOrder:Unknown order');
+        expect(body.timestamp).toBeDefined();
+      });
+
+      it('should handle network error for cancel order', async () => {
+        (axios.post as any).mockImplementation(() => {
+          return Promise.reject(new Error('Network error'));
+        });
+
+        const response = await server.inject({
+          method: 'DELETE',
+          url: '/api/v1/kraken/orders/cancel/OQCLML-BW3P3-BUCMWZ',
+        });
+
+        expect(response.statusCode).toBe(500);
+        const body = JSON.parse(response.body);
+
+        expect(body.error).toBe('InternalServerError');
+        expect(body.message).toContain('Failed to cancel kraken order');
+        expect(body.timestamp).toBeDefined();
+      });
+
+      it('should handle cancel order with pending status', async () => {
+        const mockPendingResponse = {
+          error: [],
+          result: {
+            count: 1,
+            pending: true,
+          },
+        };
+
+        (axios.post as any).mockImplementation(() => {
+          return Promise.resolve({ data: mockPendingResponse, statusText: 'OK' });
+        });
+
+        const response = await server.inject({
+          method: 'DELETE',
+          url: '/api/v1/kraken/orders/cancel/OQCLML-BW3P3-BUCMWZ',
+        });
+
+        expect(response.statusCode).toBe(200);
+        const body = JSON.parse(response.body);
+
+        expect(body.count).toBe(1);
+        expect(body.pending).toBe(true);
+        expect(body.timestamp).toBeDefined();
+      });
+
+      it('should handle empty result for cancel order', async () => {
+        (axios.post as any).mockImplementation(() => {
+          return Promise.resolve({ data: { error: [], result: null }, statusText: 'OK' });
+        });
+
+        const response = await server.inject({
+          method: 'DELETE',
+          url: '/api/v1/kraken/orders/cancel/OQCLML-BW3P3-BUCMWZ',
+        });
+
+        expect(response.statusCode).toBe(500);
+        const body = JSON.parse(response.body);
+
+        expect(body.error).toBe('InternalServerError');
+        expect(body.message).toContain('kraken API returned empty result');
+        expect(body.timestamp).toBeDefined();
+      });
+    });
   });
 });
