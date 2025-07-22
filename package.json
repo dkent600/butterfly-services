@@ -15,7 +15,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "cross-env NODE_ENV=production node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "dev:debug": "cross-env NODE_ENV=development LOG_LEVEL=debug tsx watch --inspect src/index.ts",
     "debug": "cross-env NODE_ENV=development LOG_LEVEL=debug tsx --inspect src/index.ts",

@@ -71,8 +71,6 @@ export class EnvService implements IEnvService {
       'MEXC_API_SECRET': 'api.mexc.apiSecret',
       'KRAKEN_API_KEY': 'api.kraken.apiKey',
       'KRAKEN_API_SECRET': 'api.kraken.apiSecret',
-      'BINANCE_API_KEY': 'api.binance.apiKey',
-      'BINANCE_API_SECRET': 'api.binance.apiSecret',
       'NODE_ENV': 'app.environment',
       'PORT': 'app.port',
       'HOST': 'app.host',
@@ -130,6 +128,6 @@ export class EnvService implements IEnvService {
 
   getBoolean(key: string): boolean | undefined {
     const value = this.get(key);
-    return value ? value.toLowerCase() === 'true' : undefined;
+    return value?.toLowerCase() === 'true';
   }
 }

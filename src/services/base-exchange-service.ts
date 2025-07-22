@@ -231,12 +231,12 @@ export abstract class BaseExchangeService {
     // SAFETY FIRST: Always default to test mode unless explicitly disabled
     const useTestMode = this.envService.getBoolean('app.useTestMode');
     const nodeEnv = this.envService.get('app.environment');
-    
-    // Only allow live trading if ALL of these conditions are met:
+
+    console.log(`MODE: Using test mode: ${useTestMode}, Environment: ${nodeEnv}`);
     // 1. useTestMode is explicitly set to false
     // 2. NODE_ENV is production
     // 3. Environment is properly configured
-    if (useTestMode === false && nodeEnv === 'production') {
+    if (useTestMode === false && nodeEnv ?.startsWith('production')) {
       return false; // Live trading mode
     }
     

@@ -334,6 +334,12 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
       };
 
+      if (orderParams?.validate !== 'true') {
+        console.log(`[KRAKEN MODE]❗Running in production! ${asset.name} at ${price}, validate: ${orderParams?.validate}`);
+      } else {
+        console.log(`[KRAKEN MODE] Running in test mode! ${asset.name} at ${price}, validate: ${orderParams?.validate}`);
+      }
+
       const postData = new URLSearchParams(orderParams).toString();
       const path = '/0/private/AddOrder';
       const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
@@ -379,6 +385,12 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         price: price.toString(),
         ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
       };
+
+      if (orderParams?.validate !== 'true') {
+        console.log(`[KRAKEN MODE]❗Running in production! ${asset.name} at ${price}, validate: ${orderParams?.validate}`);
+      } else {
+        console.log(`[KRAKEN MODE] Running in test mode! ${asset.name} at ${price}, validate: ${orderParams?.validate}`);
+      }
 
       const postData = new URLSearchParams(orderParams).toString();
       const path = '/0/private/AddOrder';
@@ -434,7 +446,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     
     try {
       const nonce = await this.generateUniqueNonce();
-      const postData = `nonce=${nonce}&trades=false`;
+      const postData = `nonce=${nonce}&trades=true`;
       const path = '/0/private/OpenOrders';
       
       const apiKey = this.exchangeApiService.getAPIKey(exchangeName).trim();
