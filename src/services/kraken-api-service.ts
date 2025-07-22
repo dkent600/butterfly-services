@@ -299,6 +299,45 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     }
   }
 
+  
+  /**
+   * Creates Kraken-specific API signature
+   * Based on Kraken's official algorithm: https://support.kraken.com/articles/360029054811
+   * 
+   * Algorithm:
+   * 1. apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
+   * 2. apiSha512 = crypto.createHmac('sha512', apiSecret).update(apiPath).update(apiSha256).digest();
+   * 3. apiSignature = apiSha512.toString('base64');
+   */
+  private signKrakenRequest(path: string, postData: string, apiSecret: string): string {
+    // Extract nonce from postData (assumes format: "nonce=123456...")
+    const nonceMatch = postData.match(/nonce=(\d+)/);
+    if (!nonceMatch) {
+      // Fallback for test environments or edge cases - use simple increment
+      const fallbackNonce = Math.max(Date.now(), KrakenApiService.globalNonceRef.value + 1);
+      KrakenApiService.globalNonceRef.value = fallbackNonce;
+      console.warn(`[KRAKEN] Nonce not found in postData "${postData}", using fallback: ${fallbackNonce}`);
+      const apiSha256 = crypto.createHash('sha256').update(`${fallbackNonce}${postData}`).digest();
+      const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
+        .update(path)
+        .update(apiSha256)
+        .digest();
+      return apiSha512.toString('base64');
+    }
+    const nonce = nonceMatch[1];
+    
+    // Follow Kraken's exact algorithm
+    const apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
+    const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
+      .update(path)
+      .update(apiSha256)
+      .digest();
+    const apiSignature = apiSha512.toString('base64');
+    
+    return apiSignature;
+  }
+
+
   async createSellOrder(
     asset: IAsset, 
     options: {
@@ -314,127 +353,81 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     if (orderType === 'limit' && !price) {
       throw new Error('Price is required for limit orders');
     }
+
+    const exchangeName = this.getExchangeName();
+    const pair = this.createPair(asset, to);
+    const volume = asset.amount;
+    const nonce = await this.generateUniqueNonce();
     
-    // For market orders, use the existing architecture directly via exchangeApiService
-    if (orderType === 'market') {
-      // Prepare request for ExchangeApiService
-      const pair = this.createPair(asset, to);
-      const volume = asset.amount;
-      const nonce = await this.generateUniqueNonce();
-      
-      console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}`);
-      
-      // Kraken API parameters for market sell order
-      const orderParams: Record<string, string> = {
-        nonce: nonce.toString(),
-        ordertype: 'market',
-        type: 'sell',
-        volume: volume.toString(),
-        pair,
-        ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
-      };
+    // console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}`);
 
-      if (orderParams?.validate !== 'true') {
-        console.log(`[KRAKEN MODE]❗Running in production! ${asset.name} at ${price}, validate: ${orderParams?.validate}`);
-      } else {
-        console.log(`[KRAKEN MODE] Running in test mode! ${asset.name} at ${price}, validate: ${orderParams?.validate}`);
+    const orderParams: Record<string, string> = {
+      nonce: nonce.toString(),
+      ordertype: orderType,
+      type: 'sell',
+      volume: volume.toString(),
+      pair,
+      ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
+    };
+    
+    if (orderType === 'limit' && price) {
+      orderParams.price = price.toString();
       }
 
-      const postData = new URLSearchParams(orderParams).toString();
-      const path = '/0/private/AddOrder';
-      const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
-      const signature = this.signKrakenRequest(path, postData, apiSecret);
-      const url = this.getApiUrl(path);
-
-      const headers = {
-        'API-Key': this.exchangeApiService.getAPIKey(asset.exchange),
-        'API-Sign': signature,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      // Use the existing architecture via ExchangeApiService
-      await this.exchangeApiService.createSellOrder(pair, volume, asset.exchange, {
-        url,
-        method: 'POST',
-        body: postData,
-        headers,
-      });
-      
-      return { success: true, message: 'Market sell order created successfully' };
+    if (orderParams?.validate !== 'true') {
+      console.log(`[KRAKEN MODE]❗Running in production! ${asset.name} at ${price}`);
     } else {
-    // For limit orders, we need to implement this functionality
-    // For now, fall back to direct implementation until we add limit order support to IExchangeApiService
-      const pair = this.createPair(asset, to);
-      const volume = asset.amount;
-      const nonce = await this.generateUniqueNonce();
-      
-      console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}, price: ${price}`);
-      
-      // For limit orders, price must be defined (validated above)
-      if (!price) {
-        throw new Error('Price is required for limit orders');
-      }
-      
-      // Kraken API parameters for limit sell order
-      const orderParams: Record<string, string> = {
-        nonce: nonce.toString(),
-        ordertype: 'limit',
-        type: 'sell',
-        volume: volume.toString(),
-        pair,
-        price: price.toString(),
-        ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
-      };
-
-      if (orderParams?.validate !== 'true') {
-        console.log(`[KRAKEN MODE]❗Running in production! ${asset.name} at ${price}, validate: ${orderParams?.validate}`);
-      } else {
-        console.log(`[KRAKEN MODE] Running in test mode! ${asset.name} at ${price}, validate: ${orderParams?.validate}`);
-      }
-
-      const postData = new URLSearchParams(orderParams).toString();
-      const path = '/0/private/AddOrder';
-      const apiSecret = this.exchangeApiService.getAPISecret(asset.exchange);
-      const signature = this.signKrakenRequest(path, postData, apiSecret);
-      const url = this.getApiUrl(path);
-
-      const headers = {
-        'API-Key': this.exchangeApiService.getAPIKey(asset.exchange),
-        'API-Sign': signature,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      };
-
-      console.log(`[KRAKEN ORDER] Placing limit sell order - Pair: ${pair}, Volume: ${volume}, Price: ${price}, Test Mode: ${this.shouldUseTestMode()}`);
-      
-      // Use the existing architecture via ExchangeApiService
-      await this.exchangeApiService.createSellOrder(pair, volume, asset.exchange, {
-        url,
-        method: 'POST',
-        body: postData,
-        headers,
-      });
-      
-      return { success: true, message: 'Limit sell order created successfully' };
+      console.log(`[KRAKEN MODE] Running in test mode! ${asset.name} at ${price}`);
     }
-   } catch (error) {
-      // If it's already a specific error we threw, preserve it
-      if (error instanceof Error && error.message.includes('Kraken API error:')) {
-        throw error;
-      }
-      
-      console.error(`Failed to create sell order for ${asset.name}:`, error);
-      console.error('Order details:', {
-        orderType,
-        pair: this.createPair(asset, to),
-        volume: asset.amount,
-        price,
-        // hasApiKey: !!this.exchangeApiService.getAPIKey(asset.exchange),
-        // hasApiSecret: !!this.exchangeApiService.getAPISecret(asset.exchange),
-        // errorResponse: (error as any).response?.data,
-      });
-      throw new Error(`Could not create limit sell order for ${asset.name}`);
+
+    const postData = new URLSearchParams(orderParams).toString();
+    const path = '/0/private/AddOrder';
+    const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
+    const apiKey = this.exchangeApiService.getAPIKey(exchangeName).trim();
+
+    if (!apiKey || !apiSecret) {
+      throw new Error(`${exchangeName} API credentials not configured`);
     }
+
+    const signature = this.signKrakenRequest(path, postData, apiSecret);
+    const url = this.getApiUrl(path);
+
+    const headers = {
+      'API-Key': apiKey,
+      'API-Sign': signature,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'butterfly-services/1.0',
+    };
+
+    // Use the existing architecture via ExchangeApiService
+    await this.exchangeApiService.sendApiRequest(exchangeName, {
+      url,
+      method: 'POST',
+      body: postData,
+      headers,
+    });
+
+    return { success: true, message: '${orderType === "market" ? "Market" : "Limit"} sell order created successfully' };
+  } 
+  catch (error) {
+    // If it's already a specific error we threw, preserve it
+    if (error instanceof Error && error.message.includes('Kraken API error:')) {
+      throw error;
+    }
+
+    console.error(`Failed to create ${orderType} sell order for ${asset.name}:`, error);
+    console.error('Order details:', {
+      orderType,
+      pair: this.createPair(asset, to),
+      volume: asset.amount,
+      price,
+      // hasApiKey: !!this.exchangeApiService.getAPIKey(exchangeName),
+      // hasApiSecret: !!this.exchangeApiService.getAPISecret(exchangeName),
+      // errorResponse: (error as any).response?.data,
+    });
+    throw new Error(`Could not create ${orderType} sell order for ${asset.name}`);
   }
+}
 
   /**
    * Retrieves open orders from Kraken
@@ -581,30 +574,40 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * @param txid The transaction ID of the order to cancel
    */
   async cancelOrder(txid: string): Promise<any> {
-    const exchangeName = this.getExchangeName();
-
+    
     try {
+      
+      if (!txid) {
+        throw new Error('Transaction ID is required to cancel an order');
+      }
+      
+      const exchangeName = this.getExchangeName();
       const nonce = await this.generateUniqueNonce();
-      const postData = `nonce=${nonce}&txid=${txid}`;
-      
+
+      const orderParams: Record<string, string> = {
+        nonce: nonce.toString(),
+        txid,
+        ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
+      };
+
+      if (orderParams?.validate !== 'true') {
+        console.log(`[KRAKEN MODE]❗Running in production! Order cancel: (${txid})`);
+      } else {
+        console.log(`[KRAKEN MODE] Running in test mode! Order cancel: (${txid})`);
+      }
+
+      const postData = new URLSearchParams(orderParams).toString();
       const path = '/0/private/CancelOrder';
-      
-      const apiKey = this.exchangeApiService.getAPIKey(exchangeName).trim();
       const apiSecret = this.exchangeApiService.getAPISecret(exchangeName).trim();
-      
+      const apiKey = this.exchangeApiService.getAPIKey(exchangeName).trim();
+
       if (!apiKey || !apiSecret) {
         throw new Error(`${exchangeName} API credentials not configured`);
       }
 
-      // Log environment context (without exposing secrets)
-      console.log(`[KRAKEN AUTH] Cancel Order - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
-      
       const signature = this.signKrakenRequest(path, postData, apiSecret);
       const url = this.getApiUrl(path);
-      
-      console.log(`[KRAKEN DEBUG] Cancel Order Request - URL: ${url}, PostData: ${postData}`);
-      console.log(`[KRAKEN DEBUG] Cancel Order Headers: ${JSON.stringify({ 'API-Key': `${apiKey.substring(0, 10)}...`, 'API-Sign': `${signature.substring(0, 20)}...` })}`);
-      
+
       const headers = {
         'API-Key': apiKey,
         'API-Sign': signature,
@@ -612,75 +615,36 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         'User-Agent': 'butterfly-services/1.0',
       };
 
-      const { data } = await axios.post(url, postData, { headers });
+      // Log environment context (without exposing secrets)
+      // console.log(`[KRAKEN AUTH] Cancel Order - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);      
+      // console.log(`[KRAKEN DEBUG] Cancel Order Request - URL: ${url}, PostData: ${postData}`);
+      // console.log(`[KRAKEN DEBUG] Cancel Order Headers: ${JSON.stringify({ 'API-Key': `${apiKey.substring(0, 10)}...`, 'API-Sign': `${signature.substring(0, 20)}...` })}`);
       
-      if (data.error && data.error.length > 0) {
-        const errorMessage = data.error.join(', ');
-        console.error(`[KRAKEN ERROR] Cancel Order API Error: ${errorMessage}`);
-        throw new Error(`Kraken API error: ${errorMessage}`);
+
+      // Use the ExchangeApiService following the established design pattern
+      await this.exchangeApiService.sendApiRequest(exchangeName, {
+        url,
+        method: 'POST',
+        body: postData,
+        headers,
+      });
+
+    return { success: true, message: 'cancel order created successfully, ${txid}' };
+
+    } catch (error) {
+      // If it's already a specific error we threw, preserve it
+      if (error instanceof Error && error.message.includes('Kraken API error:')) {
+        throw error;
       }
-      
-      const response = data;
-      
-      if (response.result) {
-        return {
-          count: response.result.count,
-          pending: response.result.pending,
-          timestamp: new Date().toISOString(),
-        };
-      } else {
-        throw new Error(`${exchangeName} API returned empty result`);
-      }
-    } catch (error: any) {
-      console.error('[KRAKEN ERROR] Cancel order failed:', error);
-      
-      // Check for Kraken API error format
-      if (error.response?.data?.error?.length > 0) {
-        const krakenError = error.response.data.error[0];
-        console.error(`${exchangeName} cancel order error: ${krakenError}`);
-        throw new Error(`${exchangeName} API error: ${krakenError}`);
-      } else {
-        console.error(`Failed to cancel ${exchangeName} order: ${error.message}`);
-        throw new Error(`Failed to cancel ${exchangeName} order: ${error.message}`);
-      }
+
+      console.error(`Failed to cancel order txid: ${txid}:`, error);
+      console.error('Order details:', {
+        txid,
+        // hasApiKey: !!this.exchangeApiService.getAPIKey(exchangeName),
+        // hasApiSecret: !!this.exchangeApiService.getAPISecret(exchangeName),
+        // errorResponse: (error as any).response?.data,
+      });
+    throw new Error(`Could not cancel order txid: ${txid}`);
     }
   }
-
-  /**
-   * Creates Kraken-specific API signature
-   * Based on Kraken's official algorithm: https://support.kraken.com/articles/360029054811
-   * 
-   * Algorithm:
-   * 1. apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
-   * 2. apiSha512 = crypto.createHmac('sha512', apiSecret).update(apiPath).update(apiSha256).digest();
-   * 3. apiSignature = apiSha512.toString('base64');
-   */
-  private signKrakenRequest(path: string, postData: string, apiSecret: string): string {
-    // Extract nonce from postData (assumes format: "nonce=123456...")
-    const nonceMatch = postData.match(/nonce=(\d+)/);
-    if (!nonceMatch) {
-      // Fallback for test environments or edge cases - use simple increment
-      const fallbackNonce = Math.max(Date.now(), KrakenApiService.globalNonceRef.value + 1);
-      KrakenApiService.globalNonceRef.value = fallbackNonce;
-      console.warn(`[KRAKEN] Nonce not found in postData "${postData}", using fallback: ${fallbackNonce}`);
-      const apiSha256 = crypto.createHash('sha256').update(`${fallbackNonce}${postData}`).digest();
-      const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
-        .update(path)
-        .update(apiSha256)
-        .digest();
-      return apiSha512.toString('base64');
-    }
-    const nonce = nonceMatch[1];
-    
-    // Follow Kraken's exact algorithm
-    const apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
-    const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
-      .update(path)
-      .update(apiSha256)
-      .digest();
-    const apiSignature = apiSha512.toString('base64');
-    
-    return apiSignature;
-  }
-
 }

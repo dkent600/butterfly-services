@@ -33,15 +33,11 @@ export class ExchangeApiService implements IExchangeApiService {
   }
 
   /**
-   * Create a sell order using flexible request options.
-   * @param coinpair Trading pair (e.g., BTCUSDT, XXBTUSDT)
-   * @param quantity Amount of tokens to sell
+   * Send exchange API requests using flexible request options.
    * @param exchangeName The exchange to use for the order
    * @param requestOptions Request configuration (URL, method, body, headers)
    */
-  async createSellOrder(
-    coinpair: string,
-    quantity: number,
+  async sendApiRequest(
     exchangeName: string,
     requestOptions: {
       url: string;
@@ -52,10 +48,10 @@ export class ExchangeApiService implements IExchangeApiService {
   ): Promise<void> {
     try {
       // Debug logging for URL and body
-      console.log(`[${exchangeName.toUpperCase()} ORDER DEBUG] URL: ${requestOptions.url}`);
-      console.log(`[${exchangeName.toUpperCase()} ORDER DEBUG] Method: ${requestOptions.method}`);
-      console.log(`[${exchangeName.toUpperCase()} ORDER DEBUG] Body: ${requestOptions.body || 'null'}`);
-      console.log(`[${exchangeName.toUpperCase()} ORDER DEBUG] Headers: ${JSON.stringify(requestOptions.headers, null, 2)}`);
+      console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] URL: ${requestOptions.url}`);
+      console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] Method: ${requestOptions.method}`);
+      console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] Body: ${requestOptions.body || 'null'}`);
+      console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] Headers: ${JSON.stringify(requestOptions.headers, null, 2)}`);
 
       let response;
       
@@ -69,13 +65,10 @@ export class ExchangeApiService implements IExchangeApiService {
         });
       }
 
-      // TODO these messages should not be implemented in this service
-      const alertMessage = `✅ Order placed with ${exchangeName} for ${quantity} ${coinpair}: ${response.statusText}`;
-      this.logService.log(alertMessage);
-    } catch (err) {
-      const errorMessage = `❌ Failed to place order with ${exchangeName} for ${quantity} ${coinpair}: ${err}`;
-      const error = new Error(errorMessage);
-      this.logService.logError(error);
+      this.logService.log(`✅ Exchange API Request successful: ${exchangeName} - ${response.statusText}`);
+    } catch (error) {
+      const errorMessage = `❌ Exchange API Request Failed: ${exchangeName} - ${error}`;
+      this.logService.logError(errorMessage);
       throw error;
     }
   }

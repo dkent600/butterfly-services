@@ -22,7 +22,7 @@ export class LogService implements ILogService {
     this.log(`${_log  }\n`);
   }
 
-  async logError(err: Error | unknown): Promise<void> {
+  async logError(err: Error | string): Promise<void> {
     // try {
     //   await this.telegramService.sendTelegramErrorMessage(errorToTelegramMessage(err));
     // } catch { }

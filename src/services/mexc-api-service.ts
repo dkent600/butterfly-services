@@ -144,7 +144,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       };
 
       // Use the existing architecture via ExchangeApiService
-      await this.exchangeApiService.createSellOrder(coinpair, quantity, asset.exchange, {
+      await this.exchangeApiService.sendApiRequest(asset.exchange, {
         url,
         method: 'POST',
         body: undefined,
@@ -185,7 +185,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       console.log(`[MEXC ORDER] Placing limit sell order for ${asset.name} at ${price}`);
       
       // Use the existing architecture via ExchangeApiService
-      await this.exchangeApiService.createSellOrder(coinpair, quantity, asset.exchange, {
+      await this.exchangeApiService.sendApiRequest(asset.exchange, {
         url,
         method: 'POST',
         body: undefined,

@@ -6,7 +6,7 @@ export interface IAsset {
 
 export interface ILogService {
   log(message: string): void;
-  logError(err: Error | unknown): void;
+  logError(err: Error | string): void;
   logReport(message: string): void;
 }
 
@@ -18,9 +18,7 @@ export interface IEnvService {
 }
 
 export interface IExchangeApiService {
-  createSellOrder(
-    coinpair: string,
-    quantity: number,
+  sendApiRequest(
     exchangeName: string,
     requestOptions: {
       url: string;

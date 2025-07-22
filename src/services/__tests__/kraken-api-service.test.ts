@@ -37,7 +37,8 @@ describe('KrakenApiService', () => {
       sign: vi.fn(),
       getAPIKey: vi.fn(),
       getAPISecret: vi.fn(),
-      createSellOrder: vi.fn(),
+      sendApiRequest: vi.fn(),
+      cancelOrder: vi.fn(),
     };
 
     // Create mock environment service
@@ -302,12 +303,12 @@ describe('KrakenApiService', () => {
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
       
       // CRITICAL: Mock createSellOrder for unit testing (real calls in integration tests)
-      vi.mocked(mockExchangeApiService.createSellOrder).mockImplementation(async () => {
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockImplementation(async () => {
         return Promise.resolve();
       });
       
       // SAFETY VERIFICATION: Confirm our mocks are properly set up for unit testing
-      if (!vi.isMockFunction(mockExchangeApiService.createSellOrder)) {
+      if (!vi.isMockFunction(mockExchangeApiService.sendApiRequest)) {
         throw new Error('CRITICAL FAILURE: createSellOrder is not mocked for unit tests!');
       }
 
@@ -332,7 +333,7 @@ describe('KrakenApiService', () => {
       const result = await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' });
 
       // expect(getSellAmountSpy).toHaveBeenCalledWith(mockAsset);
-      expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
+      expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
         'XBTUSD',
         50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
@@ -349,7 +350,7 @@ describe('KrakenApiService', () => {
       );
 
       // Verify validate=true is added for test mode
-      const requestOptions = vi.mocked(mockExchangeApiService.createSellOrder).mock.calls[0][3];
+      const requestOptions = vi.mocked(mockExchangeApiService.sendApiRequest).mock.calls[0][3];
       expect(requestOptions.body).toContain('validate=true');
     });
 
@@ -369,7 +370,7 @@ describe('KrakenApiService', () => {
 
       // Verify it would NOT include validate=true for production mode
       // Verify validate=false for production mode (test should verify logic but NOT make real calls)
-      const requestOptions = vi.mocked(mockExchangeApiService.createSellOrder).mock.calls[0][3];
+      const requestOptions = vi.mocked(mockExchangeApiService.sendApiRequest).mock.calls[0][3];
       expect(requestOptions.body).not.toContain('validate=true');
     });
 
@@ -398,7 +399,7 @@ describe('KrakenApiService', () => {
 
       await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' });
 
-      expect(mockExchangeApiService.createSellOrder).toHaveBeenCalledWith(
+      expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
         'XBTUSD', // Should default to USD
         50, // Using mockAsset.amount directly (mockAsset.amount = 50)
         'kraken',
@@ -420,7 +421,7 @@ describe('KrakenApiService', () => {
       });
       
       // Note: getSellAmount no longer exists - mocking a different error
-      vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
 
       await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' })).rejects.toThrow('Could not create limit sell order for BTC');
     });
@@ -434,7 +435,7 @@ describe('KrakenApiService', () => {
       });
       
       // Note: getSellAmount no longer exists - directly testing error handling
-      vi.mocked(mockExchangeApiService.createSellOrder).mockRejectedValue(new Error('API Error'));
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
 
       await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' })).rejects.toThrow('Could not create limit sell order for BTC');
     });
@@ -770,7 +771,7 @@ describe('KrakenApiService', () => {
         },
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(mockExchangeApiService.cancelOrder).mockResolvedValue(mockResponse);
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
@@ -781,10 +782,13 @@ describe('KrakenApiService', () => {
       expect(result.timestamp).toBeDefined();
 
       // Verify the API call was made with correct parameters
-      expect(axios.post).toHaveBeenCalledWith(
-        'https://api.kraken.com/0/private/CancelOrder',
-        expect.stringContaining('txid=OQCLML-BW3P3-BUCMWZ'),
+      expect(mockExchangeApiService.cancelOrder).toHaveBeenCalledWith(
+        'OQCLML-BW3P3-BUCMWZ',
+        'kraken',
         expect.objectContaining({
+          url: 'https://api.kraken.com/0/private/CancelOrder',
+          method: 'POST',
+          body: expect.stringContaining('txid=OQCLML-BW3P3-BUCMWZ'),
           headers: expect.objectContaining({
             'API-Key': 'test-api-key',
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -803,7 +807,7 @@ describe('KrakenApiService', () => {
         },
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(mockExchangeApiService.cancelOrder).mockResolvedValue(mockResponse);
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
@@ -820,7 +824,7 @@ describe('KrakenApiService', () => {
         result: null,
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(mockExchangeApiService.cancelOrder).mockResolvedValue(mockResponse);
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
@@ -835,11 +839,11 @@ describe('KrakenApiService', () => {
     });
 
     it('should handle network errors', async () => {
-      vi.mocked(axios.post).mockRejectedValue(new Error('Network error'));
+      vi.mocked(mockExchangeApiService.cancelOrder).mockRejectedValue(new Error('❌ Failed to cancel order with kraken for transaction OQCLML-BW3P3-BUCMWZ: Error: Network error'));
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Failed to cancel kraken order: Network error');
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Failed to cancel kraken order: ❌ Failed to cancel order with kraken for transaction OQCLML-BW3P3-BUCMWZ: Error: Network error');
     });
 
     it('should handle empty result', async () => {
@@ -848,7 +852,7 @@ describe('KrakenApiService', () => {
         result: null,
       };
 
-      vi.mocked(axios.post).mockResolvedValue({ data: mockResponse });
+      vi.mocked(mockExchangeApiService.cancelOrder).mockResolvedValue(mockResponse);
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
@@ -856,15 +860,14 @@ describe('KrakenApiService', () => {
     });
 
     it('should handle HTTP error responses', async () => {
-      const mockErrorResponse = {
-        response: {
-          data: {
-            error: ['EGeneral:Temporary lockout'],
-          },
+      const mockError = new Error('❌ Failed to cancel order with kraken for transaction OQCLML-BW3P3-BUCMWZ: HTTP Error');
+      (mockError as any).response = {
+        data: {
+          error: ['EGeneral:Temporary lockout'],
         },
       };
 
-      vi.mocked(axios.post).mockRejectedValue(mockErrorResponse);
+      vi.mocked(mockExchangeApiService.cancelOrder).mockRejectedValue(mockError);
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
