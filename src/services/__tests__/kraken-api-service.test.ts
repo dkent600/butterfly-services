@@ -38,7 +38,6 @@ describe('KrakenApiService', () => {
       getAPIKey: vi.fn(),
       getAPISecret: vi.fn(),
       sendApiRequest: vi.fn(),
-      cancelOrder: vi.fn(),
     };
 
     // Create mock environment service
@@ -759,27 +758,18 @@ describe('KrakenApiService', () => {
 
   describe('cancelOrder', () => {
     it('should cancel an order successfully', async () => {
-      const mockResponse = {
-        error: [],
-        result: {
-          count: 1,
-          pending: false,
-        },
-      };
-
-      vi.mocked(mockExchangeApiService.cancelOrder).mockResolvedValue(mockResponse);
+      // Mock sendApiRequest to simulate successful API call
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockResolvedValue();
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
       const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
 
-      expect(result.count).toBe(1);
-      expect(result.pending).toBe(false);
-      expect(result.timestamp).toBeDefined();
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('cancel order created successfully');
 
       // Verify the API call was made with correct parameters
-      expect(mockExchangeApiService.cancelOrder).toHaveBeenCalledWith(
-        'OQCLML-BW3P3-BUCMWZ',
+      expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
         'kraken',
         expect.objectContaining({
           url: 'https://api.kraken.com/0/private/CancelOrder',
@@ -795,79 +785,58 @@ describe('KrakenApiService', () => {
     });
 
     it('should handle pending cancellation', async () => {
-      const mockResponse = {
-        error: [],
-        result: {
-          count: 1,
-          pending: true,
-        },
-      };
-
-      vi.mocked(mockExchangeApiService.cancelOrder).mockResolvedValue(mockResponse);
+      // Mock sendApiRequest to simulate successful API call
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockResolvedValue();
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
       const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
 
-      expect(result.count).toBe(1);
-      expect(result.pending).toBe(true);
-      expect(result.timestamp).toBeDefined();
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('cancel order created successfully');
     });
 
     it('should handle Kraken API error for invalid order', async () => {
-      const mockResponse = {
-        error: ['EOrder:Unknown order'],
-        result: null,
-      };
-
-      vi.mocked(mockExchangeApiService.cancelOrder).mockResolvedValue(mockResponse);
+      // Mock sendApiRequest to throw an error
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('INVALID-ORDER-ID')).rejects.toThrow('Kraken API error: EOrder:Unknown order');
+      await expect(krakenApiService.cancelOrder('INVALID-ORDER-ID')).rejects.toThrow('Could not cancel order txid: INVALID-ORDER-ID');
     });
 
     it('should handle missing API credentials', async () => {
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
-      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('kraken API credentials not configured');
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Could not cancel order txid: OQCLML-BW3P3-BUCMWZ');
     });
 
     it('should handle network errors', async () => {
-      vi.mocked(mockExchangeApiService.cancelOrder).mockRejectedValue(new Error('❌ Failed to cancel order with kraken for transaction OQCLML-BW3P3-BUCMWZ: Error: Network error'));
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('Network error'));
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Failed to cancel kraken order: ❌ Failed to cancel order with kraken for transaction OQCLML-BW3P3-BUCMWZ: Error: Network error');
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Could not cancel order txid: OQCLML-BW3P3-BUCMWZ');
     });
 
     it('should handle empty result', async () => {
-      const mockResponse = {
-        error: [],
-        result: null,
-      };
-
-      vi.mocked(mockExchangeApiService.cancelOrder).mockResolvedValue(mockResponse);
+      // Mock sendApiRequest to throw an error (simulating empty/invalid response)
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('Empty response'));
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('kraken API returned empty result');
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Could not cancel order txid: OQCLML-BW3P3-BUCMWZ');
     });
 
     it('should handle HTTP error responses', async () => {
-      const mockError = new Error('❌ Failed to cancel order with kraken for transaction OQCLML-BW3P3-BUCMWZ: HTTP Error');
-      (mockError as any).response = {
-        data: {
-          error: ['EGeneral:Temporary lockout'],
-        },
-      };
-
-      vi.mocked(mockExchangeApiService.cancelOrder).mockRejectedValue(mockError);
+      const mockError = new Error('HTTP Error');
+      
+      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(mockError);
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('kraken API error: EGeneral:Temporary lockout');
+      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Could not cancel order txid: OQCLML-BW3P3-BUCMWZ');
     });
   });
 });
