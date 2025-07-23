@@ -307,11 +307,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
         const result = await krakenService.getOpenOrders();
 
-        // Convert Kraken's object-based orders to array format
-        const ordersArray = result.orders.open ? Object.values(result.orders.open) : [];
+        // Convert Kraken's object-based orders
+        const ordersObject = result.orders.open;
 
         return {
-          orders: ordersArray,
+          orders: ordersObject,
           timestamp: result.timestamp,
         };
       } catch (error) {
@@ -352,11 +352,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
         const result = await krakenService.getClosedOrders();
 
-        // Convert Kraken's object-based orders to array format
-        const ordersArray = result.orders.closed ? Object.values(result.orders.closed) : [];
+        // Convert Kraken's object-based orders
+        const ordersObject = result.orders.closed ?? [];
 
         return {
-          orders: ordersArray,
+          orders: ordersObject,
           timestamp: result.timestamp,
         };
       } catch (error) {
@@ -414,6 +414,10 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
             },
             required: ['count', 'timestamp'],
           },
+          204: {
+            type: 'null',
+            description: 'Order cancelled successfully (no content)',
+          },
           400: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
@@ -422,11 +426,23 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       try {
         const { txid } = request.params as { txid: string };
 
+        console.log(`[ROUTE DEBUG] Cancel order route called with txid: ${txid}`);
+
         // Use the concrete KrakenApiService type for order-specific methods
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
+        
+        console.log(`[ROUTE DEBUG] About to call krakenService.cancelOrder(${txid})`);
         const result = await krakenService.cancelOrder(txid);
+        console.log('[ROUTE DEBUG] cancelOrder returned:', result);
 
-        return result;
+        // Check if we should return 204 (No Content) or 200 with data
+        if (result && (result.count > 0 || result.pending !== undefined)) {
+          // Return 200 with data if there's meaningful information to return
+          return result;
+        } else {
+          // Return 204 No Content for successful deletion with no additional info
+          return reply.status(204).send();
+        }
       } catch (error) {
         fastify.log.error(error);
         return reply.status(500).send({

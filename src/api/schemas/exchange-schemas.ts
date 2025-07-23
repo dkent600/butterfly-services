@@ -81,10 +81,11 @@ export const OpenOrdersResponseSchema = {
   type: 'object',
   properties: {
     orders: { 
-      type: 'array',
-      description: 'Array of open orders',
-      items: {
+      type: 'object',
+      description: 'object whose property names are order txIds and values are order details',
+      additionalProperties: {
         type: 'object',
+        description: 'Order details for a specific txId',
         properties: {
           refid: { type: ['string', 'null'], description: 'Referral order transaction ID that created this order' },
           userref: { type: 'number', description: 'User reference ID' },
@@ -117,7 +118,6 @@ export const OpenOrdersResponseSchema = {
           misc: { type: 'string', description: 'Miscellaneous info' },
           oflags: { type: 'string', description: 'Order flags' },
         },
-        required: ['refid', 'userref', 'status', 'opentm', 'starttm', 'expiretm', 'descr', 'vol', 'vol_exec', 'cost', 'fee', 'price', 'stopprice', 'limitprice', 'misc', 'oflags'],
       },
     },
     timestamp: { type: 'string', format: 'date-time' },
@@ -129,10 +129,11 @@ export const ClosedOrdersResponseSchema = {
   type: 'object',
   properties: {
     orders: { 
-      type: 'array',
-      description: 'Array of closed orders',
-      items: {
+      type: 'object',
+      description: 'object whose property names are order txIds and values are order details',
+      additionalProperties: {
         type: 'object',
+        description: 'Order details for a specific txId',
         properties: {
           refid: { type: ['string', 'null'], description: 'Referral order transaction ID that created this order' },
           userref: { type: 'number', description: 'User reference ID' },
@@ -167,7 +168,6 @@ export const ClosedOrdersResponseSchema = {
           misc: { type: 'string', description: 'Miscellaneous info' },
           oflags: { type: 'string', description: 'Order flags' },
         },
-        required: ['refid', 'userref', 'status', 'opentm', 'starttm', 'expiretm', 'descr', 'vol', 'vol_exec', 'cost', 'fee', 'price', 'stopprice', 'limitprice', 'misc', 'oflags'],
       },
     },
     timestamp: { type: 'string', format: 'date-time' },
