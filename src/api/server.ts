@@ -17,6 +17,8 @@ export async function createServer(): Promise<FastifyInstance> {
   await server.register(import('@fastify/cors'), {
     origin: true,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // Register security headers
