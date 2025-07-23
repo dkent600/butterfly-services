@@ -582,19 +582,33 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       }
       
       const exchangeName = this.getExchangeName();
+      
+      // CRITICAL SAFETY CHECK: Block cancel orders in test mode
+      // Unlike AddOrder, Kraken's CancelOrder endpoint does NOT respect validate=true
+      // It will actually cancel orders even with validate=true, so we must block entirely
+      if (this.shouldUseTestMode()) {
+        console.log(`[KRAKEN MODE] 🚫 BLOCKED: Cancel order in test mode! Order cancel: (${txid})`);
+        console.log('[KRAKEN MODE] ⚠️  WARNING: Kraken CancelOrder API ignores validate=true parameter');
+        console.log('[KRAKEN MODE] 🛡️  SAFETY: Preventing real cancellation during testing');
+        
+        // Return success response for testing purposes without making actual API call
+        return { 
+          success: true, 
+          message: `Test mode: Cancel order blocked for safety. Would have cancelled txid: ${txid}`,
+          testMode: true,
+          blocked: true,
+        };
+      }
+      
+      console.log(`[KRAKEN MODE]❗Running in production! Order cancel: (${txid})`);
+      
       const nonce = await this.generateUniqueNonce();
 
       const orderParams: Record<string, string> = {
         nonce: nonce.toString(),
         txid,
-        ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
+        // NOTE: validate=true does NOT work for CancelOrder endpoint - removed for clarity
       };
-
-      if (orderParams?.validate !== 'true') {
-        console.log(`[KRAKEN MODE]❗Running in production! Order cancel: (${txid})`);
-      } else {
-        console.log(`[KRAKEN MODE] Running in test mode! Order cancel: (${txid})`);
-      }
 
       const postData = new URLSearchParams(orderParams).toString();
       const path = '/0/private/CancelOrder';
@@ -615,12 +629,6 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         'User-Agent': 'butterfly-services/1.0',
       };
 
-      // Log environment context (without exposing secrets)
-      // console.log(`[KRAKEN AUTH] Cancel Order - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);      
-      // console.log(`[KRAKEN DEBUG] Cancel Order Request - URL: ${url}, PostData: ${postData}`);
-      // console.log(`[KRAKEN DEBUG] Cancel Order Headers: ${JSON.stringify({ 'API-Key': `${apiKey.substring(0, 10)}...`, 'API-Sign': `${signature.substring(0, 20)}...` })}`);
-      
-
       // Use the ExchangeApiService following the established design pattern
       await this.exchangeApiService.sendApiRequest(exchangeName, {
         url,
@@ -629,7 +637,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         headers,
       });
 
-    return { success: true, message: 'cancel order created successfully, ${txid}' };
+    return { success: true, message: `Cancel order executed successfully for txid: ${txid}` };
 
     } catch (error) {
       // If it's already a specific error we threw, preserve it

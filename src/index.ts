@@ -43,6 +43,15 @@ async function main() {
     const port = envService.getNumber('app.port') || 3000;
     const host = envService.get('app.host') || 'localhost';
 
+    const useTestMode = envService.getBoolean('app.useTestMode');
+    const nodeEnv = envService.get('app.environment');
+
+    if (useTestMode === false && nodeEnv ?.startsWith('production')) {
+      console.log('❗Running in production❗');
+    } else {
+      console.log('❗Running in debug mode❗');
+    }
+
     const server = await startServer(port, host);
 
     // Graceful shutdown
