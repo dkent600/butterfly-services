@@ -115,95 +115,88 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   ): Promise<any> {
     const { orderType, price, to } = options;
     
-    // Validate required parameters based on order type
-    if (orderType === 'limit' && !price) {
-      throw new Error('Price is required for limit orders');
-    }
-    
-    // For market orders, use the existing architecture directly via exchangeApiService
-    if (orderType === 'market') {
-      // Prepare request for ExchangeApiService
-      const coinpair = this.createPair(asset, to);
-      const quantity = asset.amount;
-
-      // Enhanced nonce generation: Use atomic nonce generation for concurrent request safety
-      const timestamp = await this.generateUniqueNonce();
-      
-      // Build query string for market order
-      const queryString = `symbol=${coinpair}&side=SELL&type=MARKET&quantity=${quantity}&timestamp=${timestamp}`;
-
-      const signature = this.exchangeApiService.sign(queryString, this.exchangeApiService.getAPISecret(asset.exchange));
-
-      // Use test mode based on environment configuration
-      const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
-      const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
-
-      const headers = {
-        'X-MEXC-APIKEY': this.exchangeApiService.getAPIKey(asset.exchange),
-        'Content-Type': 'application/json',
-      };
-
-      // Use the existing architecture via ExchangeApiService
-      await this.exchangeApiService.sendApiRequest(asset.exchange, {
-        url,
-        method: 'POST',
-        body: undefined,
-        headers,
-      });
-      
-      return { success: true, message: 'Market sell order created successfully' };
-    }
-    
-    // For limit orders, we need to implement this functionality
-    // For now, fall back to direct implementation until we add limit order support to IExchangeApiService
     try {
-      // For limit orders, price must be defined (validated above)
-      if (!price) {
+      // Validate required parameters based on order type
+      if (orderType === 'limit' && !price) {
         throw new Error('Price is required for limit orders');
       }
       
-      const coinpair = this.createPair(asset, to);
+      const exchangeName = this.getExchangeName();
+      const symbol = this.createPair(asset, to);
       const quantity = asset.amount;
-
-      // Enhanced nonce generation: Use atomic nonce generation for concurrent request safety
       const timestamp = await this.generateUniqueNonce();
       
-      // Build query string for limit order
-      const queryString = `symbol=${coinpair}&side=SELL&type=LIMIT&quantity=${quantity}&price=${price}&timestamp=${timestamp}`;
-
-      const signature = this.exchangeApiService.sign(queryString, this.exchangeApiService.getAPISecret(asset.exchange));
-
+      console.log(`MODE: Using test mode: ${this.shouldUseTestMode()}, Environment: ${this.envService.get('app.environment')}`);
+      
+      // Build query parameters
+      const orderParams: Record<string, string> = {
+        symbol,
+        side: 'SELL',
+        type: orderType.toUpperCase(),
+        quantity: quantity.toString(),
+        timestamp: timestamp.toString(),
+      };
+      
+      if (orderType === 'limit' && price) {
+        orderParams.price = price.toString();
+      }
+      
+      if (this.shouldUseTestMode()) {
+        console.log(`[MEXC MODE] Running in test mode! ${asset.name} at ${price || 'market'}`);
+      } else {
+        console.log(`[MEXC MODE] ❗Running in production! ${asset.name} at ${price || 'market'}`);
+      }
+      
+      const queryString = new URLSearchParams(orderParams).toString();
+      const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
+      const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
+      
+      if (!apiKey || !apiSecret) {
+        throw new Error(`${exchangeName} API credentials not configured`);
+      }
+      
+      const signature = this.exchangeApiService.sign(queryString, apiSecret);
+      
       // Use test mode based on environment configuration
       const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
       const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
-
+      
       const headers = {
-        'X-MEXC-APIKEY': this.exchangeApiService.getAPIKey(asset.exchange),
+        'X-MEXC-APIKEY': apiKey,
         'Content-Type': 'application/json',
       };
-
-      console.log(`[MEXC ORDER] Placing limit sell order for ${asset.name} at ${price}`);
       
       // Use the existing architecture via ExchangeApiService
-      await this.exchangeApiService.sendApiRequest(asset.exchange, {
+      await this.exchangeApiService.sendApiRequest(exchangeName, {
         url,
         method: 'POST',
         body: undefined,
         headers,
       });
       
-      return { success: true, message: 'Limit sell order created successfully' };
+      return { success: true, message: `${orderType === 'market' ? 'Market' : 'Limit'} sell order created successfully` };
+      
     } catch (error) {
-      console.error(`Failed to create limit sell order for ${asset.name}:`, error);
+      // If it's already a specific error we threw, preserve it
+      if (error instanceof Error && (
+        error.message.includes('MEXC API error:') ||
+        error.message.includes('Price is required for limit orders') ||
+        error.message.includes('API Error')
+      )) {
+        throw error;
+      }
+      
+      console.error(`Failed to create ${orderType} sell order for ${asset.name}:`, error);
       console.error('Order details:', {
-        coinpair: this.createPair(asset, to),
+        orderType,
+        symbol: this.createPair(asset, to),
         quantity: asset.amount,
         price,
-        hasApiKey: !!this.exchangeApiService.getAPIKey(asset.exchange),
-        hasApiSecret: !!this.exchangeApiService.getAPISecret(asset.exchange),
+        hasApiKey: !!this.exchangeApiService.getAPIKey(this.getExchangeName()),
+        hasApiSecret: !!this.exchangeApiService.getAPISecret(this.getExchangeName()),
         errorResponse: (error as any).response?.data,
       });
-      throw new Error(`Could not create limit sell order for ${asset.name}`);
+      throw new Error(`Could not create ${orderType} sell order for ${asset.name}`);
     }
   }
 
