@@ -216,4 +216,8 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     // This method should be implemented to fetch closed orders from the exchange
     throw new Error('getClosedOrders method not implemented yet');
   }
+
+  cancelOrder(txid: string): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
 }
