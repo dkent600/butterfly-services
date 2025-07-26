@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { container, configureDI } from '../../container.js';
-import { KrakenApiService } from '../kraken-api-service.js';
+import { container, configureDI } from '../../../container.js';
+import { KrakenApiService } from '../../kraken-api-service.js';
 
 describe('KrakenApiService Race Condition Test', () => {
   let krakenService: KrakenApiService;

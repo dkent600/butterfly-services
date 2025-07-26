@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { container, configureDI } from '../../container.js';
-import { KrakenApiService } from '../kraken-api-service.js';
-import { IAsset } from '../../types/interfaces.js';
+import { container, configureDI } from '../../../container.js';
+import { KrakenApiService } from '../../kraken-api-service.js';
+import { IAsset } from '../../../types/interfaces.js';
 
 describe('KrakenApiService Sequential Balance Tests', () => {
   let krakenService: KrakenApiService;

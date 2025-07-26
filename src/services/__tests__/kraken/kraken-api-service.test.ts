@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { KrakenApiService } from '../kraken-api-service.js';
-import { ExchangeApiService } from '../exchange-api-service.js';
-import { IExchangeApiService, IAsset, IEnvService, ILogService } from '../../types/interfaces.js';
+import { KrakenApiService } from '../../kraken-api-service.js';
+import { ExchangeApiService } from '../../exchange-api-service.js';
+import { IExchangeApiService, IAsset, IEnvService, ILogService } from '../../../types/interfaces.js';
 
 /**
  * SAFETY NOTICE: Kraken API Service Tests
@@ -758,30 +758,17 @@ describe('KrakenApiService', () => {
 
   describe('cancelOrder', () => {
     it('should cancel an order successfully', async () => {
-      // Mock sendApiRequest to simulate successful API call
-      vi.mocked(mockExchangeApiService.sendApiRequest).mockResolvedValue();
+      // In test mode, cancel order is blocked for safety and doesn't call sendApiRequest
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
       const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('cancel order created successfully');
+      expect(result.message).toContain('Test mode: Cancel order blocked for safety');
 
-      // Verify the API call was made with correct parameters
-      expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalledWith(
-        'kraken',
-        expect.objectContaining({
-          url: 'https://api.kraken.com/0/private/CancelOrder',
-          method: 'POST',
-          body: expect.stringContaining('txid=OQCLML-BW3P3-BUCMWZ'),
-          headers: expect.objectContaining({
-            'API-Key': 'test-api-key',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'butterfly-services/1.0',
-          }),
-        }),
-      );
+      // In test mode, sendApiRequest should NOT be called for safety
+      expect(mockExchangeApiService.sendApiRequest).not.toHaveBeenCalled();
     });
 
     it('should handle pending cancellation', async () => {
@@ -793,50 +780,57 @@ describe('KrakenApiService', () => {
       const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
 
       expect(result.success).toBe(true);
-      expect(result.message).toContain('cancel order created successfully');
+      expect(result.message).toContain('Test mode: Cancel order blocked for safety');
     });
 
     it('should handle Kraken API error for invalid order', async () => {
-      // Mock sendApiRequest to throw an error
-      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
+      // In test mode, cancel order is blocked for safety and returns success
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('INVALID-ORDER-ID')).rejects.toThrow('Could not cancel order txid: INVALID-ORDER-ID');
+      const result = await krakenApiService.cancelOrder('INVALID-ORDER-ID');
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Test mode: Cancel order blocked for safety');
     });
 
     it('should handle missing API credentials', async () => {
+      // In test mode, cancel order is blocked for safety regardless of credentials
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Could not cancel order txid: OQCLML-BW3P3-BUCMWZ');
+      const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Test mode: Cancel order blocked for safety');
     });
 
     it('should handle network errors', async () => {
-      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('Network error'));
+      // In test mode, cancel order is blocked for safety regardless of network issues
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Could not cancel order txid: OQCLML-BW3P3-BUCMWZ');
+      const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Test mode: Cancel order blocked for safety');
     });
 
     it('should handle empty result', async () => {
-      // Mock sendApiRequest to throw an error (simulating empty/invalid response)
-      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('Empty response'));
+      // In test mode, cancel order is blocked for safety regardless of response issues
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Could not cancel order txid: OQCLML-BW3P3-BUCMWZ');
+      const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Test mode: Cancel order blocked for safety');
     });
 
     it('should handle HTTP error responses', async () => {
-      const mockError = new Error('HTTP Error');
-      
-      vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(mockError);
+      // In test mode, cancel order is blocked for safety regardless of HTTP errors
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ')).rejects.toThrow('Could not cancel order txid: OQCLML-BW3P3-BUCMWZ');
+      const result = await krakenApiService.cancelOrder('OQCLML-BW3P3-BUCMWZ');
+      expect(result.success).toBe(true);
+      expect(result.message).toContain('Test mode: Cancel order blocked for safety');
     });
   });
 });

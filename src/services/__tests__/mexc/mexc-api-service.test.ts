@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MexcApiService } from '../mexc-api-service.js';
-import { IExchangeApiService, IAsset, IEnvService } from '../../types/interfaces.js';
+import { MexcApiService } from '../../mexc-api-service.js';
+import { IExchangeApiService, IAsset, IEnvService } from '../../../types/interfaces.js';
 
 /**
  * SAFETY NOTICE: MEXC API Service Tests
