@@ -217,7 +217,97 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     throw new Error('getClosedOrders method not implemented yet');
   }
 
-  cancelOrder(txid: string): Promise<any> {
-    throw new Error('Method not implemented.');
+  /**
+   * Cancels an order on MEXC
+   * https://mexcdevelop.github.io/apidocs/spot_v3_en/#cancel-order
+   * @param txid - The order ID to cancel
+   * @returns Promise with cancellation result
+   */
+  async cancelOrder(txid: string): Promise<any> {
+    try {
+      // Validate order ID first
+      if (!txid || txid.trim() === '') {
+        throw new Error('Order ID is required to cancel an order');
+      }
+      
+      const exchangeName = this.getExchangeName();
+      
+      // CRITICAL SAFETY CHECK: Block cancel orders in test mode
+      // Production cancellations could result in financial loss during testing
+      if (this.shouldUseTestMode()) {
+        console.log(`[MEXC MODE] 🚫 BLOCKED: Cancel order in test mode! Order cancel: (${txid})`);
+        console.log('[MEXC MODE] 🛡️  SAFETY: Preventing real cancellation during testing');
+        
+        // Return success response for testing purposes without making actual API call
+        return { 
+          success: true, 
+          message: `Test mode: Cancel order blocked for safety. Would have cancelled orderId: ${txid}`,
+          testMode: true,
+          blocked: true,
+        };
+      }
+      
+      console.log(`[MEXC MODE] ❗Running in production! Order cancel: (${txid})`);
+      
+      // Check API credentials
+      const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
+      const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
+
+      if (!apiKey || !apiSecret) {
+        throw new Error(`${exchangeName} API credentials not configured`);
+      }
+
+      // MEXC requires symbol parameter for cancel order
+      // Since we don't have the symbol, we'll need to fetch it from open orders first
+      // This is a limitation that could be improved by storing symbol with order ID
+      // or by implementing a different cancellation strategy
+      
+      // For now, throw an informative error about the implementation limitation
+      throw new Error('MEXC cancel order requires symbol parameter. Implementation needs order symbol lookup or modified order storage to include symbol.');
+
+      // TODO: Implement symbol lookup from open orders or modify order creation to store symbol
+      // The complete implementation would look like this:
+      /*
+      const timestamp = await this.generateUniqueNonce();
+      const symbol = await this.getOrderSymbol(txid); // Need to implement this method
+      const queryString = `symbol=${symbol}&orderId=${txid}&timestamp=${timestamp}`;
+      const signature = this.exchangeApiService.sign(queryString, apiSecret);
+      
+      const url = `${this.getApiUrl('/api/v3/order')}?${queryString}&signature=${signature}`;
+      
+      const headers = {
+        'X-MEXC-APIKEY': apiKey,
+        'Content-Type': 'application/json',
+      };
+
+      await this.exchangeApiService.sendApiRequest(exchangeName, {
+        url,
+        method: 'DELETE',
+        body: undefined,
+        headers,
+      });
+
+      return { success: true, message: `Cancel order executed successfully for orderId: ${txid}` };
+      */
+
+    } catch (error) {
+      // If it's already a specific error we threw, preserve it
+      if (error instanceof Error && (
+        error.message.includes('Order ID is required') ||
+        error.message.includes('API credentials not configured') ||
+        error.message.includes('requires symbol parameter')
+      )) {
+        throw error;
+      }
+
+      console.error(`Failed to cancel order orderId: ${txid}:`, error);
+      console.error('Order details:', {
+        orderId: txid,
+        hasApiKey: !!this.exchangeApiService.getAPIKey(this.getExchangeName()),
+        hasApiSecret: !!this.exchangeApiService.getAPISecret(this.getExchangeName()),
+        errorResponse: (error as any).response?.data,
+      });
+      throw new Error(`Could not cancel order for orderId: ${txid}`);
+    }
   }
 }

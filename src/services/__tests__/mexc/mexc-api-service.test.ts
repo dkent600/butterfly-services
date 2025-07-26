@@ -403,4 +403,79 @@ describe('MexcApiService', () => {
       expect(result).toBe('https://api.mexc.com/api/v3/time');
     });
   });
+
+  describe('cancelOrder', () => {
+    it('should block cancel order in test mode for safety', async () => {
+      // Mock test mode
+      vi.mocked(mockEnvService.get).mockImplementation((key: string) => {
+        if (key === 'NODE_ENV') return 'development';
+        if (key === 'api.mexc.testMode') return 'true';
+        return undefined;
+      });
+
+      const orderId = 'ORDER_123456';
+      
+      const result = await mexcApiService.cancelOrder(orderId);
+      
+      expect(result).toEqual({
+        success: true,
+        message: `Test mode: Cancel order blocked for safety. Would have cancelled orderId: ${orderId}`,
+        testMode: true,
+        blocked: true,
+      });
+      
+      // Verify no actual API calls were made
+      expect(mockExchangeApiService.sendApiRequest).not.toHaveBeenCalled();
+    });
+
+    it('should throw error about symbol requirement in production mode', async () => {
+      // Mock production mode by setting proper environment variables
+      vi.mocked(mockEnvService.getBoolean).mockImplementation((key: string) => {
+        if (key === 'app.useTestMode') return false;
+        return true; // default to true for safety
+      });
+      vi.mocked(mockEnvService.get).mockImplementation((key: string) => {
+        if (key === 'app.environment') return 'production';
+        return undefined;
+      });
+
+      // Mock API credentials
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('mock-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('mock-api-secret');
+
+      const orderId = 'ORDER_123456';
+      
+      await expect(mexcApiService.cancelOrder(orderId)).rejects.toThrow(
+        'MEXC cancel order requires symbol parameter. Implementation needs order symbol lookup or modified order storage to include symbol.'
+      );
+    });
+
+    it('should throw error for missing order ID', async () => {
+      await expect(mexcApiService.cancelOrder('')).rejects.toThrow(
+        'Order ID is required to cancel an order'
+      );
+    });
+
+    it('should throw error for missing API credentials in production', async () => {
+      // Mock production mode by setting proper environment variables
+      vi.mocked(mockEnvService.getBoolean).mockImplementation((key: string) => {
+        if (key === 'app.useTestMode') return false;
+        return true; // default to true for safety
+      });
+      vi.mocked(mockEnvService.get).mockImplementation((key: string) => {
+        if (key === 'app.environment') return 'production';
+        return undefined;
+      });
+
+      // Mock missing credentials
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('');
+
+      const orderId = 'ORDER_123456';
+      
+      await expect(mexcApiService.cancelOrder(orderId)).rejects.toThrow(
+        'mexc API credentials not configured'
+      );
+    });
+  });
 });
