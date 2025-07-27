@@ -81,6 +81,35 @@ export default [
     },
   },
 
+  // Node.js scripts configuration
+  {
+    files: ['scripts/**/*.js', 'scripts/**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        // Node.js globals
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+      },
+    },
+    rules: {
+      // More relaxed rules for utility scripts
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off', // Allow any in scripts for API responses
+      'no-console': 'off', // Allow console in scripts
+      'no-process-exit': 'off', // Allow process.exit in scripts
+    },
+  },
+
   // Ignore patterns
   {
     ignores: [
