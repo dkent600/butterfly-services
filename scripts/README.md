@@ -33,6 +33,7 @@ Scripts for testing exchange-specific functionality:
 - `test-kraken-api.js` - Direct Kraken API testing
 - `test-public-kraken.js` - Public Kraken endpoint testing
 - `test-kraken-pairs.js` - Kraken trading pair testing
+- `test-mexc-api.js` - **NEW** Direct MEXC API integration testing (real test endpoints)
 - `test-doge-pairs.js` - DOGE-specific pair testing
 - `test-pair-creation.js` - Trading pair creation testing
 - `test-usd-formats.js` - USD format handling testing
@@ -47,6 +48,9 @@ node scripts/concurrency-testing/test-concurrent-requests.js
 
 # Example: Test Kraken API directly
 node scripts/exchange-testing/test-kraken-api.js
+
+# Example: Test MEXC API integration (real test endpoints)
+node scripts/exchange-testing/test-mexc-api.js
 
 # Example: Debug nonce generation
 node scripts/nonce-testing/debug-nonce.js
