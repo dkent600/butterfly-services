@@ -16,12 +16,12 @@ export interface IOpenedOrderListItem {
 export interface IClosedOrderListItem {
   orderId: string;
   pair: string;
+  price: string;
+  amount: string;
   direction: 'buy' | 'sell';
   type: 'market' | 'limit';
   status: string;
-  amount: string;
   amountExecuted: string;
-  price: string;
   limitPrice: string;
   cost: string;
 }
