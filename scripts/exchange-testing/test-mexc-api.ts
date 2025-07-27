@@ -2,37 +2,7 @@
  * MEXC Integration Test Script
  * 
  * This script makes REAL API calls to MEXC's test endpoints to verify that
- * the createSel  async  asynasync async async function testMexcIntegration() {
-  console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);ole.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);tion testMexcIntegration() {
-  console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);ole.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);tion testMexcIntegration() {
-  console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);tion testMexcIntegration() {
-  console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);e.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);tion testMexcIntegration() {
-  console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);e.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
-  console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);r method works correctly end-to-end.
+ * the createSellOrder method works correctly end-to-end.
  * 
  * ⚠️  SAFETY: This script uses MEXC's test endpoints (/api/v3/order/test)
  * which simulate orders without executing real trades.
@@ -69,11 +39,11 @@ const USE_TEST_MODE = process.env.NODE_ENV !== 'production';
 console.log('🧪 MEXC Integration Test - Real API Calls to Test Endpoints');
 console.log('===========================================================\n');
 
-function generateTimestamp() {
+function generateTimestamp(): number {
   return Date.now();
 }
 
-function signMexcRequest(queryString, apiSecret) {
+function signMexcRequest(queryString: string, apiSecret: string): string {
   return crypto
     .createHmac('sha256', apiSecret)
     .update(queryString)
@@ -100,9 +70,9 @@ function makeHttpsRequest(hostname: string, path: string, method: string = 'GET'
       res.on('end', () => {
         try {
           const parsedData = JSON.parse(data);
-          resolve({ status: res.statusCode, data: parsedData });
+          resolve({ status: res.statusCode!, data: parsedData });
         } catch (error) {
-          resolve({ status: res.statusCode, data, error: 'JSON parse error' });
+          resolve({ status: res.statusCode!, data, error: 'JSON parse error' });
         }
       });
     });
@@ -162,7 +132,7 @@ async function fetchMexcPrice(symbol: string): Promise<ApiResponse> {
 async function testMexcIntegration() {
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
-  console.log(`�🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
+  console.log(`🔑 API Key: ${MEXC_API_KEY ? 'Configured' : 'Missing'}`);
   console.log(`🔐 API Secret: ${MEXC_API_SECRET ? 'Configured' : 'Missing'}\n`);
   
   // CRITICAL SAFETY CHECK: Block integration tests in production mode
@@ -192,10 +162,10 @@ async function testMexcIntegration() {
   
   try {
     // Test 1: Fetch Current Price
-    console.log('� TEST 1: Fetch Current Price');
+    console.log('📊 TEST 1: Fetch Current Price');
     console.log('==============================');
     try {
-      const priceResult = await fetchMexcPrice(testSymbol) as ApiResponse;
+      const priceResult = await fetchMexcPrice(testSymbol);
       
       if (priceResult.status === 200 && priceResult.data.price) {
         const price = parseFloat(priceResult.data.price);
@@ -204,15 +174,15 @@ async function testMexcIntegration() {
       } else {
         console.log('❌ Price fetch test FAILED:', priceResult);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('❌ Price fetch error:', error.message);
     }
     
     // Test 2: Market Order (Test Mode)
-    console.log('� TEST 2: Market Sell Order (Test Mode)');
+    console.log('🛒 TEST 2: Market Sell Order (Test Mode)');
     console.log('=========================================');
     try {
-      const marketResult = await createMexcSellOrder(testSymbol, testQuantity, 'MARKET') as ApiResponse;
+      const marketResult = await createMexcSellOrder(testSymbol, testQuantity, 'MARKET');
       
       console.log('📋 Market Order Response:', JSON.stringify(marketResult, null, 2));
       
@@ -223,17 +193,17 @@ async function testMexcIntegration() {
       } else {
         console.log(`❌ Market order test response: HTTP ${marketResult.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('❌ Market order error:', error.message);
     }
     
     console.log('');
     
     // Test 3: Limit Order (Test Mode)
-    console.log('� TEST 3: Limit Sell Order (Test Mode)');
+    console.log('📈 TEST 3: Limit Sell Order (Test Mode)');
     console.log('========================================');
     try {
-      const limitResult = await createMexcSellOrder(testSymbol, testQuantity, 'LIMIT', testLimitPrice) as ApiResponse;
+      const limitResult = await createMexcSellOrder(testSymbol, testQuantity, 'LIMIT', testLimitPrice);
       
       console.log('📋 Limit Order Response:', JSON.stringify(limitResult, null, 2));
       
@@ -244,17 +214,17 @@ async function testMexcIntegration() {
       } else {
         console.log(`❌ Limit order test response: HTTP ${limitResult.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('❌ Limit order error:', error.message);
     }
     
     console.log('');
     
     // Test 4: Error Handling - Invalid Symbol
-    console.log('� TEST 4: Error Handling - Invalid Symbol');
+    console.log('🚨 TEST 4: Error Handling - Invalid Symbol');
     console.log('==========================================');
     try {
-      const invalidResult = await createMexcSellOrder('INVALIDUSDT', testQuantity, 'MARKET') as ApiResponse;
+      const invalidResult = await createMexcSellOrder('INVALIDUSDT', testQuantity, 'MARKET');
       
       console.log('📋 Invalid Symbol Response:', JSON.stringify(invalidResult, null, 2));
       
@@ -263,11 +233,11 @@ async function testMexcIntegration() {
       } else {
         console.log('❌ Invalid symbol test FAILED - API should reject invalid symbols');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('✅ Invalid symbol test PASSED - Network/API error as expected:', error.message);
     }
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Integration Test Failed:', error);
     console.error('Error Details:', {
       name: error.name,

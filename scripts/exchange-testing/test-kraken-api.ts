@@ -4,22 +4,7 @@
  * This script makes REAL API calls to Kraken's endpoints to verify that
  * the exchange integration works correctly end-to-end.
  * 
- * ⚠️  SAFETY: Th    try {
-      const balanceResult = await makeKrakenPrivateRequest('/0/private/Balance', {}) as any;
-      
-      console.log('📋 Balance Response:', JSON.stringify(balanceResult, null, 2));
-      
-      if (balanceResult.status === 200 && balanceResult.data.result) {
-        console.log('✅ Balance fetch test PASSED - API accepted request');
-        
-        const balances = balanceResult.data.result;
-        const nonZeroBalances = Object.entries(balances).filter(([, balance]) => parseFloat(balance as string) > 0);
-        
-        if (nonZeroBalances.length > 0) {
-          console.log('💰 Non-zero balances found:');
-          nonZeroBalances.forEach(([asset, balance]) => {
-            console.log(`   ${asset}: ${parseFloat(balance as string)}`);
-          });eal Kraken API endpoints but includes
+ * ⚠️  SAFETY: This script uses real Kraken API endpoints but includes
  * safety checks and warnings for credential management.
  * 
  * Prerequisites:
@@ -57,9 +42,9 @@ function generateNonce() {
   return Date.now();
 }
 
-function signKrakenRequest(path, postData, apiSecret) {
+function signKrakenRequest(path: string, postData: string, apiSecret: string): string {
   const nonceMatch = postData.match(/nonce=(\d+)/);
-  const nonce = nonceMatch[1];
+  const nonce = nonceMatch![1];
   
   const apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
   const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
@@ -69,7 +54,7 @@ function signKrakenRequest(path, postData, apiSecret) {
   return apiSha512.toString('base64');
 }
 
-function makeHttpsRequest(hostname, path, method = 'GET', headers = {}, body = null) {
+function makeHttpsRequest(hostname: string, path: string, method: string = 'GET', headers: Record<string, string> = {}, body: string | null = null): Promise<ApiResponse> {
   return new Promise((resolve, reject) => {
     const options = {
       hostname,
@@ -89,9 +74,9 @@ function makeHttpsRequest(hostname, path, method = 'GET', headers = {}, body = n
       res.on('end', () => {
         try {
           const parsedData = JSON.parse(data);
-          resolve({ status: res.statusCode, data: parsedData });
+          resolve({ status: res.statusCode!, data: parsedData });
         } catch (error) {
-          resolve({ status: res.statusCode, data, error: 'JSON parse error' });
+          resolve({ status: res.statusCode!, data, error: 'JSON parse error' });
         }
       });
     });
@@ -108,7 +93,7 @@ function makeHttpsRequest(hostname, path, method = 'GET', headers = {}, body = n
   });
 }
 
-async function makeKrakenPrivateCall(endpoint, params = {}) {
+async function makeKrakenPrivateCall(endpoint: string, params: Record<string, string> = {}): Promise<ApiResponse> {
   const nonce = generateNonce();
   const postData = new URLSearchParams({ nonce: nonce.toString(), ...params }).toString();
   
@@ -120,18 +105,18 @@ async function makeKrakenPrivateCall(endpoint, params = {}) {
     'API-Key': KRAKEN_API_KEY,
     'API-Sign': signature,
     'Content-Type': 'application/x-www-form-urlencoded',
-    'Content-Length': Buffer.byteLength(postData)
+    'Content-Length': Buffer.byteLength(postData).toString()
   };
   
   return await makeHttpsRequest(KRAKEN_API_BASE, endpoint, 'POST', headers, postData);
 }
 
-async function fetchKrakenServerTime() {
+async function fetchKrakenServerTime(): Promise<ApiResponse> {
   console.log(`📊 Fetching server time from Kraken`);
   return await makeHttpsRequest(KRAKEN_API_BASE, '/0/public/Time', 'GET');
 }
 
-async function fetchKrakenTicker(pair) {
+async function fetchKrakenTicker(pair: string): Promise<ApiResponse> {
   console.log(`📊 Fetching ticker for: ${pair}`);
   return await makeHttpsRequest(KRAKEN_API_BASE, `/0/public/Ticker?pair=${pair}`, 'GET');
 }
@@ -167,7 +152,7 @@ async function testKrakenIntegration() {
     console.log('⏰ TEST 1: Fetch Server Time (Public API)');
     console.log('==========================================');
     try {
-      const timeResult = await fetchKrakenServerTime() as any;
+      const timeResult = await fetchKrakenServerTime();
       
       if (timeResult.status === 200 && timeResult.data.result) {
         const serverTime = timeResult.data.result;
@@ -176,7 +161,7 @@ async function testKrakenIntegration() {
       } else {
         console.log('❌ Server time test FAILED:', timeResult);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('❌ Server time error:', error.message);
     }
     
@@ -184,7 +169,7 @@ async function testKrakenIntegration() {
     console.log('📈 TEST 2: Fetch Ticker Data (Public API)');
     console.log('==========================================');
     try {
-      const tickerResult = await fetchKrakenTicker(testPair) as any;
+      const tickerResult = await fetchKrakenTicker(testPair);
       
       if (tickerResult.status === 200 && tickerResult.data.result) {
         const ticker = Object.values(tickerResult.data.result)[0] as any;
@@ -198,7 +183,7 @@ async function testKrakenIntegration() {
       } else {
         console.log('❌ Ticker fetch test FAILED:', tickerResult);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('❌ Ticker fetch error:', error.message);
     }
     
@@ -229,7 +214,7 @@ async function testKrakenIntegration() {
       } else {
         console.log(`❌ Balance test response: HTTP ${balanceResult.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('❌ Balance fetch error:', error.message);
     }
     
@@ -239,7 +224,7 @@ async function testKrakenIntegration() {
     console.log('🚨 TEST 4: Error Handling - Invalid Endpoint');
     console.log('=============================================');
     try {
-      const invalidResult = await makeKrakenPrivateCall('/0/private/InvalidEndpoint') as any;
+      const invalidResult = await makeKrakenPrivateCall('/0/private/InvalidEndpoint');
       
       console.log('📋 Invalid Endpoint Response:', JSON.stringify(invalidResult, null, 2));
       
@@ -248,11 +233,11 @@ async function testKrakenIntegration() {
       } else {
         console.log('❌ Invalid endpoint test FAILED - API should reject invalid endpoints');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log('✅ Invalid endpoint test PASSED - Network/API error as expected:', error.message);
     }
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('💥 Integration Test Failed:', error);
     console.error('Error Details:', {
       name: error.name,
