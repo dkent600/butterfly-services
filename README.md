@@ -109,11 +109,46 @@ curl http://localhost:3000
 
 | Command | Purpose | Output |
 |---------|---------|---------|
-| `npm test` | Full test suite with linting | Comprehensive validation |
+| `npm test` | Full test suite with linting | Comprehensive validation (127 tests) |
 | `npm run test:quick` | Tests only (skip linting) | Fast feedback loop |
 | `npm run test:ui` | Interactive test UI | Visual test management |
 | `npm run test:watch` | Tests in watch mode | Continuous testing |
 | `npm run test:coverage` | Tests with coverage report | Quality metrics |
+
+### Integration Testing Commands (Real API Calls)
+
+| Command | Purpose | Requirements |
+|---------|---------|--------------|
+| `npm run test:integration` | Show integration test instructions | None (informational) |
+| `npm run test:integration:mexc` | **MEXC real API integration test** | **Real MEXC credentials** |
+| `npm run test:integration:kraken` | **Kraken real API integration test** | **Real Kraken credentials** |
+
+> ⚠️ **Integration Tests**: Unit tests (127) use mock credentials and always pass.  
+> Integration tests require real API credentials and make actual API calls to test endpoints.
+
+#### Setting Up Integration Tests
+
+**1. Configure .env.development file:**
+```bash
+# Add your real API credentials to .env.development
+MEXC_API_KEY=your_real_mexc_api_key
+MEXC_API_SECRET=your_real_mexc_secret
+
+KRAKEN_API_KEY=your_real_kraken_api_key  
+KRAKEN_API_SECRET=your_real_kraken_secret
+```
+
+**2. Run Integration Tests:**
+```bash
+# Test MEXC API integration (loads environment automatically via npm script)
+npm run test:integration:mexc
+
+# Test Kraken API integration (loads environment automatically via npm script)
+npm run test:integration:kraken
+```
+
+> 🛡️ **Safety**: Integration tests use test endpoints and validation modes to prevent real trades.  
+> 🔧 **Environment**: npm scripts automatically set NODE_ENV=development and load credentials.
 
 ### Code Quality Commands
 

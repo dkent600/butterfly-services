@@ -1,24 +1,8 @@
 // Load environment-specific configuration
-import { config } from 'dotenv';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { loadEnvironment } from './utils/env-loader.js';
 
-// Determine which .env file to load based on NODE_ENV
-const nodeEnv = process.env.NODE_ENV || 'development';
-const envFiles = [
-  `.env.${nodeEnv}`,  // .env.development, .env.test, .env.production, etc.
-  '.env',             // Legacy fallback (prefer explicit .env.development)
-];
-
-// Load the first existing env file
-for (const envFile of envFiles) {
-  const envPath = join(process.cwd(), envFile);
-  if (existsSync(envPath)) {
-    config({ path: envPath });
-    console.log(`📁 Loaded environment from: ${envFile}`);
-    break;
-  }
-}
+// Load environment variables consistently
+loadEnvironment();
 
 import 'reflect-metadata';
 import { configureDI, initializeServices } from './container.js';

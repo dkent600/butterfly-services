@@ -30,13 +30,17 @@ Scripts for testing nonce generation and management:
 
 ### `exchange-testing/`
 Scripts for testing exchange-specific functionality:
-- `test-kraken-api.js` - Direct Kraken API testing
+- `test-kraken-api.ts` - **TypeScript** Direct Kraken API testing
 - `test-public-kraken.js` - Public Kraken endpoint testing
 - `test-kraken-pairs.js` - Kraken trading pair testing
-- `test-mexc-api.js` - **NEW** Direct MEXC API integration testing (real test endpoints)
+- `test-mexc-api.ts` - **TypeScript** Direct MEXC API integration testing (real test endpoints)
 - `test-doge-pairs.js` - DOGE-specific pair testing
 - `test-pair-creation.js` - Trading pair creation testing
 - `test-usd-formats.js` - USD format handling testing
+
+### `utils/`
+Shared utilities for scripts:
+- `env-loader.js` - **DEPRECATED** (moved to `src/utils/env-loader.ts`)
 
 ## Usage
 

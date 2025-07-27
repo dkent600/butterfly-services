@@ -4,7 +4,22 @@
  * This script makes REAL API calls to Kraken's endpoints to verify that
  * the exchange integration works correctly end-to-end.
  * 
- * ⚠️  SAFETY: This script uses real Kraken API endpoints but includes
+ * ⚠️  SAFETY: Th    try {
+      const balanceResult = await makeKrakenPrivateRequest('/0/private/Balance', {}) as any;
+      
+      console.log('📋 Balance Response:', JSON.stringify(balanceResult, null, 2));
+      
+      if (balanceResult.status === 200 && balanceResult.data.result) {
+        console.log('✅ Balance fetch test PASSED - API accepted request');
+        
+        const balances = balanceResult.data.result;
+        const nonZeroBalances = Object.entries(balances).filter(([, balance]) => parseFloat(balance as string) > 0);
+        
+        if (nonZeroBalances.length > 0) {
+          console.log('💰 Non-zero balances found:');
+          nonZeroBalances.forEach(([asset, balance]) => {
+            console.log(`   ${asset}: ${parseFloat(balance as string)}`);
+          });eal Kraken API endpoints but includes
  * safety checks and warnings for credential management.
  * 
  * Prerequisites:
@@ -12,13 +27,20 @@
  * - Valid API key permissions for tested endpoints
  */
 
-import crypto from 'crypto';
-import https from 'https';
+import * as crypto from 'crypto';
+import * as https from 'https';
 import { URLSearchParams } from 'url';
-import { loadEnvironment } from '../../dist/utils/env-loader.js';
+import { loadEnvironment } from '../../src/utils/env-loader.js';
 
 // Load environment variables
 loadEnvironment();
+
+// Basic type definitions for API responses
+interface ApiResponse {
+  status: number;
+  data: any;
+  error?: string;
+}
 
 // Kraken API Configuration
 const KRAKEN_API_BASE = 'api.kraken.com';
@@ -88,7 +110,7 @@ function makeHttpsRequest(hostname, path, method = 'GET', headers = {}, body = n
 
 async function makeKrakenPrivateCall(endpoint, params = {}) {
   const nonce = generateNonce();
-  const postData = new URLSearchParams({ nonce, ...params }).toString();
+  const postData = new URLSearchParams({ nonce: nonce.toString(), ...params }).toString();
   
   console.log(`📡 Making private API request to: ${endpoint}`);
   
@@ -145,7 +167,7 @@ async function testKrakenIntegration() {
     console.log('⏰ TEST 1: Fetch Server Time (Public API)');
     console.log('==========================================');
     try {
-      const timeResult = await fetchKrakenServerTime();
+      const timeResult = await fetchKrakenServerTime() as any;
       
       if (timeResult.status === 200 && timeResult.data.result) {
         const serverTime = timeResult.data.result;
@@ -162,10 +184,10 @@ async function testKrakenIntegration() {
     console.log('📈 TEST 2: Fetch Ticker Data (Public API)');
     console.log('==========================================');
     try {
-      const tickerResult = await fetchKrakenTicker(testPair);
+      const tickerResult = await fetchKrakenTicker(testPair) as any;
       
       if (tickerResult.status === 200 && tickerResult.data.result) {
-        const ticker = Object.values(tickerResult.data.result)[0];
+        const ticker = Object.values(tickerResult.data.result)[0] as any;
         if (ticker && ticker.c) {
           const price = parseFloat(ticker.c[0]);
           console.log(`✅ Current ${testPair} Price: $${price.toLocaleString()}`);
@@ -192,12 +214,12 @@ async function testKrakenIntegration() {
         console.log('✅ Balance fetch test PASSED - API accepted request');
         
         const balances = balanceResult.data.result;
-        const nonZeroBalances = Object.entries(balances).filter(([, balance]) => parseFloat(balance) > 0);
+        const nonZeroBalances = Object.entries(balances).filter(([, balance]) => parseFloat(balance as string) > 0);
         
         if (nonZeroBalances.length > 0) {
           console.log('💰 Non-zero balances found:');
           nonZeroBalances.forEach(([asset, balance]) => {
-            console.log(`   ${asset}: ${parseFloat(balance)}`);
+            console.log(`   ${asset}: ${parseFloat(balance as string)}`);
           });
         } else {
           console.log('📝 All balances are zero (or account is new)');
@@ -217,7 +239,7 @@ async function testKrakenIntegration() {
     console.log('🚨 TEST 4: Error Handling - Invalid Endpoint');
     console.log('=============================================');
     try {
-      const invalidResult = await makeKrakenPrivateCall('/0/private/InvalidEndpoint');
+      const invalidResult = await makeKrakenPrivateCall('/0/private/InvalidEndpoint') as any;
       
       console.log('📋 Invalid Endpoint Response:', JSON.stringify(invalidResult, null, 2));
       
@@ -257,10 +279,10 @@ testKrakenIntegration()
   .then(() => {
     console.log('\n🎉 Kraken Integration Test Complete!');
     console.log('All tests executed against real Kraken endpoints.');
-    console.log('\n💡 To run with real credentials:');
-    console.log('   export KRAKEN_API_KEY="your_key"');
-    console.log('   export KRAKEN_API_SECRET="your_secret"');
-    console.log('   node scripts/exchange-testing/test-kraken-api.js');
+    console.log('\n💡 Integration test info:');
+    console.log('   ✅ Using real API credentials from .env.development');
+    console.log('   ✅ Running via npm script: npm run test:integration:kraken');
+    console.log('   ✅ TypeScript execution via tsx');
     process.exit(0);
   })
   .catch((error) => {
