@@ -455,15 +455,163 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     });
   }
 
+  /**
+   * Creates MEXC-specific open orders route
+   * MEXC returns arrays directly, different from Kraken's object structure
+   */
+  function createMexcOpenOrdersRoute(exchange: ExchangeConfig) {
+    fastify.get(`/${exchange.name}/orders/opened`, {
+      schema: {
+        description: `Get open orders from ${exchange.displayName} exchange`,
+        tags: ['exchanges'],
+        response: {
+          200: OpenOrdersResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        const result = await exchangeService.getOpenOrders();
+
+        // MEXC returns arrays directly
+        return {
+          orders: result.orders,
+          timestamp: result.timestamp,
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
+  /**
+   * Creates MEXC-specific closed orders route
+   * MEXC returns arrays directly, different from Kraken's object structure
+   */
+  function createMexcClosedOrdersRoute(exchange: ExchangeConfig) {
+    fastify.get(`/${exchange.name}/orders/closed`, {
+      schema: {
+        description: `Get closed orders from ${exchange.displayName} exchange`,
+        tags: ['exchanges'],
+        response: {
+          200: ClosedOrdersResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        const result = await exchangeService.getClosedOrders();
+
+        // MEXC returns arrays directly
+        return {
+          orders: result.orders,
+          timestamp: result.timestamp,
+        };
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
+  /**
+   * Creates MEXC-specific cancel order route
+   * MEXC uses orderId instead of txid and has different response format
+   */
+  function createMexcCancelOrderRoute(exchange: ExchangeConfig) {
+    fastify.delete(`/${exchange.name}/orders/cancel/:txid`, {
+      schema: {
+        description: `Cancel an order on ${exchange.displayName} exchange by order ID`,
+        tags: ['exchanges'],
+        params: {
+          type: 'object',
+          properties: {
+            txid: { type: 'string', description: 'Order ID of the order to cancel' },
+          },
+          required: ['txid'],
+        },
+        response: {
+          200: {
+            type: 'object',
+            properties: {
+              success: { type: 'boolean' },
+              message: { type: 'string' },
+              testMode: { type: 'boolean' },
+              blocked: { type: 'boolean' },
+            },
+          },
+          204: { type: 'null', description: 'Order cancelled successfully' },
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        const { txid } = request.params as { txid: string };
+
+        console.log(`[ROUTE DEBUG] Cancel order route called with txid: ${txid}`);
+
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        
+        console.log(`[ROUTE DEBUG] About to call ${exchange.name}Service.cancelOrder(${txid})`);
+        const result = await exchangeService.cancelOrder(txid);
+        console.log('[ROUTE DEBUG] cancelOrder returned:', result);
+
+        // MEXC returns different format - check for blocked/test mode
+        if (result?.blocked === true) {
+          // Return 200 with blocked message for test mode
+          return result;
+        } else if (result?.success) {
+          // Return 204 No Content for successful cancellation
+          return reply.status(204).send();
+        } else {
+          // Return the result as-is
+          return result;
+        }
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
   // Register all routes for all exchanges
   for (const exchange of exchanges) {
     createBalanceRoute(exchange);
     createPriceRoute(exchange);
     createMarketSellOrderRoute(exchange);
     createLimitSellOrderRoute(exchange);
-    createOpenOrdersRoute(exchange);
-    createClosedOrdersRoute(exchange);
-    createCancelOrderRoute(exchange);
+    
+    // Use exchange-specific route functions
+    if (exchange.name === 'kraken') {
+      createOpenOrdersRoute(exchange);
+      createClosedOrdersRoute(exchange);
+      createCancelOrderRoute(exchange);
+    } else if (exchange.name === 'mexc') {
+      createMexcOpenOrdersRoute(exchange);
+      createMexcClosedOrdersRoute(exchange);
+      createMexcCancelOrderRoute(exchange);
+    }
   }
 };
 

@@ -270,4 +270,271 @@ describe('MEXC Exchange Routes', () => {
       expect(response.statusCode).toBe(400);
     });
   });
+
+  describe('GET /api/v1/mexc/orders/opened', () => {
+    it('should fetch open orders successfully', async () => {
+      // Set up flexible mocking based on URL patterns
+      const mockAxiosGet = vi.mocked(axios.get);
+
+      // Clear any previous calls
+      mockAxiosGet.mockClear();
+
+      // Mock server time for nonce generation
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
+
+        if (urlStr.includes('/api/v3/time')) {
+          // Server time endpoint
+          return Promise.resolve({ data: { serverTime: Date.now() } });
+        } else if (urlStr.includes('/api/v3/openOrders')) {
+          // Open orders endpoint
+          return Promise.resolve({
+            data: [
+              {
+                symbol: 'BTCUSDT',
+                orderId: 12345,
+                clientOrderId: 'abc123',
+                price: '50000.00',
+                origQty: '0.001',
+                executedQty: '0.000',
+                status: 'NEW',
+                side: 'SELL',
+                type: 'LIMIT'
+              }
+            ]
+          });
+        }
+
+        // Default fallback
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/mexc/orders/opened',
+      });
+
+      if (response.statusCode !== 200) {
+        console.log('Open orders test error response:', response.body);
+      }
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body.orders).toBeDefined();
+      // MEXC returns arrays directly, not objects like Kraken
+      expect(Array.isArray(body.orders)).toBe(true);
+      expect(body.timestamp).toBeDefined();
+    });
+
+    it('should handle empty open orders', async () => {
+      const mockAxiosGet = vi.mocked(axios.get);
+      mockAxiosGet.mockClear();
+
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
+
+        if (urlStr.includes('/api/v3/time')) {
+          return Promise.resolve({ data: { serverTime: Date.now() } });
+        } else if (urlStr.includes('/api/v3/openOrders')) {
+          return Promise.resolve({ data: [] }); // Empty orders array
+        }
+
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/mexc/orders/opened',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body.orders).toEqual([]);
+      expect(body.timestamp).toBeDefined();
+    });
+  });
+
+  describe('GET /api/v1/mexc/orders/closed', () => {
+    it('should fetch closed orders successfully', async () => {
+      const mockAxiosGet = vi.mocked(axios.get);
+      mockAxiosGet.mockClear();
+
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
+
+        if (urlStr.includes('/api/v3/time')) {
+          return Promise.resolve({ data: { serverTime: Date.now() } });
+        } else if (urlStr.includes('/api/v3/allOrders')) {
+          // All orders endpoint (includes closed orders)
+          return Promise.resolve({
+            data: [
+              {
+                orderId: 123,
+                symbol: 'BTCUSDT',
+                status: 'FILLED',
+                side: 'SELL',
+                type: 'LIMIT',
+                origQty: '0.001',
+                executedQty: '0.001',
+                price: '50000.00'
+              },
+              {
+                orderId: 456,
+                symbol: 'BTCUSDT',
+                status: 'NEW',
+                side: 'BUY',
+                type: 'LIMIT'
+              },
+              {
+                orderId: 789,
+                symbol: 'BTCUSDT',
+                status: 'CANCELED',
+                side: 'SELL',
+                type: 'MARKET'
+              }
+            ]
+          });
+        }
+
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/mexc/orders/closed',
+      });
+
+      if (response.statusCode !== 200) {
+        console.log('Closed orders test error response:', response.body);
+      }
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body.orders).toBeDefined();
+      expect(Array.isArray(body.orders)).toBe(true);
+      expect(body.timestamp).toBeDefined();
+      
+      // Should only include closed orders (FILLED, CANCELED, etc.)
+      const hasOnlyClosedStatuses = body.orders.every((order: any) => 
+        ['FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'].includes(order.status)
+      );
+      expect(hasOnlyClosedStatuses).toBe(true);
+    });
+
+    it('should filter out non-closed orders', async () => {
+      const mockAxiosGet = vi.mocked(axios.get);
+      mockAxiosGet.mockClear();
+
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
+
+        if (urlStr.includes('/api/v3/time')) {
+          return Promise.resolve({ data: { serverTime: Date.now() } });
+        } else if (urlStr.includes('/api/v3/allOrders')) {
+          return Promise.resolve({
+            data: [
+              { orderId: 1, status: 'FILLED' },
+              { orderId: 2, status: 'NEW' }, // Should be filtered out
+              { orderId: 3, status: 'CANCELED' },
+              { orderId: 4, status: 'PARTIALLY_FILLED' }, // Should be filtered out
+              { orderId: 5, status: 'REJECTED' },
+              { orderId: 6, status: 'EXPIRED' }
+            ]
+          });
+        }
+
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'GET',
+        url: '/api/v1/mexc/orders/closed',
+      });
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      // Should only return orders with closed statuses (1, 3, 5, 6)
+      expect(body.orders).toHaveLength(4);
+      expect(body.orders.map((order: any) => order.orderId)).toEqual([1, 3, 5, 6]);
+      expect(body.total).toBe(4);
+    });
+  });
+
+  describe('DELETE /api/v1/mexc/orders/cancel/:txid', () => {
+    it('should block cancel order in test mode for safety', async () => {
+      const mockAxiosGet = vi.mocked(axios.get);
+      mockAxiosGet.mockClear();
+
+      // Mock server time for nonce generation
+      mockAxiosGet.mockImplementation(() => {
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'DELETE',
+        url: '/api/v1/mexc/orders/cancel/ORDER_123456',
+      });
+
+      if (response.statusCode !== 200) {
+        console.log('Cancel order test error response:', response.body);
+      }
+
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+
+      expect(body.success).toBe(true);
+      expect(body.message).toContain('Test mode: Cancel order blocked for safety');
+      expect(body.testMode).toBe(true);
+      expect(body.blocked).toBe(true);
+    });
+
+    it('should require transaction ID parameter', async () => {
+      const response = await server.inject({
+        method: 'DELETE',
+        url: '/api/v1/mexc/orders/cancel/',  // Missing txid parameter
+      });
+
+      expect(response.statusCode).toBe(404); // Not found due to missing parameter
+    });
+
+    it('should handle invalid transaction ID', async () => {
+      const mockAxiosGet = vi.mocked(axios.get);
+      mockAxiosGet.mockClear();
+
+      mockAxiosGet.mockImplementation(() => {
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'DELETE',
+        url: '/api/v1/mexc/orders/cancel/', // Empty txid
+      });
+
+      expect(response.statusCode).toBe(404); // URL pattern doesn't match
+    });
+
+    it('should validate non-empty transaction ID', async () => {
+      const mockAxiosGet = vi.mocked(axios.get);
+      mockAxiosGet.mockClear();
+
+      mockAxiosGet.mockImplementation(() => {
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'DELETE',
+        url: '/api/v1/mexc/orders/cancel/   ', // Whitespace-only txid
+      });
+
+      // In test mode, even invalid txids are blocked for safety
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body.testMode).toBe(true);
+      expect(body.blocked).toBe(true);
+    });
+  });
 });
