@@ -12,7 +12,6 @@ import {
   LimitSellOrderResponseSchema,
   OpenedOrdersResponseSchema,
   ClosedOrdersResponseSchema,
-  MexcClosedOrdersResponseSchema,
   ErrorResponseSchema,
 } from '../schemas/exchange-schemas.js';
 
@@ -478,7 +477,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         description: `Get closed orders from ${exchange.displayName} exchange`,
         tags: ['exchanges'],
         response: {
-          200: MexcClosedOrdersResponseSchema,
+          200: ClosedOrdersResponseSchema,
           400: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },

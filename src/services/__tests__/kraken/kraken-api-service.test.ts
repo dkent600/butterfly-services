@@ -663,13 +663,14 @@ describe('KrakenApiService', () => {
           orderId: 'ORDER456',
           pair: 'XBTUSD',
           direction: 'sell',
-          orderType: 'market',
+          type: 'market',
           status: 'executed',
           amount: '0.25',
-          executedPrice: '44500.0',
+          amountExecuted: '0.25',
+          price: '44500.0',
           limitPrice: '',
-          totalCost: '11125.0'
-        }
+          cost: '11125.0',
+        },
       ]);
 
       expect(axios.post).toHaveBeenCalledWith(

@@ -61,12 +61,13 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       orderId: order.orderId?.toString() || order.clientOrderId || '',
       pair: order.symbol || '',
       direction: (order.side || 'SELL').toLowerCase().replace('sell', 'sell').replace('buy', 'buy') as 'buy' | 'sell',
-      orderType: (order.type || 'LIMIT').toLowerCase().replace('limit', 'limit').replace('market', 'market') as 'market' | 'limit',
-      status: ['FILLED'].includes(order.status) ? 'executed' : order.status?.toLowerCase() || '',
-      amount: ['FILLED'].includes(order.status) ? (order.executedQty || '') : (order.origQty || ''),
-      executedPrice: ['FILLED'].includes(order.status) ? (order.price || '') : '',
+      type: (order.type || 'LIMIT').toLowerCase().replace('limit', 'limit').replace('market', 'market') as 'market' | 'limit',
+      status: ['FILLED'].includes(order.status) ? 'executed' : (order.status?.toLowerCase() || ''),
+      amount: order.origQty || '',
+      amountExecuted: order.executedQty || '',
+      price: order.price || '',
       limitPrice: order.type === 'LIMIT' ? (order.price || '') : '',
-      totalCost: ['FILLED'].includes(order.status) ? (order.cummulativeQuoteQty || '') : '',
+      cost: order.cummulativeQuoteQty || '',
     }));
   }
 

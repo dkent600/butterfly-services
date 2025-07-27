@@ -96,12 +96,13 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       orderId,
       pair: order.descr?.pair || '',
       direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
-      orderType: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
+      type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
       status: order.status === 'closed' ? 'executed' : order.status || '',
-      amount: order.status === 'closed' ? (order.vol_exec || '') : (order.vol || ''),
-      executedPrice: order.status === 'closed' ? (order.price || '') : '',
+      amount: order.vol || '',
+      amountExecuted: order.vol_exec || '',
+      price: order.price || '',
       limitPrice: order.descr?.ordertype === 'limit' ? (order.descr?.price || '') : '',
-      totalCost: order.status === 'closed' ? (order.cost || '') : '',
+      cost: order.cost || '',
     }));
   }
 

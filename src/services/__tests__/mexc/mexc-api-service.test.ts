@@ -775,24 +775,26 @@ describe('MexcApiService', () => {
           orderId: '123',
           pair: 'BTCUSDT',
           direction: 'sell',
-          orderType: 'limit',
+          type: 'limit',
           status: 'executed',
           amount: '',
-          executedPrice: '',
+          amountExecuted: '',
+          price: '',
           limitPrice: '',
-          totalCost: ''
+          cost: '',
         },
         {
           orderId: '789',
           pair: 'BTCUSDT', 
           direction: 'buy',
-          orderType: 'limit',
+          type: 'limit',
           status: 'canceled',
           amount: '',
-          executedPrice: '',
+          amountExecuted: '',
+          price: '',
           limitPrice: '',
-          totalCost: ''
-        }
+          cost: '',
+        },
       ]);
 
       expect(axios.get).toHaveBeenCalledWith(
@@ -814,7 +816,7 @@ describe('MexcApiService', () => {
         data: mockAllOrders
       });
 
-      await mexcApiService.getClosedOrders('BTCUSDT');
+      await mexcApiService.getClosedOrders();
 
       // Verify the symbol parameter is included
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(

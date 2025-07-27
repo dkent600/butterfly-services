@@ -17,12 +17,13 @@ export interface IClosedOrderListItem {
   orderId: string;
   pair: string;
   direction: 'buy' | 'sell';
-  orderType: 'market' | 'limit';
+  type: 'market' | 'limit';
   status: string;
   amount: string;
-  executedPrice: string;
+  amountExecuted: string;
+  price: string;
   limitPrice: string;
-  totalCost: string;
+  cost: string;
 }
 
 export interface ILogService {
