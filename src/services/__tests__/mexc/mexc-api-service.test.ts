@@ -102,6 +102,128 @@ describe('MexcApiService', () => {
     });
   });
 
+  describe('fetchBalance', () => {
+    beforeEach(() => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+      vi.mocked(mockExchangeApiService.sign).mockReturnValue('test-signature');
+    });
+
+    it('should fetch and return balance for asset', async () => {
+      const mockServerTimeResponse = { 
+        data: { serverTime: 1640995200000 } 
+      };
+      
+      const mockBalanceResponse = {
+        data: {
+          balances: [
+            {
+              asset: 'BTC',
+              free: '0.5',
+              locked: '0.0'
+            },
+            {
+              asset: 'ETH',
+              free: '10.0',
+              locked: '2.0'
+            }
+          ]
+        }
+      };
+
+      // Mock both calls: first for server time, second for balance
+      vi.mocked(axios.get)
+        .mockResolvedValueOnce(mockServerTimeResponse)  // For time syncer
+        .mockResolvedValueOnce(mockBalanceResponse);    // For balance call
+
+      const balance = await mexcApiService.fetchBalance(mockAsset);
+
+      expect(balance).toBe(0.5);
+      expect(axios.get).toHaveBeenCalledTimes(2);
+      // The second call should be for the balance
+      expect(axios.get).toHaveBeenNthCalledWith(2,
+        expect.stringMatching(/https:\/\/api\.mexc\.com\/api\/v3\/account\?timestamp=\d+&signature=test-signature/),
+        {
+          headers: {
+            'X-MEXC-APIKEY': 'test-api-key',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    });
+
+    it('should return 0 when asset is not found in balance', async () => {
+      const mockBalanceResponse = {
+        data: {
+          balances: [
+            {
+              asset: 'ETH',
+              free: '10.0',
+              locked: '2.0'
+            }
+          ]
+        }
+      };
+
+      // Time syncer is cached, so only mock the balance call
+      vi.mocked(axios.get).mockResolvedValueOnce(mockBalanceResponse);
+
+      const balance = await mexcApiService.fetchBalance(mockAsset);
+
+      expect(balance).toBe(0);
+    });
+
+    it('should handle case-insensitive asset matching', async () => {
+      const mockBalanceResponse = {
+        data: {
+          balances: [
+            {
+              asset: 'btc',  // lowercase asset name
+              free: '1.5',
+              locked: '0.0'
+            }
+          ]
+        }
+      };
+
+      // Time syncer is cached, so only mock the balance call
+      vi.mocked(axios.get).mockResolvedValueOnce(mockBalanceResponse);
+
+      const balance = await mexcApiService.fetchBalance(mockAsset);
+
+      expect(balance).toBe(1.5);
+    });
+
+    it('should throw error when missing API credentials', async () => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      // Time syncer is cached, but credentials check happens before axios call
+      await expect(mexcApiService.fetchBalance(mockAsset)).rejects.toThrow(
+        'Missing API credentials for mexc. API Key: false, API Secret: true'
+      );
+    });
+
+    it('should throw error when missing API secret', async () => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('');
+
+      // Time syncer is cached, but credentials check happens before axios call
+      await expect(mexcApiService.fetchBalance(mockAsset)).rejects.toThrow(
+        'Missing API credentials for mexc. API Key: true, API Secret: false'
+      );
+    });
+
+    it('should throw error when API request fails', async () => {
+      // Time syncer is cached, so only mock the balance call (which fails)
+      vi.mocked(axios.get).mockRejectedValueOnce(new Error('Network error'));
+
+      await expect(mexcApiService.fetchBalance(mockAsset)).rejects.toThrow(
+        'Could not fetch balance for BTC'
+      );
+    });
+  });
+
   describe('createSellOrder', () => {
     beforeEach(() => {
       // SAFETY FIRST: Ensure ALL external calls are stubbed to prevent real transactions
