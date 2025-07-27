@@ -145,6 +145,33 @@ async function getMexcOpenOrders(): Promise<ApiResponse> {
   return await makeHttpsRequest(MEXC_API_BASE, path, 'GET', headers);
 }
 
+async function getMexcClosedOrders(symbol?: string): Promise<ApiResponse> {
+  const timestamp = generateTimestamp();
+  
+  // Build query parameters
+  const queryParams: { [key: string]: string } = {
+    timestamp: timestamp.toString(),
+  };
+  
+  // Add symbol if provided
+  if (symbol) {
+    queryParams.symbol = symbol;
+  }
+  
+  const queryString = new URLSearchParams(queryParams).toString();
+  const signature = signMexcRequest(queryString, MEXC_API_SECRET);
+  
+  const path = `/api/v3/allOrders?${queryString}&signature=${signature}`;
+  
+  const headers = {
+    'X-MEXC-APIKEY': MEXC_API_KEY,
+  };
+  
+  console.log(`📚 Fetching closed/all orders${symbol ? ` for ${symbol}` : ''}`);
+  
+  return await makeHttpsRequest(MEXC_API_BASE, path, 'GET', headers);
+}
+
 async function testMexcIntegration() {
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
@@ -266,8 +293,46 @@ async function testMexcIntegration() {
     
     console.log('');
     
-    // Test 5: Error Handling - Invalid Symbol
-    console.log('🚨 TEST 5: Error Handling - Invalid Symbol');
+    // Test 5: Get Closed Orders
+    console.log('📚 TEST 5: Get Closed Orders');
+    console.log('============================');
+    try {
+      const closedOrdersResult = await getMexcClosedOrders('BTCUSDT');
+      
+      console.log('📚 Closed Orders Response:', JSON.stringify(closedOrdersResult, null, 2));
+      
+      if (closedOrdersResult.status === 200) {
+        if (Array.isArray(closedOrdersResult.data)) {
+          console.log(`✅ Closed orders test PASSED - Retrieved ${closedOrdersResult.data.length} total orders`);
+          
+          // Filter closed orders (FILLED, CANCELED, REJECTED, EXPIRED)
+          const closedOrders = closedOrdersResult.data.filter(order => 
+            ['FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'].includes(order.status)
+          );
+          
+          console.log(`📊 Closed orders found: ${closedOrders.length} out of ${closedOrdersResult.data.length} total`);
+          
+          if (closedOrders.length > 0) {
+            console.log('📊 Sample closed order structure:', JSON.stringify(closedOrders[0], null, 2));
+          } else {
+            console.log('📝 No closed orders found (expected for test account)');
+          }
+        } else {
+          console.log('✅ Closed orders test PASSED - Response format correct');
+        }
+      } else if (closedOrdersResult.status === 401) {
+        console.log('⚠️  Closed orders test - Authentication needed (expected if no real credentials)');
+      } else {
+        console.log(`❌ Closed orders test response: HTTP ${closedOrdersResult.status}`);
+      }
+    } catch (error: any) {
+      console.log('❌ Closed orders error:', error.message);
+    }
+    
+    console.log('');
+    
+    // Test 6: Error Handling - Invalid Symbol
+    console.log('🚨 TEST 6: Error Handling - Invalid Symbol');
     console.log('==========================================');
     try {
       const invalidResult = await createMexcSellOrder('INVALIDUSDT', testQuantity, 'MARKET');
@@ -303,6 +368,7 @@ console.log('✅ Market order creation (test mode)');
 console.log('✅ Limit order creation (test mode)');
 console.log('✅ Price fetching functionality');
 console.log('✅ Open orders retrieval');
+console.log('✅ Closed orders retrieval');
 console.log('✅ Error handling for invalid symbols');
 console.log('✅ Safety checks prevent production trades\n');
 
