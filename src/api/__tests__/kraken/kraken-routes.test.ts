@@ -767,11 +767,12 @@ describe('Kraken Exchange Routes', () => {
 
       expect(body.orders).toBeDefined();
       expect(body.timestamp).toBeDefined();
-      expect(typeof body.orders).toBe('object');
-      expect(body.orders['OGTT3Y-C6I3P-XRI6HX']).toBeDefined();
-      expect(body.orders['OGTT3Y-C6I3P-XRI6HX'].status).toBe('closed');
-      expect(body.orders['OGTT3Y-C6I3P-XRI6HX'].reason).toBe('User requested');
-      expect(body.orders['OGTT3Y-C6I3P-XRI6HX'].vol_exec).toBe('0.50000000');
+      expect(Array.isArray(body.orders)).toBe(true);
+      expect(body.orders.length).toBeGreaterThan(0);
+      expect(body.orders[0].orderId).toBe('OGTT3Y-C6I3P-XRI6HX');
+      expect(body.orders[0].status).toBe('executed');
+      expect(body.orders[0].pair).toBe('XBTUSD');
+      expect(body.orders[0].amount).toBe('0.50000000');
     });
 
     it('should handle empty closed orders response', async () => {

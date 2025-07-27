@@ -142,7 +142,7 @@ const OpenOrdersResponseSchema = {
 
 ### 1. Route Handler
 ```typescript
-async function getOpenOrders(request, reply) {
+async function getOpenedOrders(request, reply) {
   const { exchange } = request.params;
   // Route-level logic
 }
@@ -151,13 +151,13 @@ async function getOpenOrders(request, reply) {
 ### 2. Service Layer
 ```typescript
 const service = container.resolve<IExchangeService>(TYPES.IExchangeService);
-const result = await service.getOpenOrders();
+const result = await service.getOpenedOrders();
 ```
 
 ### 3. Exchange Implementation
 ```typescript
 // In KrakenApiService
-async getOpenOrders(): Promise<any> {
+async getOpenedOrders(): Promise<any> {
   // Exchange-specific API calls
   // Authentication and nonce handling
   // Error handling and response formatting
@@ -199,7 +199,7 @@ const headers = {
 ```typescript
 // Route-level error handling
 try {
-  const result = await service.getOpenOrders();
+  const result = await service.getOpenedOrders();
   reply.send(result);
 } catch (error) {
   reply.code(500).send({

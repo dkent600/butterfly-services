@@ -13,6 +13,18 @@ export interface IOpenedOrderListItem {
   type: 'market' | 'limit';
 }
 
+export interface IClosedOrderListItem {
+  orderId: string;
+  pair: string;
+  direction: 'buy' | 'sell';
+  orderType: 'market' | 'limit';
+  status: string;
+  amount: string;
+  executedPrice: string;
+  limitPrice: string;
+  totalCost: string;
+}
+
 export interface ILogService {
   log(message: string): void;
   logError(err: Error | string): void;
@@ -54,7 +66,7 @@ export interface IExchangeService {
       to: string;
     },
   ): Promise<any>;
-  getOpenOrders(): Promise<any>;
+  getOpenedOrders(): Promise<any>;
   getClosedOrders(): Promise<any>;
   cancelOrder(txid: string): Promise<void>;
 }

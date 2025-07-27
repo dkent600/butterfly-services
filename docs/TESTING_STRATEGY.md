@@ -161,7 +161,7 @@ it('should parse Kraken error responses', async () => {
     error: ['EGeneral:Invalid arguments']
   });
   
-  await expect(service.getOpenOrders())
+  await expect(service.getOpenedOrders())
     .rejects.toThrow('Kraken API error: EGeneral:Invalid arguments');
 });
 ```

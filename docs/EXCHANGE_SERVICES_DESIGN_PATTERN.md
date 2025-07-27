@@ -171,7 +171,7 @@ When updating existing methods that don't follow this pattern:
 #### 🔄 Needs Migration:
 - `KrakenApiService.fetchPrice()` - Direct axios calls
 - `KrakenApiService.fetchBalance()` - Direct axios calls  
-- `KrakenApiService.getOpenOrders()` - Direct axios calls
+- `KrakenApiService.getOpenedOrders()` - Direct axios calls
 - `KrakenApiService.getClosedOrders()` - Direct axios calls
 - `MexcApiService.*` - Most methods need review
 

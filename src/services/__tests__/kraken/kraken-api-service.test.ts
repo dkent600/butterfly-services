@@ -479,7 +479,7 @@ describe('KrakenApiService', () => {
     });
   });
 
-  describe('getOpenOrders', () => {
+  describe('getOpenedOrders', () => {
     beforeEach(() => {
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
@@ -524,16 +524,18 @@ describe('KrakenApiService', () => {
         }
       });
 
-      const result = await krakenApiService.getOpenOrders();
+      const result = await krakenApiService.getOpenedOrders();
 
-      expect(result).toEqual({
-        orders: {
-          open: {
-            'ORDER123': expect.any(Object)
-          }
-        },
-        timestamp: expect.any(String)
-      });
+      expect(result).toEqual([
+        {
+          orderId: 'ORDER123',
+          pair: 'XBTUSD',
+          price: '45000.0',
+          amount: '0.5',
+          direction: 'sell',
+          type: 'limit'
+        }
+      ]);
 
       expect(axios.post).toHaveBeenCalledWith(
         'https://api.kraken.com/0/private/OpenOrders',
@@ -564,14 +566,9 @@ describe('KrakenApiService', () => {
         }
       });
 
-      const result = await krakenApiService.getOpenOrders();
+      const result = await krakenApiService.getOpenedOrders();
 
-      expect(result).toEqual({
-        orders: {
-          open: {}
-        },
-        timestamp: expect.any(String)
-      });
+      expect(result).toEqual([]);
     });
 
     it('should handle Kraken API errors', async () => {
@@ -588,14 +585,14 @@ describe('KrakenApiService', () => {
         }
       });
 
-      await expect(krakenApiService.getOpenOrders()).rejects.toThrow('Kraken API error: EGeneral:Invalid signature');
+      await expect(krakenApiService.getOpenedOrders()).rejects.toThrow('Kraken API error: EGeneral:Invalid signature');
     });
 
     it('should handle missing API credentials', async () => {
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-secret');
 
-      await expect(krakenApiService.getOpenOrders()).rejects.toThrow('kraken API credentials not configured');
+      await expect(krakenApiService.getOpenedOrders()).rejects.toThrow('kraken API credentials not configured');
     });
 
     it('should handle network errors', async () => {
@@ -607,7 +604,7 @@ describe('KrakenApiService', () => {
       // Mock network error
       vi.mocked(axios.post).mockRejectedValue(new Error('Network error'));
 
-      await expect(krakenApiService.getOpenOrders()).rejects.toThrow('Failed to get kraken open orders: Network error');
+      await expect(krakenApiService.getOpenedOrders()).rejects.toThrow('Failed to get kraken open orders: Network error');
     });
   });
 
@@ -661,15 +658,19 @@ describe('KrakenApiService', () => {
 
       const result = await krakenApiService.getClosedOrders();
 
-      expect(result).toEqual({
-        orders: {
-          closed: {
-            'ORDER456': expect.any(Object)
-          },
-          count: 1
-        },
-        timestamp: expect.any(String)
-      });
+      expect(result).toEqual([
+        {
+          orderId: 'ORDER456',
+          pair: 'XBTUSD',
+          direction: 'sell',
+          orderType: 'market',
+          status: 'executed',
+          amount: '0.25',
+          executedPrice: '44500.0',
+          limitPrice: '',
+          totalCost: '11125.0'
+        }
+      ]);
 
       expect(axios.post).toHaveBeenCalledWith(
         'https://api.kraken.com/0/private/ClosedOrders',
@@ -703,13 +704,7 @@ describe('KrakenApiService', () => {
 
       const result = await krakenApiService.getClosedOrders();
 
-      expect(result).toEqual({
-        orders: {
-          closed: {},
-          count: 0
-        },
-        timestamp: expect.any(String)
-      });
+      expect(result).toEqual([]);
     });
 
     it('should handle Kraken API errors', async () => {

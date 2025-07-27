@@ -69,7 +69,7 @@ createPair(asset: IAsset, to: string): string
 #### Order Management
 ```typescript
 async createSellOrder(asset: IAsset, options: {...}): Promise<any>
-async getOpenOrders(): Promise<any>
+async getOpenedOrders(): Promise<any>
 async getClosedOrders(): Promise<any>
 ```
 - **Test Mode Integration**: Adds `validate: 'true'` when in test mode

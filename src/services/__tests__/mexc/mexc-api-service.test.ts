@@ -597,7 +597,7 @@ describe('MexcApiService', () => {
     });
   });
 
-  describe('getOpenOrders', () => {
+  describe('getOpenedOrders', () => {
     beforeEach(() => {
       // SAFETY FIRST: Ensure ALL external calls are stubbed to prevent real API interactions
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
@@ -633,17 +633,23 @@ describe('MexcApiService', () => {
         }
       ];
 
-      // Mock the axios.get call that getOpenOrders makes
+      // Mock the axios.get call that getOpenedOrders makes
       vi.mocked(axios.get).mockResolvedValueOnce({
         data: mockOpenOrders
       });
 
-      const result = await mexcApiService.getOpenOrders();
+      const result = await mexcApiService.getOpenedOrders();
 
-      expect(result).toEqual({
-        orders: mockOpenOrders,
-        timestamp: expect.any(String)
-      });
+      expect(result).toEqual([
+        {
+          orderId: '12345',
+          pair: 'BTCUSDT', 
+          price: '50000.00',
+          amount: '0.001',
+          direction: 'sell',
+          type: 'limit'
+        }
+      ]);
 
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
         expect.stringMatching(/timestamp=\d+/),
@@ -671,7 +677,7 @@ describe('MexcApiService', () => {
         data: mexcError
       });
 
-      await expect(mexcApiService.getOpenOrders()).rejects.toThrow(
+      await expect(mexcApiService.getOpenedOrders()).rejects.toThrow(
         'MEXC API error: Invalid symbol.'
       );
     });
@@ -688,7 +694,7 @@ describe('MexcApiService', () => {
 
       vi.mocked(axios.get).mockRejectedValueOnce(networkError);
 
-      await expect(mexcApiService.getOpenOrders()).rejects.toThrow(
+      await expect(mexcApiService.getOpenedOrders()).rejects.toThrow(
         'mexc API error: Internal error; unable to process your request. Please try again.'
       );
     });
@@ -697,7 +703,7 @@ describe('MexcApiService', () => {
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
 
-      await expect(mexcApiService.getOpenOrders()).rejects.toThrow(
+      await expect(mexcApiService.getOpenedOrders()).rejects.toThrow(
         'mexc API credentials not configured'
       );
     });
@@ -711,7 +717,7 @@ describe('MexcApiService', () => {
         data: unexpectedResponse
       });
 
-      await expect(mexcApiService.getOpenOrders()).rejects.toThrow(
+      await expect(mexcApiService.getOpenedOrders()).rejects.toThrow(
         'mexc API returned unexpected response format'
       );
     });
@@ -723,7 +729,7 @@ describe('MexcApiService', () => {
         data: mockOpenOrders
       });
 
-      await mexcApiService.getOpenOrders();
+      await mexcApiService.getOpenedOrders();
 
       // Verify the timestamp parameter and signature are included
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
@@ -764,13 +770,30 @@ describe('MexcApiService', () => {
 
       const result = await mexcApiService.getClosedOrders();
 
-      expect(result).toEqual({
-        orders: [
-          { orderId: '123', symbol: 'BTCUSDT', status: 'FILLED', side: 'SELL' },
-          { orderId: '789', symbol: 'BTCUSDT', status: 'CANCELED', side: 'BUY' }
-        ],
-        timestamp: expect.any(String)
-      });
+      expect(result).toEqual([
+        {
+          orderId: '123',
+          pair: 'BTCUSDT',
+          direction: 'sell',
+          orderType: 'limit',
+          status: 'executed',
+          amount: '',
+          executedPrice: '',
+          limitPrice: '',
+          totalCost: ''
+        },
+        {
+          orderId: '789',
+          pair: 'BTCUSDT', 
+          direction: 'buy',
+          orderType: 'limit',
+          status: 'canceled',
+          amount: '',
+          executedPrice: '',
+          limitPrice: '',
+          totalCost: ''
+        }
+      ]);
 
       expect(axios.get).toHaveBeenCalledWith(
         expect.stringContaining('/api/v3/allOrders'),
@@ -795,7 +818,7 @@ describe('MexcApiService', () => {
 
       // Verify the symbol parameter is included
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
-        expect.stringMatching(/timestamp=\d+&symbol=BTCUSDT/),
+        expect.stringMatching(/symbol=BTCUSDT&timestamp=\d+/),
         'test-api-secret'
       );
     });
@@ -854,13 +877,13 @@ describe('MexcApiService', () => {
 
       // Verify the timestamp parameter and signature are included
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
-        expect.stringMatching(/^timestamp=\d+$/),
+        expect.stringMatching(/^symbol=BTCUSDT&timestamp=\d+$/),
         'test-api-secret'
       );
 
       // Verify the URL contains the query string and signature
       expect(axios.get).toHaveBeenCalledWith(
-        expect.stringMatching(/\/api\/v3\/allOrders\?timestamp=\d+&signature=test-signature$/),
+        expect.stringMatching(/\/api\/v3\/allOrders\?symbol=BTCUSDT&timestamp=\d+&signature=test-signature$/),
         expect.any(Object)
       );
     });
@@ -882,8 +905,8 @@ describe('MexcApiService', () => {
       const result = await mexcApiService.getClosedOrders();
 
       // Should only include FILLED, CANCELED, REJECTED, EXPIRED orders
-      expect(result.orders).toHaveLength(4);
-      expect(result.orders.map((order: any) => order.orderId)).toEqual(['1', '3', '5', '6']);
+      expect(result).toHaveLength(4);
+      expect(result.map((order: any) => order.orderId)).toEqual(['1', '3', '5', '6']);
     });
   });
 });

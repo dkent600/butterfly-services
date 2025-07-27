@@ -311,12 +311,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       try {
         // Use the concrete KrakenApiService type for order-specific methods
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
-        const result = await krakenService.getOpenOrders();
+        const ordersArray = await krakenService.getOpenedOrders();
 
-        // Service now returns already transformed orders
         return {
-          orders: result.orders,
-          timestamp: result.timestamp,
+          orders: ordersArray,
+          timestamp: new Date().toISOString(),
         };
       } catch (error) {
         fastify.log.error(error);
@@ -354,14 +353,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       try {
         // Use the concrete KrakenApiService type for order-specific methods
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
-        const result = await krakenService.getClosedOrders();
-
-        // Convert Kraken's object-based orders
-        const ordersObject = result.orders.closed ?? [];
+        const ordersArray = await krakenService.getClosedOrders();
 
         return {
-          orders: ordersObject,
-          timestamp: result.timestamp,
+          orders: ordersArray,
+          timestamp: new Date().toISOString(),
         };
       } catch (error) {
         fastify.log.error(error);
@@ -454,12 +450,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }, async (request, reply) => {
       try {
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        const result = await exchangeService.getOpenOrders();
+        const ordersArray = await exchangeService.getOpenedOrders();
 
-        // Service now returns already transformed orders
         return {
-          orders: result.orders,
-          timestamp: result.timestamp,
+          orders: ordersArray,
+          timestamp: new Date().toISOString(),
         };
       } catch (error) {
         fastify.log.error(error);
@@ -491,12 +486,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     }, async (request, reply) => {
       try {
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        const result = await exchangeService.getClosedOrders();
+        const ordersArray = await exchangeService.getClosedOrders();
 
-        // MEXC returns arrays directly
         return {
-          orders: result.orders,
-          timestamp: result.timestamp,
+          orders: ordersArray,
+          timestamp: new Date().toISOString(),
         };
       } catch (error) {
         fastify.log.error(error);

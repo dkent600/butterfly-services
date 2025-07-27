@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, TYPES } from '../types/interfaces.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, IClosedOrderListItem, TYPES } from '../types/interfaces.js';
 import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
@@ -38,10 +38,10 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   }
 
   /**
-   * Transforms MEXC order array to unified format
+   * Transforms MEXC order array to standard format
    * MEXC returns orders as an array: [orderDetails, ...]
    */
-  private transformToApiSchema(mexcOrders: any[]): IOpenedOrderListItem[] {
+  private transformToOpenedOrdersApiSchema(mexcOrders: any[]): IOpenedOrderListItem[] {
     return mexcOrders.map((order) => ({
       orderId: order.orderId?.toString() || order.clientOrderId || '',
       pair: order.symbol || '',
@@ -49,6 +49,24 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       amount: order.origQty || '',
       direction: (order.side || 'SELL').toLowerCase().replace('sell', 'sell').replace('buy', 'buy') as 'buy' | 'sell',
       type: (order.type || 'LIMIT').toLowerCase().replace('limit', 'limit').replace('market', 'market') as 'market' | 'limit',
+    }));
+  }
+
+  /**
+   * Transforms MEXC closed orders to standard format
+   * MEXC returns closed orders as an array: [orderDetails, ...]
+   */
+  private transformClosedOrdersToApiSchema(mexcOrders: any[]): IClosedOrderListItem[] {
+    return mexcOrders.map((order) => ({
+      orderId: order.orderId?.toString() || order.clientOrderId || '',
+      pair: order.symbol || '',
+      direction: (order.side || 'SELL').toLowerCase().replace('sell', 'sell').replace('buy', 'buy') as 'buy' | 'sell',
+      orderType: (order.type || 'LIMIT').toLowerCase().replace('limit', 'limit').replace('market', 'market') as 'market' | 'limit',
+      status: ['FILLED'].includes(order.status) ? 'executed' : order.status?.toLowerCase() || '',
+      amount: ['FILLED'].includes(order.status) ? (order.executedQty || '') : (order.origQty || ''),
+      executedPrice: ['FILLED'].includes(order.status) ? (order.price || '') : '',
+      limitPrice: order.type === 'LIMIT' ? (order.price || '') : '',
+      totalCost: ['FILLED'].includes(order.status) ? (order.cummulativeQuoteQty || '') : '',
     }));
   }
 
@@ -220,7 +238,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    * https://mexcdevelop.github.io/apidocs/spot_v3_en/#current-open-orders
    * @returns Promise with open orders data
    */
-  async getOpenOrders(): Promise<any> {
+  async getOpenedOrders(): Promise<any> {
     const exchangeName = this.getExchangeName();
     
     try {
@@ -249,11 +267,8 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       
       // MEXC returns array directly or error object
       if (Array.isArray(data)) {
-        const orderListSchema = this.transformToApiSchema(data);
-        return {
-          orders: orderListSchema,
-          timestamp: new Date().toISOString(),
-        };
+        const orderList = this.transformToOpenedOrdersApiSchema(data);
+        return orderList;
       } else if (data.code && data.msg) {
         // MEXC error format
         console.error(`[MEXC ERROR] Open Orders API Error: ${data.msg} (Code: ${data.code})`);
@@ -279,24 +294,23 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   /**
    * Retrieves all orders (including closed ones) from MEXC
    * https://mexcdevelop.github.io/apidocs/spot_v3_en/#all-orders
-   * @param symbol - Optional trading symbol to filter orders
    * @returns Promise with all orders data
    */
-  async getClosedOrders(symbol?: string): Promise<any> {
+  async getClosedOrders(): Promise<any> {
     const exchangeName = this.getExchangeName();
     
     try {
       const timestamp = await this.generateUniqueNonce();
       
+      // MEXC requires a symbol parameter for allOrders endpoint
+      // Default to BTCUSDT as a commonly used pair (hidden implementation detail)
+      const targetSymbol = 'BTCUSDT';
+      
       // Build query parameters
       const queryParams: Record<string, string> = {
+        symbol: targetSymbol,
         timestamp: timestamp.toString(),
       };
-      
-      // Add symbol if provided (required by some MEXC endpoints)
-      if (symbol) {
-        queryParams.symbol = symbol;
-      }
       
       const queryString = new URLSearchParams(queryParams).toString();
       
@@ -327,10 +341,10 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
           ['FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'].includes(order.status),
         );
         
-        return {
-          orders: closedOrders,
-          timestamp: new Date().toISOString(),
-        };
+        // Transform to standard format
+        const orderList = this.transformClosedOrdersToApiSchema(closedOrders);
+        
+        return orderList;
       } else if (data.code && data.msg) {
         // MEXC error format
         console.error(`[MEXC ERROR] Closed Orders API Error: ${data.msg} (Code: ${data.code})`);

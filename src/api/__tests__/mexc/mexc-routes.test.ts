@@ -365,10 +365,12 @@ describe('MEXC Exchange Routes', () => {
 
       mockAxiosGet.mockImplementation((url: any) => {
         const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
+        console.log('[MOCK DEBUG] Request URL:', urlStr);
 
         if (urlStr.includes('/api/v3/time')) {
           return Promise.resolve({ data: { serverTime: Date.now() } });
         } else if (urlStr.includes('/api/v3/allOrders')) {
+          console.log('[MOCK DEBUG] Matched allOrders endpoint');
           // All orders endpoint (includes closed orders)
           return Promise.resolve({
             data: [
@@ -407,9 +409,10 @@ describe('MEXC Exchange Routes', () => {
               }
             ]
           });
+        } else {
+          console.log('[MOCK DEBUG] No match for URL, returning default time response');
+          return Promise.resolve({ data: { serverTime: Date.now() } });
         }
-
-        return Promise.resolve({ data: { serverTime: Date.now() } });
       });
 
       const response = await server.inject({
@@ -428,9 +431,9 @@ describe('MEXC Exchange Routes', () => {
       expect(Array.isArray(body.orders)).toBe(true);
       expect(body.timestamp).toBeDefined();
       
-      // Should only include closed orders (FILLED, CANCELED, etc.)
+      // Should only include closed orders in our standardized format (executed, canceled, rejected, expired)
       const hasOnlyClosedStatuses = body.orders.every((order: any) => 
-        ['FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'].includes(order.status)
+        ['executed', 'canceled', 'rejected', 'expired'].includes(order.status)
       );
       expect(hasOnlyClosedStatuses).toBe(true);
     });
@@ -439,12 +442,20 @@ describe('MEXC Exchange Routes', () => {
       const mockAxiosGet = vi.mocked(axios.get);
       mockAxiosGet.mockClear();
 
-      mockAxiosGet.mockImplementation((url: any) => {
+      mockAxiosGet.mockImplementation((url: any, config: any) => {
+        console.log('[DEBUG 2] Mock called with URL:', url);
+        console.log('[DEBUG 2] Config:', config);
+        console.log('[DEBUG 2] URL type:', typeof url);
+        console.log('[DEBUG 2] URL string representation:', url?.toString?.());
+        
         const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
+        console.log('[DEBUG 2] Final URL string for matching:', urlStr);
 
         if (urlStr.includes('/api/v3/time')) {
+          console.log('[DEBUG 2] Matched time endpoint');
           return Promise.resolve({ data: { serverTime: Date.now() } });
         } else if (urlStr.includes('/api/v3/allOrders')) {
+          console.log('[DEBUG 2] Matched allOrders endpoint');
           return Promise.resolve({
             data: [
               { orderId: 1, clientOrderId: 'client1', symbol: 'BTCUSDT', status: 'FILLED', side: 'SELL', type: 'LIMIT', origQty: '0.001', executedQty: '0.001', price: '50000.00' },
@@ -457,6 +468,7 @@ describe('MEXC Exchange Routes', () => {
           });
         }
 
+        console.log('[DEBUG 2] No endpoint match, returning default');
         return Promise.resolve({ data: { serverTime: Date.now() } });
       });
 
@@ -468,9 +480,9 @@ describe('MEXC Exchange Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
 
-      // Should only return orders with closed statuses (1, 3, 5, 6)
+      // Should only return orders with closed statuses (1, 3, 5, 6) - now as strings in our standardized format
       expect(body.orders).toHaveLength(4);
-      expect(body.orders.map((order: any) => order.orderId)).toEqual([1, 3, 5, 6]);
+      expect(body.orders.map((order: any) => order.orderId)).toEqual(['1', '3', '5', '6']);
       expect(body.total).toBeUndefined(); // total field should not exist per our rules
     });
   });

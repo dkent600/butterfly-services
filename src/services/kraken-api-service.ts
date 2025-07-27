@@ -1,7 +1,7 @@
 import axios from 'axios';
 import crypto from 'node:crypto';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, TYPES } from '../types/interfaces.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, IClosedOrderListItem, TYPES } from '../types/interfaces.js';
 import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
@@ -73,10 +73,10 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   }
 
   /**
-   * Transforms Kraken order object to unified format
+   * Transforms Kraken opened order object to standard format
    * Kraken returns orders as: { [orderId]: orderDetails }
    */
-  private transformToApiSchema(krakenOrders: Record<string, any>): IOpenedOrderListItem[] {
+  private transformOpenedOrdersToApiSchema(krakenOrders: Record<string, any>): IOpenedOrderListItem[] {
     return Object.entries(krakenOrders).map(([orderId, order]) => ({
       orderId,
       pair: order.descr?.pair || '',
@@ -84,6 +84,24 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       amount: order.vol || '',
       direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
       type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
+    }));
+  }
+
+  /**
+   * Transforms Kraken closed orders to standard format
+   * Kraken returns closed orders as: { [orderId]: orderDetails }
+   */
+  private transformClosedOrdersToApiSchema(krakenOrders: Record<string, any>): IClosedOrderListItem[] {
+    return Object.entries(krakenOrders).map(([orderId, order]) => ({
+      orderId,
+      pair: order.descr?.pair || '',
+      direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
+      orderType: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
+      status: order.status === 'closed' ? 'executed' : order.status || '',
+      amount: order.status === 'closed' ? (order.vol_exec || '') : (order.vol || ''),
+      executedPrice: order.status === 'closed' ? (order.price || '') : '',
+      limitPrice: order.descr?.ordertype === 'limit' ? (order.descr?.price || '') : '',
+      totalCost: order.status === 'closed' ? (order.cost || '') : '',
     }));
   }
 
@@ -449,7 +467,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * https://docs.kraken.com/api/docs/rest-api/list-open-orders
    * Note: trades=false returns just order info, simpler and faster response
    */
-  async getOpenOrders(): Promise<any> {
+  async getOpenedOrders(): Promise<any> {
     const exchangeName = this.getExchangeName();
     
     try {
@@ -493,12 +511,9 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       if (response.result) {
         // Extract the open orders object and transform to unified format
         const krakenOrders = response.result.open || {};
-        const orderListSchema = this.transformToApiSchema(krakenOrders);
+        const orderList = this.transformOpenedOrdersToApiSchema(krakenOrders);
         
-        return {
-          orders: orderListSchema,
-          timestamp: new Date().toISOString(),
-        };
+        return orderList;
       } else {
         throw new Error(`${exchangeName} API returned empty result`);
       }
@@ -565,10 +580,11 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       const response = data;
       
       if (response.result) {
-        return {
-          orders: response.result,
-          timestamp: new Date().toISOString(),
-        };
+        // Extract the closed orders object and transform to unified format
+        const closedOrders = response.result.closed || {};
+        const orderList = this.transformClosedOrdersToApiSchema(closedOrders);
+        
+        return orderList;
       } else {
         throw new Error(`${exchangeName} API returned empty result`);
       }
