@@ -47,7 +47,7 @@ export interface IExchangeService {
   ): Promise<any>;
   getOpenOrders(): Promise<any>;
   getClosedOrders(): Promise<any>;
-  cancelOrder(txid: string): Promise<any>;
+  cancelOrder(txid: string): Promise<void>;
 }
 
 export interface IExchangeTimeSyncer {

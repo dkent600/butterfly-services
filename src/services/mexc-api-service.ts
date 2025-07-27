@@ -344,8 +344,13 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    * @param txid - The order ID to cancel
    * @returns Promise with cancellation result
    */
-  async cancelOrder(txid: string): Promise<any> {
+  async cancelOrder(txid: string): Promise<void> {
     try {
+      // Validate order ID first, even in test mode
+      if (!txid || txid.trim() === '') {
+        throw new Error('Order ID is required to cancel an order');
+      }
+
       const exchangeName = this.getExchangeName();
       
       // CRITICAL SAFETY CHECK: Block cancel orders in test mode
@@ -354,17 +359,8 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         console.log(`[MEXC MODE] 🚫 BLOCKED: Cancel order in test mode! Order cancel: (${txid})`);
         console.log('[MEXC MODE] 🛡️  SAFETY: Preventing real cancellation during testing');
         
-        return {
-          success: true,
-          message: `Test mode: Cancel order blocked for safety. Would have cancelled orderId: ${txid}`,
-          testMode: true,
-          blocked: true,
-        };
-      }
-      
-      // Validate order ID (only in production mode)
-      if (!txid || txid.trim() === '') {
-        throw new Error('Order ID is required to cancel an order');
+        // In test mode, still return successfully (no exception) but don't make API call
+        return;
       }
       
       console.log(`[MEXC MODE] ❗Running in production! Order cancel: (${txid})`);
@@ -407,7 +403,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         headers,
       });
 
-      return { success: true, message: `Cancel order executed successfully for orderId: ${txid}` };
+      // Return void on success - no content needed for DELETE operations
       */
 
     } catch (error) {

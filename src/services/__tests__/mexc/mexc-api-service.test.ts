@@ -539,12 +539,8 @@ describe('MexcApiService', () => {
       
       const result = await mexcApiService.cancelOrder(orderId);
       
-      expect(result).toEqual({
-        success: true,
-        message: `Test mode: Cancel order blocked for safety. Would have cancelled orderId: ${orderId}`,
-        testMode: true,
-        blocked: true,
-      });
+      // In test mode, cancelOrder returns void (proper DELETE semantics)
+      expect(result).toBeUndefined();
       
       // Verify no actual API calls were made
       expect(mockExchangeApiService.sendApiRequest).not.toHaveBeenCalled();

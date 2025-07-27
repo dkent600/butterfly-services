@@ -573,7 +573,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * https://docs.kraken.com/api/docs/rest-api/cancel-order
    * @param txid The transaction ID of the order to cancel
    */
-  async cancelOrder(txid: string): Promise<any> {
+  async cancelOrder(txid: string): Promise<void> {
     
     try {
       
@@ -591,13 +591,8 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         console.log('[KRAKEN MODE] ⚠️  WARNING: Kraken CancelOrder API ignores validate=true parameter');
         console.log('[KRAKEN MODE] 🛡️  SAFETY: Preventing real cancellation during testing');
         
-        // Return success response for testing purposes without making actual API call
-        return { 
-          success: true, 
-          message: `Test mode: Cancel order blocked for safety. Would have cancelled txid: ${txid}`,
-          testMode: true,
-          blocked: true,
-        };
+        // In test mode, still return successfully (no exception) but don't make API call
+        return;
       }
       
       console.log(`[KRAKEN MODE]❗Running in production! Order cancel: (${txid})`);
@@ -637,7 +632,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         headers,
       });
 
-    return { success: true, message: `Cancel order executed successfully for txid: ${txid}` };
+      // Return void on success - no content needed for DELETE operations
 
     } catch (error) {
       // If it's already a specific error we threw, preserve it
@@ -652,7 +647,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         // hasApiSecret: !!this.exchangeApiService.getAPISecret(exchangeName),
         // errorResponse: (error as any).response?.data,
       });
-    throw new Error(`Could not cancel order txid: ${txid}`);
+      throw new Error(`Could not cancel order txid: ${txid}`);
     }
   }
 }

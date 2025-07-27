@@ -488,17 +488,12 @@ describe('MEXC Exchange Routes', () => {
         url: '/api/v1/mexc/orders/cancel/ORDER_123456',
       });
 
-      if (response.statusCode !== 200) {
+      if (response.statusCode !== 204) {
         console.log('Cancel order test error response:', response.body);
       }
 
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-
-      expect(body.success).toBe(true);
-      expect(body.message).toContain('Test mode: Cancel order blocked for safety');
-      expect(body.testMode).toBe(true);
-      expect(body.blocked).toBe(true);
+      expect(response.statusCode).toBe(204);
+      expect(response.body).toBe('');
     });
 
     it('should require transaction ID parameter', async () => {
@@ -507,7 +502,7 @@ describe('MEXC Exchange Routes', () => {
         url: '/api/v1/mexc/orders/cancel/',  // Missing txid parameter
       });
 
-      expect(response.statusCode).toBe(404); // Not found due to missing parameter
+      expect(response.statusCode).toBe(400); // Bad request due to missing required parameter
     });
 
     it('should handle invalid transaction ID', async () => {
@@ -523,7 +518,7 @@ describe('MEXC Exchange Routes', () => {
         url: '/api/v1/mexc/orders/cancel/', // Empty txid
       });
 
-      expect(response.statusCode).toBe(404); // URL pattern doesn't match
+      expect(response.statusCode).toBe(400); // Bad request for empty transaction ID
     });
 
     it('should validate non-empty transaction ID', async () => {
@@ -539,11 +534,8 @@ describe('MEXC Exchange Routes', () => {
         url: '/api/v1/mexc/orders/cancel/%20%20%20', // URL-encoded whitespace-only txid
       });
 
-      // In test mode, even invalid txids are blocked for safety
-      expect(response.statusCode).toBe(200);
-      const body = JSON.parse(response.body);
-      expect(body.testMode).toBe(true);
-      expect(body.blocked).toBe(true);
+      // Should return 400 for invalid transaction ID (whitespace only)
+      expect(response.statusCode).toBe(400);
     });
   });
 });

@@ -398,29 +398,12 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           required: ['orderId'],
         },
         response: {
-          200: {
-            type: 'object',
-            properties: {
-              count: { 
-                type: 'integer',
-                description: 'Number of orders cancelled',
-              },
-              pending: { 
-                type: 'boolean',
-                description: 'Whether cancellation is pending',
-              },
-              timestamp: { 
-                type: 'string',
-                description: 'Response timestamp in ISO format',
-              },
-            },
-            required: ['count', 'timestamp'],
-          },
           204: {
             type: 'null',
             description: 'Order cancelled successfully (no content)',
           },
           400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
       },
@@ -434,17 +417,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
         
         console.log(`[ROUTE DEBUG] About to call krakenService.cancelOrder(${orderId})`);
-        const result = await krakenService.cancelOrder(orderId);
-        console.log('[ROUTE DEBUG] cancelOrder returned:', result);
+        await krakenService.cancelOrder(orderId);
+        console.log('[ROUTE DEBUG] cancelOrder completed successfully');
 
-        // Check if we should return 204 (No Content) or 200 with data
-        if (result && (result.count > 0 || result.pending !== undefined)) {
-          // Return 200 with data if there's meaningful information to return
-          return result;
-        } else {
-          // Return 204 No Content for successful deletion with no additional info
-          return reply.status(204).send();
-        }
+        // Return 204 No Content for successful cancellation
+        return reply.status(204).send();
       } catch (error) {
         fastify.log.error(error);
         return reply.status(500).send({
@@ -552,17 +529,12 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
           required: ['orderId'],
         },
         response: {
-          200: {
-            type: 'object',
-            properties: {
-              success: { type: 'boolean' },
-              message: { type: 'string' },
-              testMode: { type: 'boolean' },
-              blocked: { type: 'boolean' },
-            },
+          204: { 
+            type: 'null', 
+            description: 'Order cancelled successfully (no content)', 
           },
-          204: { type: 'null', description: 'Order cancelled successfully' },
           400: ErrorResponseSchema,
+          404: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
       },
@@ -570,31 +542,22 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       try {
         const { orderId } = request.params as { orderId: string };
 
-        // Validate orderId parameter
-        if (!orderId) {
-          return reply.status(404).send({
-            error: 'NotFound',
-            message: 'Order ID parameter is required',
-            statusCode: 404,
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        await exchangeService.cancelOrder(orderId);
+
+        // Return 204 No Content for successful cancellation
+        return reply.status(204).send();
+      } catch (error) {
+        // Handle validation errors with 400 status
+        if (error instanceof Error && error.message.includes('Order ID is required')) {
+          return reply.status(400).send({
+            error: 'BadRequest',
+            message: error.message,
+            statusCode: 400,
             timestamp: new Date().toISOString(),
           });
         }
 
-        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        const result = await exchangeService.cancelOrder(orderId);
-
-        // MEXC returns different format - check for blocked/test mode
-        if (result?.blocked === true) {
-          // Return 200 with blocked message for test mode
-          return result;
-        } else if (result?.success) {
-          // Return 204 No Content for successful cancellation
-          return reply.status(204).send();
-        } else {
-          // Return the result as-is
-          return result;
-        }
-      } catch (error) {
         fastify.log.error(error);
         return reply.status(500).send({
           error: 'InternalServerError',
