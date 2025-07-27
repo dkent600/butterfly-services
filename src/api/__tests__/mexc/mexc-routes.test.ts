@@ -372,6 +372,7 @@ describe('MEXC Exchange Routes', () => {
             data: [
               {
                 orderId: 123,
+                clientOrderId: 'client123',
                 symbol: 'BTCUSDT',
                 status: 'FILLED',
                 side: 'SELL',
@@ -382,17 +383,25 @@ describe('MEXC Exchange Routes', () => {
               },
               {
                 orderId: 456,
+                clientOrderId: 'client456',
                 symbol: 'BTCUSDT',
                 status: 'NEW',
                 side: 'BUY',
-                type: 'LIMIT'
+                type: 'LIMIT',
+                origQty: '0.002',
+                executedQty: '0.000',
+                price: '48000.00'
               },
               {
                 orderId: 789,
+                clientOrderId: 'client789',
                 symbol: 'BTCUSDT',
                 status: 'CANCELED',
                 side: 'SELL',
-                type: 'MARKET'
+                type: 'MARKET',
+                origQty: '0.003',
+                executedQty: '0.000',
+                price: '49000.00'
               }
             ]
           });
@@ -436,12 +445,12 @@ describe('MEXC Exchange Routes', () => {
         } else if (urlStr.includes('/api/v3/allOrders')) {
           return Promise.resolve({
             data: [
-              { orderId: 1, status: 'FILLED' },
-              { orderId: 2, status: 'NEW' }, // Should be filtered out
-              { orderId: 3, status: 'CANCELED' },
-              { orderId: 4, status: 'PARTIALLY_FILLED' }, // Should be filtered out
-              { orderId: 5, status: 'REJECTED' },
-              { orderId: 6, status: 'EXPIRED' }
+              { orderId: 1, clientOrderId: 'client1', symbol: 'BTCUSDT', status: 'FILLED', side: 'SELL', type: 'LIMIT', origQty: '0.001', executedQty: '0.001', price: '50000.00' },
+              { orderId: 2, clientOrderId: 'client2', symbol: 'BTCUSDT', status: 'NEW', side: 'BUY', type: 'LIMIT', origQty: '0.002', executedQty: '0.000', price: '48000.00' }, // Should be filtered out
+              { orderId: 3, clientOrderId: 'client3', symbol: 'BTCUSDT', status: 'CANCELED', side: 'SELL', type: 'MARKET', origQty: '0.003', executedQty: '0.000', price: '49000.00' },
+              { orderId: 4, clientOrderId: 'client4', symbol: 'BTCUSDT', status: 'PARTIALLY_FILLED', side: 'BUY', type: 'LIMIT', origQty: '0.004', executedQty: '0.001', price: '47000.00' }, // Should be filtered out
+              { orderId: 5, clientOrderId: 'client5', symbol: 'BTCUSDT', status: 'REJECTED', side: 'SELL', type: 'LIMIT', origQty: '0.005', executedQty: '0.000', price: '51000.00' },
+              { orderId: 6, clientOrderId: 'client6', symbol: 'BTCUSDT', status: 'EXPIRED', side: 'BUY', type: 'LIMIT', origQty: '0.006', executedQty: '0.000', price: '46000.00' }
             ]
           });
         }
@@ -527,7 +536,7 @@ describe('MEXC Exchange Routes', () => {
 
       const response = await server.inject({
         method: 'DELETE',
-        url: '/api/v1/mexc/orders/cancel/   ', // Whitespace-only txid
+        url: '/api/v1/mexc/orders/cancel/%20%20%20', // URL-encoded whitespace-only txid
       });
 
       // In test mode, even invalid txids are blocked for safety

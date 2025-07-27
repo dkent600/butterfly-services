@@ -175,6 +175,64 @@ export const ClosedOrdersResponseSchema = {
   required: ['orders', 'timestamp'],
 } as const;
 
+// MEXC-specific schemas (arrays instead of objects)
+export const MexcOpenOrdersResponseSchema = {
+  type: 'object',
+  properties: {
+    orders: { 
+      type: 'array',
+      description: 'Array of open orders from MEXC exchange',
+      items: {
+        type: 'object',
+        description: 'Order details from MEXC',
+        properties: {
+          symbol: { type: 'string', description: 'Trading pair symbol' },
+          orderId: { type: 'number', description: 'MEXC order ID' },
+          clientOrderId: { type: 'string', description: 'Client order ID' },
+          price: { type: 'string', description: 'Order price' },
+          origQty: { type: 'string', description: 'Original quantity' },
+          executedQty: { type: 'string', description: 'Executed quantity' },
+          status: { type: 'string', enum: ['NEW', 'PARTIALLY_FILLED', 'FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'], description: 'Order status' },
+          side: { type: 'string', enum: ['BUY', 'SELL'], description: 'Order side' },
+          type: { type: 'string', enum: ['LIMIT', 'MARKET', 'STOP_LOSS', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT', 'TAKE_PROFIT_LIMIT'], description: 'Order type' },
+        },
+        required: ['symbol', 'orderId', 'clientOrderId', 'price', 'origQty', 'executedQty', 'status', 'side', 'type'],
+      },
+    },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['orders', 'timestamp'],
+} as const;
+
+export const MexcClosedOrdersResponseSchema = {
+  type: 'object',
+  properties: {
+    orders: { 
+      type: 'array',
+      description: 'Array of closed orders from MEXC exchange',
+      items: {
+        type: 'object',
+        description: 'Closed order details from MEXC',
+        properties: {
+          symbol: { type: 'string', description: 'Trading pair symbol' },
+          orderId: { type: 'number', description: 'MEXC order ID' },
+          clientOrderId: { type: 'string', description: 'Client order ID' },
+          price: { type: 'string', description: 'Order price' },
+          origQty: { type: 'string', description: 'Original quantity' },
+          executedQty: { type: 'string', description: 'Executed quantity' },
+          status: { type: 'string', enum: ['FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'], description: 'Order status' },
+          side: { type: 'string', enum: ['BUY', 'SELL'], description: 'Order side' },
+          type: { type: 'string', enum: ['LIMIT', 'MARKET', 'STOP_LOSS', 'STOP_LOSS_LIMIT', 'TAKE_PROFIT', 'TAKE_PROFIT_LIMIT'], description: 'Order type' },
+        },
+        required: ['symbol', 'orderId', 'clientOrderId', 'price', 'origQty', 'executedQty', 'status', 'side', 'type'],
+      },
+    },
+    total: { type: 'number', description: 'Total number of closed orders' },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['orders', 'timestamp'],
+} as const;
+
 export const ErrorResponseSchema = {
   type: 'object',
   properties: {

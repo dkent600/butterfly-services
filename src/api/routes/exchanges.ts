@@ -12,6 +12,8 @@ import {
   LimitSellOrderResponseSchema,
   OpenOrdersResponseSchema,
   ClosedOrdersResponseSchema,
+  MexcOpenOrdersResponseSchema,
+  MexcClosedOrdersResponseSchema,
   ErrorResponseSchema,
 } from '../schemas/exchange-schemas.js';
 
@@ -381,19 +383,19 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       return;
     }
 
-    fastify.delete(`/${exchange.name}/orders/cancel/:txid`, {
+    fastify.delete(`/${exchange.name}/orders/cancel/:orderId`, {
       schema: {
-        description: `Cancel an order on ${exchange.displayName} exchange by transaction ID`,
+        description: `Cancel an order on ${exchange.displayName} exchange by order identifier`,
         tags: ['exchanges'],
         params: {
           type: 'object',
           properties: {
-            txid: { 
+            orderId: { 
               type: 'string',
-              description: 'Transaction ID of the order to cancel',
+              description: 'Order identifier to cancel (txid for Kraken)',
             },
           },
-          required: ['txid'],
+          required: ['orderId'],
         },
         response: {
           200: {
@@ -424,15 +426,15 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        const { txid } = request.params as { txid: string };
+        const { orderId } = request.params as { orderId: string };
 
-        console.log(`[ROUTE DEBUG] Cancel order route called with txid: ${txid}`);
+        console.log(`[ROUTE DEBUG] Cancel order route called with orderId: ${orderId}`);
 
         // Use the concrete KrakenApiService type for order-specific methods
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
         
-        console.log(`[ROUTE DEBUG] About to call krakenService.cancelOrder(${txid})`);
-        const result = await krakenService.cancelOrder(txid);
+        console.log(`[ROUTE DEBUG] About to call krakenService.cancelOrder(${orderId})`);
+        const result = await krakenService.cancelOrder(orderId);
         console.log('[ROUTE DEBUG] cancelOrder returned:', result);
 
         // Check if we should return 204 (No Content) or 200 with data
@@ -465,7 +467,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         description: `Get open orders from ${exchange.displayName} exchange`,
         tags: ['exchanges'],
         response: {
-          200: OpenOrdersResponseSchema,
+          200: MexcOpenOrdersResponseSchema,
           400: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
@@ -502,7 +504,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         description: `Get closed orders from ${exchange.displayName} exchange`,
         tags: ['exchanges'],
         response: {
-          200: ClosedOrdersResponseSchema,
+          200: MexcClosedOrdersResponseSchema,
           400: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
@@ -515,6 +517,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         // MEXC returns arrays directly
         return {
           orders: result.orders,
+          total: result.total,
           timestamp: result.timestamp,
         };
       } catch (error) {
@@ -534,16 +537,19 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
    * MEXC uses orderId instead of txid and has different response format
    */
   function createMexcCancelOrderRoute(exchange: ExchangeConfig) {
-    fastify.delete(`/${exchange.name}/orders/cancel/:txid`, {
+    fastify.delete(`/${exchange.name}/orders/cancel/:orderId`, {
       schema: {
-        description: `Cancel an order on ${exchange.displayName} exchange by order ID`,
+        description: `Cancel an order on ${exchange.displayName} exchange by order identifier`,
         tags: ['exchanges'],
         params: {
           type: 'object',
           properties: {
-            txid: { type: 'string', description: 'Order ID of the order to cancel' },
+            orderId: { 
+              type: 'string', 
+              description: 'Order identifier to cancel (order ID for MEXC)',
+            },
           },
-          required: ['txid'],
+          required: ['orderId'],
         },
         response: {
           200: {
@@ -562,15 +568,20 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        const { txid } = request.params as { txid: string };
+        const { orderId } = request.params as { orderId: string };
 
-        console.log(`[ROUTE DEBUG] Cancel order route called with txid: ${txid}`);
+        // Validate orderId parameter
+        if (!orderId) {
+          return reply.status(404).send({
+            error: 'NotFound',
+            message: 'Order ID parameter is required',
+            statusCode: 404,
+            timestamp: new Date().toISOString(),
+          });
+        }
 
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        
-        console.log(`[ROUTE DEBUG] About to call ${exchange.name}Service.cancelOrder(${txid})`);
-        const result = await exchangeService.cancelOrder(txid);
-        console.log('[ROUTE DEBUG] cancelOrder returned:', result);
+        const result = await exchangeService.cancelOrder(orderId);
 
         // MEXC returns different format - check for blocked/test mode
         if (result?.blocked === true) {

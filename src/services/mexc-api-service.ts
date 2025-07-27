@@ -225,9 +225,6 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       const signature = this.exchangeApiService.sign(queryString, apiSecret);
       const url = `${this.getApiUrl('/api/v3/openOrders')}?${queryString}&signature=${signature}`;
       
-      console.log(`[MEXC DEBUG] Open Orders Request - URL: ${this.getApiUrl('/api/v3/openOrders')}, QueryString: ${queryString}`);
-      console.log(`[MEXC DEBUG] Open Orders Headers: ${JSON.stringify({ 'X-MEXC-APIKEY': `${apiKey.substring(0, 10)}...` })}`);
-      
       const headers = {
         'X-MEXC-APIKEY': apiKey,
         'Content-Type': 'application/json',
@@ -300,9 +297,6 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       const signature = this.exchangeApiService.sign(queryString, apiSecret);
       const url = `${this.getApiUrl('/api/v3/allOrders')}?${queryString}&signature=${signature}`;
       
-      console.log(`[MEXC DEBUG] Closed Orders Request - URL: ${this.getApiUrl('/api/v3/allOrders')}, QueryString: ${queryString}`);
-      console.log(`[MEXC DEBUG] Closed Orders Headers: ${JSON.stringify({ 'X-MEXC-APIKEY': `${apiKey.substring(0, 10)}...` })}`);
-      
       const headers = {
         'X-MEXC-APIKEY': apiKey,
         'Content-Type': 'application/json',
@@ -352,11 +346,6 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    */
   async cancelOrder(txid: string): Promise<any> {
     try {
-      // Validate order ID first
-      if (!txid || txid.trim() === '') {
-        throw new Error('Order ID is required to cancel an order');
-      }
-      
       const exchangeName = this.getExchangeName();
       
       // CRITICAL SAFETY CHECK: Block cancel orders in test mode
@@ -365,13 +354,17 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         console.log(`[MEXC MODE] 🚫 BLOCKED: Cancel order in test mode! Order cancel: (${txid})`);
         console.log('[MEXC MODE] 🛡️  SAFETY: Preventing real cancellation during testing');
         
-        // Return success response for testing purposes without making actual API call
-        return { 
-          success: true, 
+        return {
+          success: true,
           message: `Test mode: Cancel order blocked for safety. Would have cancelled orderId: ${txid}`,
           testMode: true,
           blocked: true,
         };
+      }
+      
+      // Validate order ID (only in production mode)
+      if (!txid || txid.trim() === '') {
+        throw new Error('Order ID is required to cancel an order');
       }
       
       console.log(`[MEXC MODE] ❗Running in production! Order cancel: (${txid})`);
