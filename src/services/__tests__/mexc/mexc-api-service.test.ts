@@ -769,7 +769,6 @@ describe('MexcApiService', () => {
           { orderId: '123', symbol: 'BTCUSDT', status: 'FILLED', side: 'SELL' },
           { orderId: '789', symbol: 'BTCUSDT', status: 'CANCELED', side: 'BUY' }
         ],
-        total: 2,
         timestamp: expect.any(String)
       });
 
@@ -885,7 +884,6 @@ describe('MexcApiService', () => {
       // Should only include FILLED, CANCELED, REJECTED, EXPIRED orders
       expect(result.orders).toHaveLength(4);
       expect(result.orders.map((order: any) => order.orderId)).toEqual(['1', '3', '5', '6']);
-      expect(result.total).toBe(4);
     });
   });
 });

@@ -313,7 +313,6 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         
         return {
           orders: closedOrders,
-          total: closedOrders.length,
           timestamp: new Date().toISOString(),
         };
       } else if (data.code && data.msg) {

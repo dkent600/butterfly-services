@@ -492,7 +492,6 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         // MEXC returns arrays directly
         return {
           orders: result.orders,
-          total: result.total,
           timestamp: result.timestamp,
         };
       } catch (error) {
