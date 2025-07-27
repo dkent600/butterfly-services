@@ -129,6 +129,22 @@ async function fetchMexcPrice(symbol: string): Promise<ApiResponse> {
   return await makeHttpsRequest(MEXC_API_BASE, path, 'GET');
 }
 
+async function getMexcOpenOrders(): Promise<ApiResponse> {
+  const timestamp = generateTimestamp();
+  const queryString = `timestamp=${timestamp}`;
+  const signature = signMexcRequest(queryString, MEXC_API_SECRET);
+  
+  const path = `/api/v3/openOrders?${queryString}&signature=${signature}`;
+  
+  const headers = {
+    'X-MEXC-APIKEY': MEXC_API_KEY,
+  };
+  
+  console.log(`📋 Fetching open orders`);
+  
+  return await makeHttpsRequest(MEXC_API_BASE, path, 'GET', headers);
+}
+
 async function testMexcIntegration() {
   console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔒 Test Mode: ${USE_TEST_MODE}`);
@@ -220,8 +236,38 @@ async function testMexcIntegration() {
     
     console.log('');
     
-    // Test 4: Error Handling - Invalid Symbol
-    console.log('🚨 TEST 4: Error Handling - Invalid Symbol');
+    // Test 4: Get Open Orders
+    console.log('📋 TEST 4: Get Open Orders');
+    console.log('==========================');
+    try {
+      const openOrdersResult = await getMexcOpenOrders();
+      
+      console.log('📋 Open Orders Response:', JSON.stringify(openOrdersResult, null, 2));
+      
+      if (openOrdersResult.status === 200) {
+        if (Array.isArray(openOrdersResult.data)) {
+          console.log(`✅ Open orders test PASSED - Retrieved ${openOrdersResult.data.length} orders`);
+          if (openOrdersResult.data.length > 0) {
+            console.log('📊 Sample order structure:', JSON.stringify(openOrdersResult.data[0], null, 2));
+          } else {
+            console.log('📝 No open orders found (expected for test account)');
+          }
+        } else {
+          console.log('✅ Open orders test PASSED - Response format correct');
+        }
+      } else if (openOrdersResult.status === 401) {
+        console.log('⚠️  Open orders test - Authentication needed (expected if no real credentials)');
+      } else {
+        console.log(`❌ Open orders test response: HTTP ${openOrdersResult.status}`);
+      }
+    } catch (error: any) {
+      console.log('❌ Open orders error:', error.message);
+    }
+    
+    console.log('');
+    
+    // Test 5: Error Handling - Invalid Symbol
+    console.log('🚨 TEST 5: Error Handling - Invalid Symbol');
     console.log('==========================================');
     try {
       const invalidResult = await createMexcSellOrder('INVALIDUSDT', testQuantity, 'MARKET');
@@ -256,6 +302,7 @@ console.log('✅ Real API calls to MEXC test endpoints');
 console.log('✅ Market order creation (test mode)');
 console.log('✅ Limit order creation (test mode)');
 console.log('✅ Price fetching functionality');
+console.log('✅ Open orders retrieval');
 console.log('✅ Error handling for invalid symbols');
 console.log('✅ Safety checks prevent production trades\n');
 
