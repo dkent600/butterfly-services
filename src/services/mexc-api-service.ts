@@ -37,6 +37,21 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     );
   }
 
+  /**
+   * Transforms MEXC order array to unified format
+   * MEXC returns orders as an array: [orderDetails, ...]
+   */
+  private transformToUnifiedFormat(mexcOrders: any[]): any[] {
+    return mexcOrders.map((order) => ({
+      orderId: order.orderId?.toString() || order.clientOrderId || '',
+      pair: order.symbol || '',
+      price: order.price || '', // MEXC always has price field
+      amount: order.origQty || '',
+      direction: (order.side || 'SELL').toLowerCase().replace('sell', 'sell').replace('buy', 'buy') as 'buy' | 'sell',
+      type: (order.type || 'LIMIT').toLowerCase().replace('limit', 'limit').replace('market', 'market') as 'market' | 'limit',
+    }));
+  }
+
   async fetchPrice(asset: IAsset, to: string): Promise<number> {
     try {
       const url = this.getApiUrl('/api/v3/ticker/price');
@@ -234,8 +249,9 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       
       // MEXC returns array directly or error object
       if (Array.isArray(data)) {
+        const unifiedOrders = this.transformToUnifiedFormat(data);
         return {
-          orders: data,
+          orders: unifiedOrders,
           timestamp: new Date().toISOString(),
         };
       } else if (data.code && data.msg) {

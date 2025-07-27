@@ -23,46 +23,6 @@ interface ExchangeConfig {
   serviceToken: string;
 }
 
-// Order transformation utilities for unified response format
-interface UnifiedOrder {
-  orderId: string;
-  pair: string;
-  price: string;
-  amount: string;
-  direction: 'buy' | 'sell';
-  type: 'market' | 'limit';
-}
-
-/**
- * Transforms Kraken order object to unified format
- * Kraken returns orders as: { [orderId]: orderDetails }
- */
-function transformKrakenOrders(krakenOrders: Record<string, any>): UnifiedOrder[] {
-  return Object.entries(krakenOrders).map(([orderId, order]) => ({
-    orderId,
-    pair: order.descr?.pair || '',
-    price: order.descr?.price || '', // Limit price for limit orders, empty for market
-    amount: order.vol || '',
-    direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
-    type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
-  }));
-}
-
-/**
- * Transforms MEXC order array to unified format  
- * MEXC returns orders as: [{ order1 }, { order2 }, ...]
- */
-function transformMexcOrders(mexcOrders: any[]): UnifiedOrder[] {
-  return mexcOrders.map((order) => ({
-    orderId: order.orderId?.toString() || order.clientOrderId || '',
-    pair: order.symbol || '',
-    price: order.price || '', // MEXC always has price field
-    amount: order.origQty || '',
-    direction: (order.side || 'SELL').toLowerCase().replace('sell', 'sell').replace('buy', 'buy') as 'buy' | 'sell',
-    type: (order.type || 'LIMIT').toLowerCase().replace('limit', 'limit').replace('market', 'market') as 'market' | 'limit',
-  }));
-}
-
 // Exchange configuration type
 interface ExchangeConfig {
   name: string;
@@ -353,12 +313,9 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
         const result = await krakenService.getOpenOrders();
 
-        // Convert Kraken's object-based orders to unified format
-        const krakenOrders = result.orders.open || {};
-        const unifiedOrders = transformKrakenOrders(krakenOrders);
-
+        // Service now returns already transformed orders
         return {
-          orders: unifiedOrders,
+          orders: result.orders,
           timestamp: result.timestamp,
         };
       } catch (error) {
@@ -499,12 +456,9 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
         const result = await exchangeService.getOpenOrders();
 
-        // Transform MEXC orders to unified format
-        const mexcOrders = result.orders || [];
-        const unifiedOrders = transformMexcOrders(mexcOrders);
-
+        // Service now returns already transformed orders
         return {
-          orders: unifiedOrders,
+          orders: result.orders,
           timestamp: result.timestamp,
         };
       } catch (error) {

@@ -73,6 +73,21 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   }
 
   /**
+   * Transforms Kraken order object to unified format
+   * Kraken returns orders as: { [orderId]: orderDetails }
+   */
+  private transformToUnifiedFormat(krakenOrders: Record<string, any>): any[] {
+    return Object.entries(krakenOrders).map(([orderId, order]) => ({
+      orderId,
+      pair: order.descr?.pair || '',
+      price: order.descr?.price || '', // Limit price for limit orders, empty for market
+      amount: order.vol || '',
+      direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
+      type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
+    }));
+  }
+
+  /**
    * Maps common asset names to Kraken's naming convention
    * Based on: https://support.kraken.com/hc/en-us/articles/360001185506-How-to-interpret-asset-codes
    * 
@@ -476,8 +491,12 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       const response = data;
       
       if (response.result) {
+        // Extract the open orders object and transform to unified format
+        const krakenOrders = response.result.open || {};
+        const unifiedOrders = this.transformToUnifiedFormat(krakenOrders);
+        
         return {
-          orders: response.result,
+          orders: unifiedOrders,
           timestamp: new Date().toISOString(),
         };
       } else {
