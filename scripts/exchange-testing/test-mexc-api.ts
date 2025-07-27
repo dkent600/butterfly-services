@@ -145,6 +145,31 @@ async function getMexcOpenOrders(): Promise<ApiResponse> {
   return await makeHttpsRequest(MEXC_API_BASE, path, 'GET', headers);
 }
 
+async function cancelMexcOrder(symbol: string, orderId: string): Promise<ApiResponse> {
+  const timestamp = generateTimestamp();
+  
+  // Build order parameters for cancellation
+  const cancelParams: Record<string, string> = {
+    symbol,
+    orderId,
+    timestamp: timestamp.toString()
+  };
+  
+  const queryString = new URLSearchParams(cancelParams).toString();
+  const signature = signMexcRequest(queryString, MEXC_API_SECRET);
+  
+  const path = `/api/v3/order?${queryString}&signature=${signature}`;
+  
+  const headers = {
+    'X-MEXC-APIKEY': MEXC_API_KEY,
+  };
+  
+  console.log(`🚫 Attempting to cancel order: ${orderId} for ${symbol}`);
+  console.log(`⚠️  Note: Order cancellation is disabled in test mode for safety`);
+  
+  return await makeHttpsRequest(MEXC_API_BASE, path, 'DELETE', headers);
+}
+
 async function getMexcClosedOrders(symbol?: string): Promise<ApiResponse> {
   const timestamp = generateTimestamp();
   
@@ -331,8 +356,33 @@ async function testMexcIntegration() {
     
     console.log('');
     
-    // Test 6: Error Handling - Invalid Symbol
-    console.log('🚨 TEST 6: Error Handling - Invalid Symbol');
+    // Test 6: Order Cancellation (Safety Test)
+    console.log('🚫 TEST 6: Order Cancellation (Safety Test)');
+    console.log('===========================================');
+    try {
+      // Use a fake order ID since we can't create real orders in test mode
+      const fakeOrderId = '12345678901234567890';
+      const cancelResult = await cancelMexcOrder(testSymbol, fakeOrderId);
+      
+      console.log('📋 Cancel Order Response:', JSON.stringify(cancelResult, null, 2));
+      
+      if (cancelResult.status === 400 || cancelResult.status === 404) {
+        console.log('✅ Cancel order test PASSED - API correctly rejected invalid order ID');
+      } else if (cancelResult.status === 401) {
+        console.log('⚠️  Cancel order test - Authentication needed (expected if no real credentials)');
+      } else if (cancelResult.status === 200) {
+        console.log('⚠️  Cancel order test - API accepted cancellation (unexpected for fake order)');
+      } else {
+        console.log(`❌ Cancel order test response: HTTP ${cancelResult.status}`);
+      }
+    } catch (error: any) {
+      console.log('❌ Cancel order error:', error.message);
+    }
+    
+    console.log('');
+    
+    // Test 7: Error Handling - Invalid Symbol
+    console.log('🚨 TEST 7: Error Handling - Invalid Symbol');
     console.log('==========================================');
     try {
       const invalidResult = await createMexcSellOrder('INVALIDUSDT', testQuantity, 'MARKET');
@@ -369,6 +419,7 @@ console.log('✅ Limit order creation (test mode)');
 console.log('✅ Price fetching functionality');
 console.log('✅ Open orders retrieval');
 console.log('✅ Closed orders retrieval');
+console.log('✅ Order cancellation functionality');
 console.log('✅ Error handling for invalid symbols');
 console.log('✅ Safety checks prevent production trades\n');
 

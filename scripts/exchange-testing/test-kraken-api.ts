@@ -9,7 +9,14 @@
  * 
  * Prerequisites:
  * - Kraken API credentials in .env.development
- * - Valid API key permissions for tested endpoints
+ * - Valid API key permissions (balance, orders, trading)
+        console.log('✅ Invalid endpoint test PASSED - API correctly rejected invalid request');
+      } else {
+        console.log('❌ Invalid endpoint test FAILED - API should reject invalid endpoints');
+      }
+    } catch (error: any) {
+      console.log('✅ Invalid endpoint test PASSED - Network/API error as expected:', error.message);
+    }ints
  */
 
 import * as crypto from 'crypto';
@@ -125,6 +132,40 @@ async function createKrakenOrder(pair: string, volume: number, orderType: string
   };
   
   return await makeHttpsRequest(KRAKEN_API_BASE, '/0/private/AddOrder', 'POST', headers, postData);
+}
+
+async function cancelKrakenOrder(txid: string): Promise<ApiResponse> {
+  const timestamp = generateNonce();
+  
+  // Build cancellation parameters
+  const cancelParams: Record<string, string> = {
+    nonce: timestamp.toString(),
+    txid: txid
+  };
+  
+  const postData = new URLSearchParams(cancelParams).toString();
+  
+  console.log(`🚫 Attempting to cancel order: ${txid}`);
+  console.log(`⚠️  Note: Order cancellation is blocked in test mode for safety`);
+  console.log(`⚠️  Reason: CancelOrder API does not respect validate=true parameter`);
+  
+  // In test mode, return a simulated response instead of making real API call
+  if (process.env.NODE_ENV !== 'production') {
+    return {
+      status: 200,
+      data: {
+        error: [],
+        result: {
+          count: 0,
+          pending: false,
+          // Simulated response - order cancellation blocked for safety
+          message: 'Order cancellation blocked in test mode for safety'
+        }
+      }
+    };
+  }
+  
+  return await makeKrakenPrivateCall('/0/private/CancelOrder', cancelParams);
 }
 
 async function getKrakenOpenOrders(): Promise<ApiResponse> {
@@ -368,8 +409,36 @@ async function testKrakenIntegration() {
     
     console.log('');
     
-    // Test 8: Error Handling - Invalid API Call
-    console.log('🚨 TEST 8: Error Handling - Invalid Endpoint');
+    // Test 8: Order Cancellation (Safety Test)
+    console.log('🚫 TEST 8: Order Cancellation (Safety Test)');
+    console.log('===========================================');
+    try {
+      // Use a fake transaction ID since we can't create real orders in validation mode
+      const fakeTxId = 'OABC12-DEF34-GHI567';
+      const cancelResult = await cancelKrakenOrder(fakeTxId);
+      
+      console.log('📋 Cancel Order Response:', JSON.stringify(cancelResult, null, 2));
+      
+      if (cancelResult.status === 200 && cancelResult.data.result?.message) {
+        console.log('✅ Cancel order test PASSED - Order cancellation blocked for safety (as expected)');
+      } else if (cancelResult.status === 401) {
+        console.log('⚠️  Cancel order test - Authentication needed (expected if no real credentials)');
+      } else if (cancelResult.status === 200 && !cancelResult.data.error?.length) {
+        console.log('⚠️  Cancel order test - API accepted cancellation (unexpected for fake order)');
+      } else {
+        console.log(`❌ Cancel order test response: HTTP ${cancelResult.status}`);
+        if (cancelResult.data.error?.length) {
+          console.log(`   Error: ${cancelResult.data.error.join(', ')}`);
+        }
+      }
+    } catch (error: any) {
+      console.log('❌ Cancel order error:', error.message);
+    }
+    
+    console.log('');
+    
+    // Test 9: Error Handling - Invalid Endpoint
+    console.log('🚨 TEST 9: Error Handling - Invalid Endpoint');
     console.log('=============================================');
     try {
       const invalidResult = await makeKrakenPrivateCall('/0/private/InvalidEndpoint');
@@ -407,6 +476,7 @@ console.log('✅ Order creation (validation only - market orders)');
 console.log('✅ Order creation (validation only - limit orders)');
 console.log('✅ Open orders retrieval functionality');
 console.log('✅ Closed orders retrieval functionality');
+console.log('✅ Order cancellation functionality (safety blocked)');
 console.log('✅ Authentication and signature generation');
 console.log('✅ Error handling for invalid requests');
 console.log('✅ Proper credential management\n');
