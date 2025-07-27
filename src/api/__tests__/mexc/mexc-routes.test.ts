@@ -181,12 +181,13 @@ describe('MEXC Exchange Routes', () => {
         console.log('Get call URLs:', mockAxiosGet.mock.calls.map(call => call[0]));
       }
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
 
-      expect(body.success).toBe(true);
+      expect(body.message).toBe('Market sell order created successfully');
       expect(body.asset).toBe('BTC');
       expect(body.quantity).toBe(50);
+      expect(body.success).toBeUndefined(); // success field should not exist
     });
   });
 
@@ -241,13 +242,14 @@ describe('MEXC Exchange Routes', () => {
         console.log('Get call URLs:', mockAxiosGet.mock.calls.map(call => call[0]));
       }
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
 
-      expect(body.success).toBe(true);
+      expect(body.message).toBe('Limit sell order created successfully');
       expect(body.asset).toBe('BTC');
       expect(body.quantity).toBe(50);
       expect(body.price).toBe(45000.50);
+      expect(body.success).toBeUndefined(); // success field should not exist
     });
 
     it('should reject limit order without price', async () => {
@@ -469,7 +471,7 @@ describe('MEXC Exchange Routes', () => {
       // Should only return orders with closed statuses (1, 3, 5, 6)
       expect(body.orders).toHaveLength(4);
       expect(body.orders.map((order: any) => order.orderId)).toEqual([1, 3, 5, 6]);
-      expect(body.total).toBe(4);
+      expect(body.total).toBeUndefined(); // total field should not exist per our rules
     });
   });
 

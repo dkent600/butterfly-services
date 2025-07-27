@@ -184,7 +184,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         tags: ['exchanges'],
         body: MarketSellOrderRequestSchema,
         response: {
-          200: MarketSellOrderResponseSchema,
+          201: MarketSellOrderResponseSchema,
           400: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
@@ -204,13 +204,12 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
         await exchangeService.createSellOrder(fullAsset, { orderType: 'market', to: to.toUpperCase() });
 
-        return {
-          success: true,
+        return reply.status(201).send({
           message: 'Market sell order created successfully',
           asset: fullAsset.name.toUpperCase(),
           quantity: fullAsset.amount, // Include the quantity in the response
           timestamp: new Date().toISOString(),
-        };
+        });
       } catch (error) {
         fastify.log.error(error);
         return reply.status(500).send({
@@ -233,7 +232,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         tags: ['exchanges'],
         body: LimitSellOrderRequestSchema,
         response: {
-          200: LimitSellOrderResponseSchema,
+          201: LimitSellOrderResponseSchema,
           400: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
@@ -263,14 +262,13 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
         await exchangeService.createSellOrder(fullAsset, { orderType: 'limit', price, to: to.toUpperCase() });
 
-        return {
-          success: true,
+        return reply.status(201).send({
           message: 'Limit sell order created successfully',
           asset: fullAsset.name.toUpperCase(),
           quantity: fullAsset.amount,
           price,
           timestamp: new Date().toISOString(),
-        };
+        });
       } catch (error) {
         fastify.log.error(error);
         return reply.status(500).send({

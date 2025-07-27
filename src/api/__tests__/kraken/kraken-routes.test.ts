@@ -401,12 +401,13 @@ describe('Kraken Exchange Routes', () => {
         console.log('Get call URLs:', mockAxiosGet.mock.calls.map(call => call[0]));
       }
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
 
-      expect(body.success).toBe(true);
+      expect(body.message).toBe('Market sell order created successfully');
       expect(body.asset).toBe('BTC');
       expect(body.quantity).toBe(50);
+      expect(body.success).toBeUndefined(); // success field should not exist
     });
   });
 
@@ -503,13 +504,14 @@ describe('Kraken Exchange Routes', () => {
         console.log('Get call URLs:', mockAxiosGet.mock.calls.map(call => call[0]));
       }
 
-      expect(response.statusCode).toBe(200);
+      expect(response.statusCode).toBe(201);
       const body = JSON.parse(response.body);
 
-      expect(body.success).toBe(true);
+      expect(body.message).toBe('Limit sell order created successfully');
       expect(body.asset).toBe('BTC');
       expect(body.quantity).toBe(50);
       expect(body.price).toBe(48000.75);
+      expect(body.success).toBeUndefined(); // success field should not exist
     });
 
     it('should reject limit order without price', async () => {

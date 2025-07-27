@@ -53,20 +53,18 @@ export const LimitSellOrderRequestSchema = {
 export const MarketSellOrderResponseSchema = {
   type: 'object',
   properties: {
-    success: { type: 'boolean' },
     message: { type: 'string' },
     orderId: { type: 'string' },
     asset: { type: 'string' },
     quantity: { type: 'number' },
     timestamp: { type: 'string', format: 'date-time' },
   },
-  required: ['success', 'message', 'timestamp'],
+  required: ['message', 'timestamp'],
 } as const;
 
 export const LimitSellOrderResponseSchema = {
   type: 'object',
   properties: {
-    success: { type: 'boolean' },
     message: { type: 'string' },
     orderId: { type: 'string' },
     asset: { type: 'string' },
@@ -74,7 +72,7 @@ export const LimitSellOrderResponseSchema = {
     price: { type: 'number' },
     timestamp: { type: 'string', format: 'date-time' },
   },
-  required: ['success', 'message', 'timestamp'],
+  required: ['message', 'timestamp'],
 } as const;
 
 export const OpenOrdersResponseSchema = {
@@ -227,7 +225,6 @@ export const MexcClosedOrdersResponseSchema = {
         required: ['symbol', 'orderId', 'clientOrderId', 'price', 'origQty', 'executedQty', 'status', 'side', 'type'],
       },
     },
-    total: { type: 'number', description: 'Total number of closed orders' },
     timestamp: { type: 'string', format: 'date-time' },
   },
   required: ['orders', 'timestamp'],
