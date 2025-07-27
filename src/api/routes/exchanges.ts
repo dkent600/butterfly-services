@@ -10,7 +10,7 @@ import {
   MarketSellOrderResponseSchema,
   LimitSellOrderRequestSchema,
   LimitSellOrderResponseSchema,
-  UnifiedOpenOrdersResponseSchema,
+  OpenedOrdersResponseSchema,
   ClosedOrdersResponseSchema,
   MexcClosedOrdersResponseSchema,
   ErrorResponseSchema,
@@ -342,7 +342,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         description: `Get open orders from ${exchange.displayName} exchange`,
         tags: ['exchanges'],
         response: {
-          200: UnifiedOpenOrdersResponseSchema,
+          200: OpenedOrdersResponseSchema,
           400: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },
@@ -489,7 +489,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         description: `Get open orders from ${exchange.displayName} exchange`,
         tags: ['exchanges'],
         response: {
-          200: UnifiedOpenOrdersResponseSchema,
+          200: OpenedOrdersResponseSchema,
           400: ErrorResponseSchema,
           500: ErrorResponseSchema,
         },

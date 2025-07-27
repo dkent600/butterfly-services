@@ -75,8 +75,8 @@ export const LimitSellOrderResponseSchema = {
   required: ['message', 'timestamp'],
 } as const;
 
-// Unified Open Orders Response Schema - Flat structure for consistent frontend usage
-export const UnifiedOpenOrdersResponseSchema = {
+// Open Orders Response Schema - Flat structure for consistent frontend usage
+export const OpenedOrdersResponseSchema = {
   type: 'object',
   properties: {
     orders: {
@@ -101,55 +101,6 @@ export const UnifiedOpenOrdersResponseSchema = {
   },
   required: ['orders', 'timestamp'],
   additionalProperties: false,
-} as const;
-
-// Legacy Kraken-specific schema (keeping for backward compatibility during transition)
-export const OpenOrdersResponseSchema = {
-  type: 'object',
-  properties: {
-    orders: { 
-      type: 'object',
-      description: 'object whose property names are order txIds and values are order details',
-      additionalProperties: {
-        type: 'object',
-        description: 'Order details for a specific txId',
-        properties: {
-          refid: { type: ['string', 'null'], description: 'Referral order transaction ID that created this order' },
-          userref: { type: 'number', description: 'User reference ID' },
-          status: { type: 'string', enum: ['pending', 'open', 'closed', 'canceled', 'expired'], description: 'Status of order' },
-          opentm: { type: 'number', description: 'Unix timestamp of when order was placed' },
-          starttm: { type: 'number', description: 'Unix timestamp of order start time (or 0 if not set)' },
-          expiretm: { type: 'number', description: 'Unix timestamp of order expiration time (or 0 if not set)' },
-          descr: {
-            type: 'object',
-            description: 'Order description info',
-            properties: {
-              pair: { type: 'string', description: 'Asset pair' },
-              type: { type: 'string', enum: ['buy', 'sell'], description: 'Type of order (buy/sell)' },
-              ordertype: { type: 'string', enum: ['market', 'limit', 'stop-loss', 'take-profit', 'stop-loss-limit', 'take-profit-limit', 'settle-position'], description: 'Order type' },
-              price: { type: 'string', description: 'Primary price' },
-              price2: { type: 'string', description: 'Secondary price' },
-              leverage: { type: 'string', description: 'Amount of leverage' },
-              order: { type: 'string', description: 'Order description' },
-              close: { type: 'string', description: 'Conditional close order description (if conditional close set)' },
-            },
-            required: ['pair', 'type', 'ordertype', 'price', 'price2', 'leverage', 'order', 'close'],
-          },
-          vol: { type: 'string', description: 'Volume of order (base currency unless viqc set in oflags)' },
-          vol_exec: { type: 'string', description: 'Volume executed (base currency unless viqc set in oflags)' },
-          cost: { type: 'string', description: 'Total cost (quote currency unless unless viqc set in oflags)' },
-          fee: { type: 'string', description: 'Total fee (quote currency)' },
-          price: { type: 'string', description: 'Average price (quote currency unless viqc set in oflags)' },
-          stopprice: { type: 'string', description: 'Stop price (quote currency, for trailing stops)' },
-          limitprice: { type: 'string', description: 'Triggered limit price (quote currency, when limit based order type triggered)' },
-          misc: { type: 'string', description: 'Miscellaneous info' },
-          oflags: { type: 'string', description: 'Order flags' },
-        },
-      },
-    },
-    timestamp: { type: 'string', format: 'date-time' },
-  },
-  required: ['orders', 'timestamp'],
 } as const;
 
 export const ClosedOrdersResponseSchema = {
