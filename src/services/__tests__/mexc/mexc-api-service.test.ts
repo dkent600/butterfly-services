@@ -478,4 +478,146 @@ describe('MexcApiService', () => {
       );
     });
   });
+
+  describe('getOpenOrders', () => {
+    beforeEach(() => {
+      // SAFETY FIRST: Ensure ALL external calls are stubbed to prevent real API interactions
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+      vi.mocked(mockExchangeApiService.sign).mockReturnValue('test-signature');
+      
+      // Mock server time for unique nonce generation
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { serverTime: 1640995200000 }
+      });
+    });
+
+    it('should fetch open orders successfully', async () => {
+      const mockOpenOrders = [
+        {
+          symbol: 'BTCUSDT',
+          orderId: 12345,
+          clientOrderId: 'abc123',
+          price: '50000.00',
+          origQty: '0.001',
+          executedQty: '0.000',
+          cummulativeQuoteQty: '0.000',
+          status: 'NEW',
+          timeInForce: 'GTC',
+          type: 'LIMIT',
+          side: 'SELL',
+          stopPrice: '0.000',
+          icebergQty: '0.000',
+          time: 1640995200000,
+          updateTime: 1640995200000,
+          isWorking: true,
+          origQuoteOrderQty: '0.000'
+        }
+      ];
+
+      // Mock the axios.get call that getOpenOrders makes
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: mockOpenOrders
+      });
+
+      const result = await mexcApiService.getOpenOrders();
+
+      expect(result).toEqual({
+        orders: mockOpenOrders,
+        timestamp: expect.any(String)
+      });
+
+      expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
+        expect.stringMatching(/timestamp=\d+/),
+        'test-api-secret'
+      );
+
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v3/openOrders'),
+        expect.objectContaining({
+          headers: {
+            'X-MEXC-APIKEY': 'test-api-key',
+            'Content-Type': 'application/json'
+          }
+        })
+      );
+    });
+
+    it('should handle MEXC API errors', async () => {
+      const mexcError = {
+        code: -1121,
+        msg: 'Invalid symbol.'
+      };
+
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: mexcError
+      });
+
+      await expect(mexcApiService.getOpenOrders()).rejects.toThrow(
+        'MEXC API error: Invalid symbol.'
+      );
+    });
+
+    it('should handle network errors', async () => {
+      const networkError = {
+        response: {
+          data: {
+            code: -1001,
+            msg: 'Internal error; unable to process your request. Please try again.'
+          }
+        }
+      };
+
+      vi.mocked(axios.get).mockRejectedValueOnce(networkError);
+
+      await expect(mexcApiService.getOpenOrders()).rejects.toThrow(
+        'mexc API error: Internal error; unable to process your request. Please try again.'
+      );
+    });
+
+    it('should handle missing API credentials', async () => {
+      vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
+      vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
+
+      await expect(mexcApiService.getOpenOrders()).rejects.toThrow(
+        'mexc API credentials not configured'
+      );
+    });
+
+    it('should handle unexpected response format', async () => {
+      const unexpectedResponse = {
+        unexpectedField: 'value'
+      };
+
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: unexpectedResponse
+      });
+
+      await expect(mexcApiService.getOpenOrders()).rejects.toThrow(
+        'mexc API returned unexpected response format'
+      );
+    });
+
+    it('should include proper URL parameters and signature', async () => {
+      const mockOpenOrders = [];
+
+      vi.mocked(axios.get).mockResolvedValueOnce({
+        data: mockOpenOrders
+      });
+
+      await mexcApiService.getOpenOrders();
+
+      // Verify the timestamp parameter and signature are included
+      expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
+        expect.stringMatching(/^timestamp=\d+$/),
+        'test-api-secret'
+      );
+
+      // Verify the URL contains the query string and signature
+      expect(axios.get).toHaveBeenCalledWith(
+        expect.stringMatching(/\/api\/v3\/openOrders\?timestamp=\d+&signature=test-signature$/),
+        expect.any(Object)
+      );
+    });
+  });
 });

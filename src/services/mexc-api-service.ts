@@ -200,9 +200,67 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     }
   }
 
-  getOpenOrders(): Promise<any> {
-    // This method should be implemented to fetch open orders from the exchange
-    throw new Error('getOpenOrders method not implemented yet');
+  /**
+   * Retrieves open orders from MEXC
+   * https://mexcdevelop.github.io/apidocs/spot_v3_en/#current-open-orders
+   * @returns Promise with open orders data
+   */
+  async getOpenOrders(): Promise<any> {
+    const exchangeName = this.getExchangeName();
+    
+    try {
+      const timestamp = await this.generateUniqueNonce();
+      const queryString = `timestamp=${timestamp}`;
+      
+      const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
+      const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
+      
+      if (!apiKey || !apiSecret) {
+        throw new Error(`${exchangeName} API credentials not configured`);
+      }
+
+      // Log environment context (without exposing secrets)
+      console.log(`[MEXC AUTH] Open Orders - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
+      
+      const signature = this.exchangeApiService.sign(queryString, apiSecret);
+      const url = `${this.getApiUrl('/api/v3/openOrders')}?${queryString}&signature=${signature}`;
+      
+      console.log(`[MEXC DEBUG] Open Orders Request - URL: ${this.getApiUrl('/api/v3/openOrders')}, QueryString: ${queryString}`);
+      console.log(`[MEXC DEBUG] Open Orders Headers: ${JSON.stringify({ 'X-MEXC-APIKEY': `${apiKey.substring(0, 10)}...` })}`);
+      
+      const headers = {
+        'X-MEXC-APIKEY': apiKey,
+        'Content-Type': 'application/json',
+      };
+
+      const { data } = await axios.get(url, { headers });
+      
+      // MEXC returns array directly or error object
+      if (Array.isArray(data)) {
+        return {
+          orders: data,
+          timestamp: new Date().toISOString(),
+        };
+      } else if (data.code && data.msg) {
+        // MEXC error format
+        console.error(`[MEXC ERROR] Open Orders API Error: ${data.msg} (Code: ${data.code})`);
+        throw new Error(`MEXC API error: ${data.msg}`);
+      } else {
+        throw new Error(`${exchangeName} API returned unexpected response format`);
+      }
+    } catch (error: any) {
+      console.error('[MEXC ERROR] Get open orders failed:', error);
+      
+      // Check for MEXC API error format
+      if (error.response?.data?.code && error.response?.data?.msg) {
+        const mexcError = error.response.data.msg;
+        console.error(`${exchangeName} get open orders error: ${mexcError} (Code: ${error.response.data.code})`);
+        throw new Error(`${exchangeName} API error: ${mexcError}`);
+      } else {
+        console.error(`Failed to get ${exchangeName} open orders: ${error.message}`);
+        throw new Error(`Failed to get ${exchangeName} open orders: ${error.message}`);
+      }
+    }
   }
 
   getClosedOrders(): Promise<any> {
