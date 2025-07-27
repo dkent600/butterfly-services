@@ -109,7 +109,7 @@ curl http://localhost:3000
 
 | Command | Purpose | Output |
 |---------|---------|---------|
-| `npm test` | Full test suite with linting | Comprehensive validation (127 tests) |
+| `npm test` | Full test suite with linting | Comprehensive validation (147 tests) |
 | `npm run test:quick` | Tests only (skip linting) | Fast feedback loop |
 | `npm run test:ui` | Interactive test UI | Visual test management |
 | `npm run test:watch` | Tests in watch mode | Continuous testing |
