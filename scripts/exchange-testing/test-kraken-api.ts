@@ -93,6 +93,52 @@ function makeHttpsRequest(hostname: string, path: string, method: string = 'GET'
   });
 }
 
+async function createKrakenOrder(pair: string, volume: number, orderType: string, price?: number): Promise<ApiResponse> {
+  const timestamp = generateNonce();
+  
+  // Build order parameters
+  const orderParams: Record<string, string> = {
+    nonce: timestamp.toString(),
+    ordertype: orderType.toLowerCase(),
+    type: 'sell',
+    volume: volume.toString(),
+    pair: pair,
+    validate: 'true' // Always validate orders in test mode for safety
+  };
+  
+  if (orderType === 'limit' && price) {
+    orderParams.price = price.toString();
+  }
+  
+  const postData = new URLSearchParams(orderParams).toString();
+  
+  console.log(`📡 Making ${orderType} order request (VALIDATE ONLY)`);
+  console.log(`🔒 Safety: validate=true prevents real execution`);
+  
+  const signature = signKrakenRequest('/0/private/AddOrder', postData, KRAKEN_API_SECRET);
+  
+  const headers = {
+    'API-Key': KRAKEN_API_KEY,
+    'API-Sign': signature,
+    'Content-Type': 'application/x-www-form-urlencoded',
+    'Content-Length': Buffer.byteLength(postData).toString()
+  };
+  
+  return await makeHttpsRequest(KRAKEN_API_BASE, '/0/private/AddOrder', 'POST', headers, postData);
+}
+
+async function getKrakenOpenOrders(): Promise<ApiResponse> {
+  console.log(`📋 Fetching open orders`);
+  
+  return await makeKrakenPrivateCall('/0/private/OpenOrders', { trades: 'true' });
+}
+
+async function getKrakenClosedOrders(): Promise<ApiResponse> {
+  console.log(`📚 Fetching closed orders`);
+  
+  return await makeKrakenPrivateCall('/0/private/ClosedOrders', { trades: 'false' });
+}
+
 async function makeKrakenPrivateCall(endpoint: string, params: Record<string, string> = {}): Promise<ApiResponse> {
   const nonce = generateNonce();
   const postData = new URLSearchParams({ nonce: nonce.toString(), ...params }).toString();
@@ -220,8 +266,110 @@ async function testKrakenIntegration() {
     
     console.log('');
     
-    // Test 4: Error Handling - Invalid API Call
-    console.log('🚨 TEST 4: Error Handling - Invalid Endpoint');
+    // Test 4: Order Creation - Validate Market Order
+    console.log('📈 TEST 4: Order Creation - Validate Market Order');
+    console.log('==================================================');
+    try {
+      const marketOrderResult = await createKrakenOrder('XBTUSD', 0.001, 'market');
+      
+      console.log('📋 Market Order Response:', JSON.stringify(marketOrderResult, null, 2));
+      
+      if (marketOrderResult.status === 200 && !marketOrderResult.data.error?.length) {
+        console.log('✅ Market order validation PASSED - Order would be accepted');
+      } else if (marketOrderResult.status === 401) {
+        console.log('⚠️  Market order validation - Authentication needed (expected if no real credentials)');
+      } else {
+        console.log(`❌ Market order validation failed: HTTP ${marketOrderResult.status}`);
+        if (marketOrderResult.data.error?.length) {
+          console.log(`   Error: ${marketOrderResult.data.error.join(', ')}`);
+        }
+      }
+    } catch (error: any) {
+      console.log('❌ Market order validation error:', error.message);
+    }
+    
+    console.log('');
+    
+    // Test 5: Order Creation - Validate Limit Order
+    console.log('📈 TEST 5: Order Creation - Validate Limit Order');
+    console.log('=================================================');
+    try {
+      const limitOrderResult = await createKrakenOrder('XBTUSD', 0.001, 'limit', 30000.00);
+      
+      console.log('📋 Limit Order Response:', JSON.stringify(limitOrderResult, null, 2));
+      
+      if (limitOrderResult.status === 200 && !limitOrderResult.data.error?.length) {
+        console.log('✅ Limit order validation PASSED - Order would be accepted');
+      } else if (limitOrderResult.status === 401) {
+        console.log('⚠️  Limit order validation - Authentication needed (expected if no real credentials)');
+      } else {
+        console.log(`❌ Limit order validation failed: HTTP ${limitOrderResult.status}`);
+        if (limitOrderResult.data.error?.length) {
+          console.log(`   Error: ${limitOrderResult.data.error.join(', ')}`);
+        }
+      }
+    } catch (error: any) {
+      console.log('❌ Limit order validation error:', error.message);
+    }
+    
+    console.log('');
+    
+    // Test 6: Open Orders Retrieval
+    console.log('📋 TEST 6: Open Orders Retrieval');
+    console.log('=================================');
+    try {
+      const openOrdersResult = await getKrakenOpenOrders();
+      
+      console.log('📋 Open Orders Response:', JSON.stringify(openOrdersResult, null, 2));
+      
+      if (openOrdersResult.status === 200 && !openOrdersResult.data.error?.length) {
+        console.log('✅ Open orders retrieval PASSED - Got response');
+        const orders = openOrdersResult.data.result?.open || {};
+        const orderCount = Object.keys(orders).length;
+        console.log(`📊 Found ${orderCount} open orders`);
+      } else if (openOrdersResult.status === 401) {
+        console.log('⚠️  Open orders retrieval - Authentication needed (expected if no real credentials)');
+      } else {
+        console.log(`❌ Open orders retrieval failed: HTTP ${openOrdersResult.status}`);
+        if (openOrdersResult.data.error?.length) {
+          console.log(`   Error: ${openOrdersResult.data.error.join(', ')}`);
+        }
+      }
+    } catch (error: any) {
+      console.log('❌ Open orders retrieval error:', error.message);
+    }
+    
+    console.log('');
+    
+    // Test 7: Closed Orders Retrieval
+    console.log('📋 TEST 7: Closed Orders Retrieval');
+    console.log('===================================');
+    try {
+      const closedOrdersResult = await getKrakenClosedOrders();
+      
+      console.log('📋 Closed Orders Response:', JSON.stringify(closedOrdersResult, null, 2));
+      
+      if (closedOrdersResult.status === 200 && !closedOrdersResult.data.error?.length) {
+        console.log('✅ Closed orders retrieval PASSED - Got response');
+        const orders = closedOrdersResult.data.result?.closed || {};
+        const orderCount = Object.keys(orders).length;
+        console.log(`📊 Found ${orderCount} closed orders`);
+      } else if (closedOrdersResult.status === 401) {
+        console.log('⚠️  Closed orders retrieval - Authentication needed (expected if no real credentials)');
+      } else {
+        console.log(`❌ Closed orders retrieval failed: HTTP ${closedOrdersResult.status}`);
+        if (closedOrdersResult.data.error?.length) {
+          console.log(`   Error: ${closedOrdersResult.data.error.join(', ')}`);
+        }
+      }
+    } catch (error: any) {
+      console.log('❌ Closed orders retrieval error:', error.message);
+    }
+    
+    console.log('');
+    
+    // Test 8: Error Handling - Invalid API Call
+    console.log('🚨 TEST 8: Error Handling - Invalid Endpoint');
     console.log('=============================================');
     try {
       const invalidResult = await makeKrakenPrivateCall('/0/private/InvalidEndpoint');
@@ -255,6 +403,10 @@ console.log('This integration test verifies:');
 console.log('✅ Real API calls to Kraken endpoints');
 console.log('✅ Public API functionality (server time, ticker data)');
 console.log('✅ Private API functionality (account balance)');
+console.log('✅ Order creation (validation only - market orders)');
+console.log('✅ Order creation (validation only - limit orders)');
+console.log('✅ Open orders retrieval functionality');
+console.log('✅ Closed orders retrieval functionality');
 console.log('✅ Authentication and signature generation');
 console.log('✅ Error handling for invalid requests');
 console.log('✅ Proper credential management\n');
