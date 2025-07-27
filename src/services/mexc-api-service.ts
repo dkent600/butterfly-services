@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IEnvService, TYPES } from '../types/interfaces.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, TYPES } from '../types/interfaces.js';
 import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
@@ -41,7 +41,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    * Transforms MEXC order array to unified format
    * MEXC returns orders as an array: [orderDetails, ...]
    */
-  private transformToUnifiedFormat(mexcOrders: any[]): any[] {
+  private transformToApiSchema(mexcOrders: any[]): IOpenedOrderListItem[] {
     return mexcOrders.map((order) => ({
       orderId: order.orderId?.toString() || order.clientOrderId || '',
       pair: order.symbol || '',
@@ -249,9 +249,9 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       
       // MEXC returns array directly or error object
       if (Array.isArray(data)) {
-        const unifiedOrders = this.transformToUnifiedFormat(data);
+        const orderListSchema = this.transformToApiSchema(data);
         return {
-          orders: unifiedOrders,
+          orders: orderListSchema,
           timestamp: new Date().toISOString(),
         };
       } else if (data.code && data.msg) {

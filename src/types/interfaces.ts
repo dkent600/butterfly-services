@@ -4,6 +4,15 @@ export interface IAsset {
   amount: number;
 }
 
+export interface IOpenedOrderListItem {
+  orderId: string;
+  pair: string;
+  price: string;
+  amount: string;
+  direction: 'buy' | 'sell';
+  type: 'market' | 'limit';
+}
+
 export interface ILogService {
   log(message: string): void;
   logError(err: Error | string): void;

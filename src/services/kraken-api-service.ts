@@ -1,7 +1,7 @@
 import axios from 'axios';
 import crypto from 'node:crypto';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IEnvService, TYPES } from '../types/interfaces.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, TYPES } from '../types/interfaces.js';
 import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
@@ -76,7 +76,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * Transforms Kraken order object to unified format
    * Kraken returns orders as: { [orderId]: orderDetails }
    */
-  private transformToUnifiedFormat(krakenOrders: Record<string, any>): any[] {
+  private transformToApiSchema(krakenOrders: Record<string, any>): IOpenedOrderListItem[] {
     return Object.entries(krakenOrders).map(([orderId, order]) => ({
       orderId,
       pair: order.descr?.pair || '',
@@ -493,10 +493,10 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       if (response.result) {
         // Extract the open orders object and transform to unified format
         const krakenOrders = response.result.open || {};
-        const unifiedOrders = this.transformToUnifiedFormat(krakenOrders);
+        const orderListSchema = this.transformToApiSchema(krakenOrders);
         
         return {
-          orders: unifiedOrders,
+          orders: orderListSchema,
           timestamp: new Date().toISOString(),
         };
       } else {
