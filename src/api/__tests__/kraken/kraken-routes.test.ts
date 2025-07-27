@@ -622,10 +622,17 @@ describe('Kraken Exchange Routes', () => {
 
       expect(body.orders).toBeDefined();
       expect(body.timestamp).toBeDefined();
-      expect(typeof body.orders).toBe('object');
-      expect(body.orders['OGTT3Y-C6I3P-XRI6HX']).toBeDefined();
-      expect(body.orders['OGTT3Y-C6I3P-XRI6HX'].status).toBe('open');
-      expect(body.orders['OGTT3Y-C6I3P-XRI6HX'].descr.type).toBe('sell');
+      expect(Array.isArray(body.orders)).toBe(true);
+      expect(body.orders.length).toBeGreaterThan(0);
+      
+      // Test unified format
+      const firstOrder = body.orders[0];
+      expect(firstOrder.orderId).toBeDefined();
+      expect(firstOrder.pair).toBeDefined();
+      expect(firstOrder.price).toBeDefined();
+      expect(firstOrder.amount).toBeDefined();
+      expect(firstOrder.direction).toBeDefined();
+      expect(firstOrder.type).toBeDefined();
     });
 
     it('should handle empty open orders response', async () => {
@@ -664,8 +671,8 @@ describe('Kraken Exchange Routes', () => {
 
       expect(body.orders).toBeDefined();
       expect(body.timestamp).toBeDefined();
-      expect(typeof body.orders).toBe('object');
-      expect(Object.keys(body.orders)).toEqual([]);
+      expect(Array.isArray(body.orders)).toBe(true);
+      expect(body.orders.length).toBe(0);
       expect(body.timestamp).toBeDefined();
     });
   });

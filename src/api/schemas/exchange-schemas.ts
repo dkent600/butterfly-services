@@ -75,6 +75,35 @@ export const LimitSellOrderResponseSchema = {
   required: ['message', 'timestamp'],
 } as const;
 
+// Unified Open Orders Response Schema - Flat structure for consistent frontend usage
+export const UnifiedOpenOrdersResponseSchema = {
+  type: 'object',
+  properties: {
+    orders: {
+      type: 'array',
+      description: 'Array of normalized open orders from any exchange',
+      items: {
+        type: 'object',
+        description: 'Normalized order details',
+        properties: {
+          orderId: { type: 'string', description: 'Unique order identifier (for cancellation)' },
+          pair: { type: 'string', description: 'Trading pair (e.g., BTCUSDT, ETHUSDT)' },
+          price: { type: 'string', description: 'Order price (limit price for limit orders, empty for market orders)' },
+          amount: { type: 'string', description: 'Order amount/volume' },
+          direction: { type: 'string', enum: ['buy', 'sell'], description: 'Order direction (buy or sell)' },
+          type: { type: 'string', enum: ['market', 'limit'], description: 'Order type' },
+        },
+        required: ['orderId', 'pair', 'price', 'amount', 'direction', 'type'],
+        additionalProperties: false,
+      },
+    },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['orders', 'timestamp'],
+  additionalProperties: false,
+} as const;
+
+// Legacy Kraken-specific schema (keeping for backward compatibility during transition)
 export const OpenOrdersResponseSchema = {
   type: 'object',
   properties: {
