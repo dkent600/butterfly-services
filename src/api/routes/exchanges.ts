@@ -352,12 +352,13 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        // Extract pairs from request body
-        const { pairs } = request.body as { pairs?: string[] };
+        // Extract baseCoins and quoteCoins from request body
+        const { baseCoins, quoteCoins } = request.body as { baseCoins?: string[]; quoteCoins?: string[] };
+        const filters = (baseCoins || quoteCoins) ? { baseCoins, quoteCoins } : undefined;
         
         // Use the concrete KrakenApiService type for order-specific methods
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
-        const ordersArray = await krakenService.getClosedOrders(pairs);
+        const ordersArray = await krakenService.getClosedOrders(filters);
 
         return {
           orders: ordersArray,
@@ -490,11 +491,12 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        // Extract pairs from request body
-        const { pairs } = request.body as { pairs?: string[] };
+        // Extract baseCoins and quoteCoins from request body
+        const { baseCoins, quoteCoins } = request.body as { baseCoins?: string[]; quoteCoins?: string[] };
+        const filters = (baseCoins || quoteCoins) ? { baseCoins, quoteCoins } : undefined;
         
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        const ordersArray = await exchangeService.getClosedOrders(pairs);
+        const ordersArray = await exchangeService.getClosedOrders(filters);
 
         return {
           orders: ordersArray,

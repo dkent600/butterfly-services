@@ -293,67 +293,127 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   }
 
   /**
+   * Generates trading pairs from base and quote coin filters
+   * @param filters Optional filters containing base and quote coins
+   * @returns Array of trading pair strings
+   */
+  private generatePairsFromFilters(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): string[] {
+    if (!filters || (!filters.baseCoins?.length && !filters.quoteCoins?.length)) {
+      // Default to BTCUSDT if no filters provided
+      return ['BTCUSDT'];
+    }
+    
+    const baseCoins = filters.baseCoins || ['BTC'];
+    const quoteCoins = filters.quoteCoins || ['USDT'];
+    
+    // Generate all combinations of base and quote coins
+    const pairs: string[] = [];
+    for (const base of baseCoins) {
+      for (const quote of quoteCoins) {
+        pairs.push(`${base.toUpperCase()}${quote.toUpperCase()}`);
+      }
+    }
+    
+    return pairs.length > 0 ? pairs : ['BTCUSDT'];
+  }
+
+  /**
    * Retrieves all orders (including closed ones) from MEXC
    * https://mexcdevelop.github.io/apidocs/spot_v3_en/#all-orders
-   * @param _pairs Optional array of trading pairs to filter orders for
+   * @param filters Optional filters with base and quote coin arrays
    * @returns Promise with all orders data
    */
-  async getClosedOrders(_pairs?: string[]): Promise<any> {
+  async getClosedOrders(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): Promise<any> {
     const exchangeName = this.getExchangeName();
     
     try {
-      const timestamp = await this.generateUniqueNonce();
+      // Generate pairs from base and quote coins
+      const targetPairs = this.generatePairsFromFilters(filters);
       
-      // MEXC requires a symbol parameter for allOrders endpoint
-      // Default to BTCUSDT as a commonly used pair (hidden implementation detail)
-      const targetSymbol = 'BTCUSDT';
+      console.log(`[MEXC] Fetching closed orders for pairs: ${targetPairs.join(', ')}`);
       
-      // Build query parameters
-      const queryParams: Record<string, string> = {
-        symbol: targetSymbol,
-        timestamp: timestamp.toString(),
-      };
+      // Collect all orders from all pairs
+      const allClosedOrders: any[] = [];
+      const errors: string[] = [];
       
-      const queryString = new URLSearchParams(queryParams).toString();
-      
-      const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
-      const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
-      
-      if (!apiKey || !apiSecret) {
-        throw new Error(`${exchangeName} API credentials not configured`);
-      }
+      // MEXC requires separate API calls for each symbol
+      for (const symbol of targetPairs) {
+        try {
+          const timestamp = await this.generateUniqueNonce();
+          
+          // Build query parameters for this symbol
+          const queryParams: Record<string, string> = {
+            symbol,
+            timestamp: timestamp.toString(),
+          };
+          
+          const queryString = new URLSearchParams(queryParams).toString();
+          
+          const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
+          const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
+          
+          if (!apiKey || !apiSecret) {
+            throw new Error(`${exchangeName} API credentials not configured`);
+          }
 
-      // Log environment context (without exposing secrets)
-      console.log(`[MEXC AUTH] Closed Orders - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
-      
-      const signature = this.exchangeApiService.sign(queryString, apiSecret);
-      const url = `${this.getApiUrl('/api/v3/allOrders')}?${queryString}&signature=${signature}`;
-      
-      const headers = {
-        'X-MEXC-APIKEY': apiKey,
-        'Content-Type': 'application/json',
-      };
+          // Log environment context (without exposing secrets)
+          console.log(`[MEXC AUTH] Closed Orders for ${symbol} - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
+          
+          const signature = this.exchangeApiService.sign(queryString, apiSecret);
+          const url = `${this.getApiUrl('/api/v3/allOrders')}?${queryString}&signature=${signature}`;
+          
+          const headers = {
+            'X-MEXC-APIKEY': apiKey,
+            'Content-Type': 'application/json',
+          };
 
-      const { data } = await axios.get(url, { headers });
-      
-      // MEXC returns array directly or error object
-      if (Array.isArray(data)) {
-        // Filter for closed orders (status: FILLED, CANCELED, REJECTED, EXPIRED)
-        const closedOrders = data.filter(order => 
-          ['FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'].includes(order.status),
-        );
-        
-        // Transform to standard format
-        const orderList = this.transformClosedOrdersToApiSchema(closedOrders);
-        
-        return orderList;
-      } else if (data.code && data.msg) {
-        // MEXC error format
-        console.error(`[MEXC ERROR] Closed Orders API Error: ${data.msg} (Code: ${data.code})`);
-        throw new Error(`MEXC API error: ${data.msg}`);
-      } else {
-        throw new Error(`${exchangeName} API returned unexpected response format`);
+          const { data } = await axios.get(url, { headers });
+          
+          // MEXC returns array directly or error object
+          if (Array.isArray(data)) {
+            // Filter for closed orders (status: FILLED, CANCELED, REJECTED, EXPIRED)
+            const closedOrdersForSymbol = data.filter(order => 
+              ['FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'].includes(order.status),
+            );
+            
+            console.log(`[MEXC] Found ${closedOrdersForSymbol.length} closed orders for ${symbol}`);
+            allClosedOrders.push(...closedOrdersForSymbol);
+          } else if (data.code && data.msg) {
+            // MEXC error format - collect error but continue with other pairs if there are multiple
+            const errorMsg = `${symbol}: ${data.msg} (Code: ${data.code})`;
+            errors.push(errorMsg);
+            console.warn(`[MEXC WARNING] Closed Orders API Error for ${symbol}: ${data.msg} (Code: ${data.code})`);
+          } else {
+            const errorMsg = `${symbol}: Unexpected response format`;
+            errors.push(errorMsg);
+            console.warn(`[MEXC WARNING] Unexpected response format for ${symbol}`);
+          }
+        } catch (symbolError: any) {
+          // Collect error for this symbol
+          const errorMsg = `${symbol}: ${symbolError.message}`;
+          errors.push(errorMsg);
+          console.warn(`[MEXC WARNING] Failed to fetch closed orders for ${symbol}:`, symbolError.message);
+        }
       }
+      
+      // If we have errors and no successful results, throw an error
+      if (errors.length > 0 && allClosedOrders.length === 0) {
+        const combinedError = `Failed to fetch closed orders: ${errors.join('; ')}`;
+        console.error(`[MEXC ERROR] ${combinedError}`);
+        throw new Error(combinedError);
+      }
+      
+      // If we have some errors but also some results, log warnings but continue
+      if (errors.length > 0) {
+        console.warn(`[MEXC WARNING] Some pairs failed: ${errors.join('; ')}`);
+      }
+      
+      console.log(`[MEXC] Total closed orders found across all pairs: ${allClosedOrders.length}`);
+      
+      // Transform all collected orders to standard format
+      const orderList = this.transformClosedOrdersToApiSchema(allClosedOrders);
+      
+      return orderList;
     } catch (error: any) {
       console.error('[MEXC ERROR] Get closed orders failed:', error);
       

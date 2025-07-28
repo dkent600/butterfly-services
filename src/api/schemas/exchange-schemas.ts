@@ -137,10 +137,15 @@ export const ClosedOrdersResponseSchema = {
 export const ClosedOrdersRequestSchema = {
   type: 'object',
   properties: {
-    pairs: { 
+    baseCoins: { 
       type: 'array',
       items: { type: 'string' },
-      description: 'Array of trading pairs to filter orders for (e.g., ["BTCUSDT", "ETHUSDT"])',
+      description: 'Array of base coins to filter orders for (e.g., ["BTC", "ETH"])',
+    },
+    quoteCoins: { 
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Array of quote coins to filter orders for (e.g., ["USDT", "USD"])',
     },
   },
   additionalProperties: false,

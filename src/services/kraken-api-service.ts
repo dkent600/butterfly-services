@@ -534,12 +534,40 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   }
 
   /**
+   * Generates trading pairs from base and quote coin filters for Kraken
+   * @param filters Optional filters containing base and quote coins
+   * @returns Array of trading pair strings (Kraken format)
+   */
+  private generatePairsFromFilters(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): string[] {
+    if (!filters || (!filters.baseCoins?.length && !filters.quoteCoins?.length)) {
+      // Return empty array to indicate no filtering (fetch all pairs)
+      return [];
+    }
+    
+    const baseCoins = filters.baseCoins || [];
+    const quoteCoins = filters.quoteCoins || [];
+    
+    // Generate all combinations of base and quote coins in Kraken format
+    const pairs: string[] = [];
+    for (const base of baseCoins) {
+      for (const quote of quoteCoins) {
+        // Map to Kraken naming convention
+        const krakenBase = this.mapAssetToKraken(base);
+        const krakenQuote = this.mapAssetToKraken(quote);
+        pairs.push(`${krakenBase}${krakenQuote}`);
+      }
+    }
+    
+    return pairs;
+  }
+
+  /**
    * Retrieves closed orders from Kraken
    * https://docs.kraken.com/api/docs/rest-api/get-orders-history
    * Note: trades=false returns just order info, trades=true includes detailed execution data
-   * @param _pairs Optional array of trading pairs to filter orders for
+   * @param filters Optional filters with base and quote coin arrays
    */
-  async getClosedOrders(_pairs?: string[]): Promise<any> {
+  async getClosedOrders(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): Promise<any> {
     const exchangeName = this.getExchangeName();
 
     try {
@@ -554,6 +582,11 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       if (!apiKey || !apiSecret) {
         throw new Error(`${exchangeName} API credentials not configured`);
       }
+
+      // Generate pairs from filters
+      const targetPairs = this.generatePairsFromFilters(filters);
+      
+      console.log(`[KRAKEN] Fetching closed orders${targetPairs.length > 0 ? ` filtered for pairs: ${targetPairs.join(', ')}` : ' (all pairs)'}`);
 
       // Log environment context (without exposing secrets)
       console.log(`[KRAKEN AUTH] Closed Orders - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
@@ -582,11 +615,45 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       const response = data;
       
       if (response.result) {
-        // Extract the closed orders object and transform to unified format
+        // Extract the closed orders object
         const closedOrders = response.result.closed || {};
-        const orderList = this.transformClosedOrdersToApiSchema(closedOrders);
         
-        return orderList;
+        // Convert object to array and filter by pairs if specified
+        let filteredOrders = Object.entries(closedOrders).map(([orderId, orderData]: [string, any]) => ({
+          orderId,
+          ...orderData,
+        }));
+        
+        // Filter by pairs if specified
+        if (targetPairs.length > 0) {
+          const pairsSet = new Set(targetPairs);
+          filteredOrders = filteredOrders.filter(order => {
+            // Check if the order's descr.pair matches any of the requested pairs
+            const orderPair = order.descr?.pair;
+            return orderPair && pairsSet.has(orderPair);
+          });
+          
+          console.log(`[KRAKEN] Filtered ${Object.keys(closedOrders).length} total orders to ${filteredOrders.length} orders for requested pairs`);
+        } else {
+          console.log(`[KRAKEN] Retrieved ${filteredOrders.length} closed orders (all pairs)`);
+        }
+        
+        // Transform filtered orders to unified format
+        // filteredOrders is already an array with orderId included, so we can map directly
+        const transformedOrders = filteredOrders.map(order => ({
+          orderId: order.orderId,
+          pair: order.descr?.pair || '',
+          direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
+          type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
+          status: order.status === 'closed' ? 'executed' : order.status || '',
+          amount: order.vol || '',
+          amountExecuted: order.vol_exec || '',
+          price: order.price || '',
+          limitPrice: order.descr?.ordertype === 'limit' ? (order.descr?.price || '') : '',
+          cost: order.cost || '',
+        }));
+        
+        return transformedOrders;
       } else {
         throw new Error(`${exchangeName} API returned empty result`);
       }
