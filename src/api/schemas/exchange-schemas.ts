@@ -134,6 +134,18 @@ export const ClosedOrdersResponseSchema = {
   additionalProperties: false,
 } as const;
 
+export const ClosedOrdersRequestSchema = {
+  type: 'object',
+  properties: {
+    pairs: { 
+      type: 'array',
+      items: { type: 'string' },
+      description: 'Array of trading pairs to filter orders for (e.g., ["BTCUSDT", "ETHUSDT"])',
+    },
+  },
+  additionalProperties: false,
+} as const;
+
 export const ErrorResponseSchema = {
   type: 'object',
   properties: {

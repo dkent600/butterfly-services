@@ -537,8 +537,9 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * Retrieves closed orders from Kraken
    * https://docs.kraken.com/api/docs/rest-api/get-orders-history
    * Note: trades=false returns just order info, trades=true includes detailed execution data
+   * @param _pairs Optional array of trading pairs to filter orders for
    */
-  async getClosedOrders(): Promise<any> {
+  async getClosedOrders(_pairs?: string[]): Promise<any> {
     const exchangeName = this.getExchangeName();
 
     try {

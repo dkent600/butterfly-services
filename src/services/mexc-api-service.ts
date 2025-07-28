@@ -295,9 +295,10 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   /**
    * Retrieves all orders (including closed ones) from MEXC
    * https://mexcdevelop.github.io/apidocs/spot_v3_en/#all-orders
+   * @param _pairs Optional array of trading pairs to filter orders for
    * @returns Promise with all orders data
    */
-  async getClosedOrders(): Promise<any> {
+  async getClosedOrders(_pairs?: string[]): Promise<any> {
     const exchangeName = this.getExchangeName();
     
     try {

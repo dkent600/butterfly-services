@@ -12,6 +12,7 @@ import {
   LimitSellOrderResponseSchema,
   OpenedOrdersResponseSchema,
   ClosedOrdersResponseSchema,
+  ClosedOrdersRequestSchema,
   ErrorResponseSchema,
 } from '../schemas/exchange-schemas.js';
 
@@ -338,10 +339,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       return;
     }
 
-    fastify.get(`/${exchange.name}/orders/closed`, {
+    fastify.post(`/${exchange.name}/orders/closed`, {
       schema: {
         description: `Get closed orders from ${exchange.displayName} exchange`,
         tags: ['exchanges'],
+        body: ClosedOrdersRequestSchema,
         response: {
           200: ClosedOrdersResponseSchema,
           400: ErrorResponseSchema,
@@ -350,9 +352,12 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
+        // Extract pairs from request body
+        const { pairs } = request.body as { pairs?: string[] };
+        
         // Use the concrete KrakenApiService type for order-specific methods
         const krakenService = container.resolve<KrakenApiService>('KrakenApiService');
-        const ordersArray = await krakenService.getClosedOrders();
+        const ordersArray = await krakenService.getClosedOrders(pairs);
 
         return {
           orders: ordersArray,
@@ -472,10 +477,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
    * MEXC returns arrays directly, different from Kraken's object structure
    */
   function createMexcClosedOrdersRoute(exchange: ExchangeConfig) {
-    fastify.get(`/${exchange.name}/orders/closed`, {
+    fastify.post(`/${exchange.name}/orders/closed`, {
       schema: {
         description: `Get closed orders from ${exchange.displayName} exchange`,
         tags: ['exchanges'],
+        body: ClosedOrdersRequestSchema,
         response: {
           200: ClosedOrdersResponseSchema,
           400: ErrorResponseSchema,
@@ -484,8 +490,11 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
+        // Extract pairs from request body
+        const { pairs } = request.body as { pairs?: string[] };
+        
         const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        const ordersArray = await exchangeService.getClosedOrders();
+        const ordersArray = await exchangeService.getClosedOrders(pairs);
 
         return {
           orders: ordersArray,

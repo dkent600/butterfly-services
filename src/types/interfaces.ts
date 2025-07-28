@@ -68,7 +68,7 @@ export interface IExchangeService {
     },
   ): Promise<any>;
   getOpenedOrders(): Promise<any>;
-  getClosedOrders(): Promise<any>;
+  getClosedOrders(pairs?: string[]): Promise<any>;
   cancelOrder(txid: string): Promise<void>;
 }
 
