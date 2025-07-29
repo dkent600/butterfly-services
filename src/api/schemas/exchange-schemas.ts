@@ -140,15 +140,30 @@ export const ClosedOrdersRequestSchema = {
     baseCoins: { 
       type: 'array',
       items: { type: 'string' },
-      description: 'Array of base coins to filter orders for (e.g., ["BTC", "ETH"])',
+      description: 'Array of base coins to filter orders for (e.g., ["BTC", "ETH"]). Must be same length as quoteCoins.',
     },
     quoteCoins: { 
       type: 'array',
       items: { type: 'string' },
-      description: 'Array of quote coins to filter orders for (e.g., ["USDT", "USD"])',
+      description: 'Array of quote coins to filter orders for (e.g., ["USD", "USDT"]). Must be same length as baseCoins.',
     },
   },
   additionalProperties: false,
+  // Custom validation: if both arrays are provided, they must be the same length
+  if: {
+    properties: {
+      baseCoins: { type: 'array', minItems: 1 },
+      quoteCoins: { type: 'array', minItems: 1 },
+    },
+    required: ['baseCoins', 'quoteCoins'],
+  },
+  then: {
+    properties: {
+      baseCoins: { type: 'array' },
+      quoteCoins: { type: 'array' },
+    },
+    // This will be validated in the route handler since JSON Schema can't easily compare array lengths
+  },
 } as const;
 
 export const ErrorResponseSchema = {

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import crypto from 'node:crypto';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, IClosedOrderListItem, TYPES } from '../types/interfaces.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, TYPES } from '../types/interfaces.js';
 import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
@@ -91,19 +91,128 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * Transforms Kraken closed orders to standard format
    * Kraken returns closed orders as: { [orderId]: orderDetails }
    */
-  private transformClosedOrdersToApiSchema(krakenOrders: Record<string, any>): IClosedOrderListItem[] {
-    return Object.entries(krakenOrders).map(([orderId, order]) => ({
-      orderId,
-      pair: order.descr?.pair || '',
-      direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
-      type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
-      status: order.status === 'closed' ? 'executed' : order.status || '',
-      amount: order.vol || '',
-      amountExecuted: order.vol_exec || '',
-      price: order.price || '',
-      limitPrice: order.descr?.ordertype === 'limit' ? (order.descr?.price || '') : '',
-      cost: order.cost || '',
-    }));
+  private transformClosedOrdersToApiSchema(krakenResponse: any): any {
+    const orders = krakenResponse.result?.closed || {};
+    
+    return {
+      orders: Object.keys(orders).map(txId => ({
+        txid: txId,
+        pair: this.convertKrakenPairToStandard(orders[txId].descr?.pair || ''),
+        type: orders[txId].descr?.type || '',
+        ordertype: orders[txId].descr?.ordertype || '',
+        price: orders[txId].descr?.price || '',
+        price2: orders[txId].descr?.price2 || '',
+        leverage: orders[txId].descr?.leverage || '',
+        order: orders[txId].descr?.order || '',
+        close: orders[txId].descr?.close || '',
+        refid: orders[txId].refid || null,
+        userref: orders[txId].userref || null,
+        status: orders[txId].status || '',
+        reason: orders[txId].reason || null,
+        opentm: orders[txId].opentm || 0,
+        closetm: orders[txId].closetm || 0,
+        starttm: orders[txId].starttm || 0,
+        expiretm: orders[txId].expiretm || 0,
+        vol: orders[txId].vol || '',
+        vol_exec: orders[txId].vol_exec || '',
+        cost: orders[txId].cost || '',
+        fee: orders[txId].fee || '',
+        avg: orders[txId].avg || '',
+        stopprice: orders[txId].stopprice || '',
+        limitprice: orders[txId].limitprice || '',
+        misc: orders[txId].misc || '',
+        oflags: orders[txId].oflags || '',
+        trades: orders[txId].trades || [],
+      })),
+    };
+  }
+
+  /**
+   * Maps Kraken's internal asset names back to standard format
+   * This is the reverse of mapAssetToKraken()
+   */
+  private mapKrakenAssetToStandard(krakenAssetName: string): string {
+    switch (krakenAssetName.toUpperCase()) {
+      case 'XXBT':
+        return 'BTC';  // Bitcoin
+      case 'XETH':
+        return 'ETH';  // Ethereum
+      case 'ZUSD':
+        return 'USD';  // US Dollar
+      case 'ZCAD':
+        return 'CAD';  // Canadian Dollar
+      case 'ZEUR':
+        return 'EUR';  // Euro
+      case 'XXLM':
+        return 'XLM';  // Stellar
+      case 'XXRP':
+        return 'XRP';  // Ripple
+      case 'XXDG':
+        return 'DOGE'; // Dogecoin
+      default:
+        return krakenAssetName;  // Most assets use their standard names
+    }
+  }
+
+  /**
+   * Converts a Kraken internal pair format back to standard format
+   * e.g., "XXBTZUSD" -> "BTCUSD", "XETHZUSD" -> "ETHUSD"
+   */
+  private convertKrakenPairToStandard(krakenPair: string): string {
+    if (!krakenPair) return krakenPair;
+    
+    // Fallback: Manual conversion for common known pairs (try this first for reliability)
+    const knownConversions: { [key: string]: string } = {
+      'XXBTZUSD': 'BTCUSD',
+      'XETHZUSD': 'ETHUSD',
+      'ADAZUSD': 'ADAUSD',
+      'ADAUSDT': 'ADAUSDT',
+      'XXRPZUSD': 'XRPUSD',
+      'XXLMZUSD': 'XLMUSD',
+      'XXDGZUSD': 'DOGEUSD',
+      'XBTUSD': 'BTCUSD',
+      'ETHUSD': 'ETHUSD',
+    };
+    
+    if (knownConversions[krakenPair]) {
+      return knownConversions[krakenPair];
+    }
+    
+    // Try to find the pair in our cached AssetPairs to get base and quote
+    if (KrakenApiService.assetPairsCache) {
+      for (const [pairKey, pairInfo] of Object.entries(KrakenApiService.assetPairsCache)) {
+        const pair = pairInfo as any;
+        if (pairKey === krakenPair || pair.altname === krakenPair) {
+          // Found the pair, convert base and quote to standard format
+          const standardBase = this.mapKrakenAssetToStandard(pair.base);
+          const standardQuote = this.mapKrakenAssetToStandard(pair.quote);
+          return `${standardBase}${standardQuote}`;
+        }
+      }
+    }
+    
+    // Fallback: try to parse the pair manually if not found in cache
+    // This handles common patterns like XXBTZUSD, ADAUSDT, etc.
+    if (krakenPair.length >= 6) {
+      // Try different base/quote splits
+      const commonBaseLengths = [3, 4, 5]; // Most common base asset lengths
+      
+      for (const baseLength of commonBaseLengths) {
+        const potentialBase = krakenPair.substring(0, baseLength);
+        const potentialQuote = krakenPair.substring(baseLength);
+        
+        const standardBase = this.mapKrakenAssetToStandard(potentialBase);
+        const standardQuote = this.mapKrakenAssetToStandard(potentialQuote);
+        
+        // If we got different values back, it means we found a mapping
+        if (standardBase !== potentialBase || standardQuote !== potentialQuote) {
+          return `${standardBase}${standardQuote}`;
+        }
+      }
+    }
+    
+    // If all else fails, return the original pair
+    return krakenPair;
   }
 
   /**
@@ -535,7 +644,8 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
 
   /**
    * Generates trading pairs from base and quote coin filters for Kraken
-   * @param filters Optional filters containing base and quote coins
+   * Uses paired arrays where baseCoins[i] pairs with quoteCoins[i]
+   * @param filters Optional filters containing base and quote coins arrays
    * @returns Array of trading pair strings (Kraken format)
    */
   private generatePairsFromFilters(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): string[] {
@@ -547,15 +657,26 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     const baseCoins = filters.baseCoins || [];
     const quoteCoins = filters.quoteCoins || [];
     
-    // Generate all combinations of base and quote coins in Kraken format
+    // Validate that arrays have the same length if both are provided
+    if (baseCoins.length > 0 && quoteCoins.length > 0 && baseCoins.length !== quoteCoins.length) {
+      throw new Error(`baseCoins and quoteCoins arrays must have the same length. Got baseCoins: ${baseCoins.length}, quoteCoins: ${quoteCoins.length}`);
+    }
+    
+    // If only one array is provided, return empty (no filtering)
+    if (baseCoins.length === 0 || quoteCoins.length === 0) {
+      return [];
+    }
+    
+    // Generate pairs from corresponding array positions (paired arrays)
     const pairs: string[] = [];
-    for (const base of baseCoins) {
-      for (const quote of quoteCoins) {
-        // Map to Kraken naming convention
-        const krakenBase = this.mapAssetToKraken(base);
-        const krakenQuote = this.mapAssetToKraken(quote);
-        pairs.push(`${krakenBase}${krakenQuote}`);
-      }
+    for (let i = 0; i < baseCoins.length; i++) {
+      const base = baseCoins[i];
+      const quote = quoteCoins[i];
+      
+      // Map to Kraken naming convention
+      const krakenBase = this.mapAssetToKraken(base);
+      const krakenQuote = this.mapAssetToKraken(quote);
+      pairs.push(`${krakenBase}${krakenQuote}`);
     }
     
     return pairs;
@@ -642,7 +763,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
         // filteredOrders is already an array with orderId included, so we can map directly
         const transformedOrders = filteredOrders.map(order => ({
           orderId: order.orderId,
-          pair: order.descr?.pair || '',
+          pair: this.convertKrakenPairToStandard(order.descr?.pair || ''),
           direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
           type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
           status: order.status === 'closed' ? 'executed' : order.status || '',

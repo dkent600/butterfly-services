@@ -354,6 +354,17 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       try {
         // Extract baseCoins and quoteCoins from request body
         const { baseCoins, quoteCoins } = request.body as { baseCoins?: string[]; quoteCoins?: string[] };
+        
+        // Validate paired arrays: if both are provided, they must have the same length
+        if (baseCoins && quoteCoins && baseCoins.length !== quoteCoins.length) {
+          return reply.status(400).send({
+            error: 'BadRequest',
+            message: `baseCoins and quoteCoins arrays must have the same length. Got baseCoins: ${baseCoins.length}, quoteCoins: ${quoteCoins.length}`,
+            statusCode: 400,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        
         const filters = (baseCoins || quoteCoins) ? { baseCoins, quoteCoins } : undefined;
         
         // Use the concrete KrakenApiService type for order-specific methods

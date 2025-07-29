@@ -4,6 +4,7 @@ import { createServer } from '../../server.js';
 import { configureDI, container } from '../../../container.js';
 import { TYPES } from '../../../types/interfaces.js';
 import { EnvService } from '../../../services/env-service.js';
+import { KrakenApiService } from '../../../services/kraken-api-service.js';
 
 // Mock axios completely
 vi.mock('axios', () => ({
@@ -82,6 +83,32 @@ describe('Kraken Closed Orders Integration Tests', () => {
     });
 
     server = await createServer();
+  });
+
+  beforeEach(() => {
+    // Setup the assetPairsCache for pair name conversion
+    (KrakenApiService as any).assetPairsCache = {
+      'XXBTZUSD': { 
+        base: 'XXBT', 
+        quote: 'ZUSD', 
+        altname: 'XBTUSD' 
+      },
+      'XETHZUSD': { 
+        base: 'XETH', 
+        quote: 'ZUSD', 
+        altname: 'ETHUSD' 
+      },
+      'ADAZUSD': { 
+        base: 'ADA', 
+        quote: 'ZUSD', 
+        altname: 'ADAZUSD' 
+      },
+      'ADAUSDT': { 
+        base: 'ADA', 
+        quote: 'USDT', 
+        altname: 'ADAUSDT' 
+      },
+    };
   });
 
   afterEach(async () => {
@@ -171,7 +198,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
       ]);
     });
 
-    it('should filter orders by baseCoins and quoteCoins arrays', async () => {
+    it('should filter orders by baseCoins and quoteCoins paired arrays', async () => {
       vi.mocked(axios.post).mockResolvedValue({
         data: mockClosedOrdersResponse,
       });
@@ -181,7 +208,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
         url: '/api/v1/kraken/orders/closed',
         payload: {
           baseCoins: ['BTC', 'ETH'],
-          quoteCoins: ['USD'],
+          quoteCoins: ['USD', 'USD'], // Paired: BTC-USD and ETH-USD
         },
       });
 
@@ -190,23 +217,22 @@ describe('Kraken Closed Orders Integration Tests', () => {
 
       // Should return orders for BTC-USD and ETH-USD pairs only
       expect(body.orders).toHaveLength(2);
-      expect(body.orders.map((o: any) => o.pair)).toEqual(['XXBTZUSD', 'XETHZUSD']);
+      expect(body.orders.map((o: any) => o.pair)).toEqual(['BTCUSD', 'ETHUSD']);
       
-      // Verify correct order structure
+            // Verify correct order structure
       expect(body.orders[0]).toMatchObject({
         orderId: 'ORDER-1',
-        pair: 'XXBTZUSD',
+        pair: 'BTCUSD',
         direction: 'sell',
         type: 'market',
         status: 'executed',
         amount: '1.0',
         amountExecuted: '1.0',
-        price: '50000.00',
         cost: '50000.00',
       });
     });
 
-    it('should filter orders by specific baseCoins array only', async () => {
+    it('should filter orders by specific paired arrays', async () => {
       vi.mocked(axios.post).mockResolvedValue({
         data: mockClosedOrdersResponse,
       });
@@ -215,8 +241,8 @@ describe('Kraken Closed Orders Integration Tests', () => {
         method: 'POST',
         url: '/api/v1/kraken/orders/closed',
         payload: {
-          baseCoins: ['ADA'],
-          quoteCoins: ['USD', 'USDT'],
+          baseCoins: ['ADA', 'ADA'],
+          quoteCoins: ['USD', 'USDT'], // Paired: ADA-USD and ADA-USDT
         },
       });
 
@@ -225,10 +251,10 @@ describe('Kraken Closed Orders Integration Tests', () => {
 
       // Should return ADA orders for both USD and USDT
       expect(body.orders).toHaveLength(2);
-      expect(body.orders.map((o: any) => o.pair)).toEqual(['ADAZUSD', 'ADAUSDT']);
+      expect(body.orders.map((o: any) => o.pair)).toEqual(['ADAUSD', 'ADAUSDT']);
     });
 
-    it('should handle mixed exchange scenarios (USDT and USD quotes)', async () => {
+    it('should handle mixed paired scenarios (different quote currencies)', async () => {
       vi.mocked(axios.post).mockResolvedValue({
         data: mockClosedOrdersResponse,
       });
@@ -237,8 +263,8 @@ describe('Kraken Closed Orders Integration Tests', () => {
         method: 'POST',
         url: '/api/v1/kraken/orders/closed',
         payload: {
-          baseCoins: ['ADA'],
-          quoteCoins: ['USD', 'USDT'], // Mixed quote currencies
+          baseCoins: ['ADA', 'ADA'],
+          quoteCoins: ['USD', 'USDT'], // Paired: ADA-USD and ADA-USDT
         },
       });
 
@@ -249,11 +275,11 @@ describe('Kraken Closed Orders Integration Tests', () => {
       
       // Verify both USD and USDT pairs are included
       const pairs = body.orders.map((o: any) => o.pair);
-      expect(pairs).toContain('ADAZUSD');
+      expect(pairs).toContain('ADAUSD');
       expect(pairs).toContain('ADAUSDT');
     });
 
-    it('should return empty array when no orders match filters', async () => {
+    it('should return empty array when no orders match paired filters', async () => {
       vi.mocked(axios.post).mockResolvedValue({
         data: mockClosedOrdersResponse,
       });
@@ -263,7 +289,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
         url: '/api/v1/kraken/orders/closed',
         payload: {
           baseCoins: ['SOL'], // No SOL orders in mock data
-          quoteCoins: ['USD'],
+          quoteCoins: ['USD'], // Paired: SOL-USD
         },
       });
 
@@ -272,6 +298,23 @@ describe('Kraken Closed Orders Integration Tests', () => {
 
       expect(body.orders).toHaveLength(0);
       expect(body.timestamp).toBeDefined();
+    });
+
+    it('should reject mismatched array lengths', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/kraken/orders/closed',
+        payload: {
+          baseCoins: ['ADA'], // 1 element
+          quoteCoins: ['USD', 'USDT'], // 2 elements - MISMATCHED!
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = JSON.parse(response.body);
+      expect(body.error).toBe('BadRequest');
+      expect(body.message).toContain('baseCoins and quoteCoins arrays must have the same length');
+      expect(body.message).toContain('baseCoins: 1, quoteCoins: 2');
     });
 
     it('should handle empty baseCoins or quoteCoins arrays', async () => {
@@ -296,21 +339,21 @@ describe('Kraken Closed Orders Integration Tests', () => {
     });
 
     it('should handle malformed request gracefully', async () => {
-      // Test with completely malformed payload that triggers processing
+      // Test with arrays of different lengths (the core validation rule)
       const response = await server.inject({
         method: 'POST',
         url: '/api/v1/kraken/orders/closed',
         payload: {
-          baseCoins: 'invalid-string-not-array', // Will be processed as invalid
-          quoteCoins: ['USD'],
+          baseCoins: ['BTC', 'ETH', 'ADA'], // 3 elements
+          quoteCoins: ['USD'], // 1 element - should fail validation
         },
       });
 
-      // The service handles this gracefully and just treats it as if no valid filters were provided
-      expect(response.statusCode).toBe(200);
+      // Should reject with validation error due to mismatched array lengths
+      expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.orders).toBeDefined();
-      expect(body.timestamp).toBeDefined();
+      expect(body.error).toBe('BadRequest');
+      expect(body.message).toContain('arrays must have the same length');
     });
 
     it('should handle Kraken API errors gracefully', async () => {
@@ -326,7 +369,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
         url: '/api/v1/kraken/orders/closed',
         payload: {
           baseCoins: ['BTC'],
-          quoteCoins: ['USD'],
+          quoteCoins: ['USD'], // Paired: BTC-USD
         },
       });
 
@@ -344,7 +387,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
         url: '/api/v1/kraken/orders/closed',
         payload: {
           baseCoins: ['BTC'],
-          quoteCoins: ['USD'],
+          quoteCoins: ['USD'], // Paired: BTC-USD
         },
       });
 
@@ -367,7 +410,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
         url: '/api/v1/kraken/orders/closed',
         payload: {
           baseCoins: ['BTC', 'ETH'], // Should map to XXBT, XETH
-          quoteCoins: ['USD'], // Should map to ZUSD
+          quoteCoins: ['USD', 'USD'], // Should map to ZUSD (paired)
         },
       });
 
@@ -422,7 +465,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
       expect(body.orders).toHaveLength(1);
       expect(body.orders[0]).toEqual({
         orderId: 'TEST-ORDER',
-        pair: 'XXBTZUSD',
+        pair: 'BTCUSD',
         direction: 'sell',
         type: 'limit',
         status: 'executed',
