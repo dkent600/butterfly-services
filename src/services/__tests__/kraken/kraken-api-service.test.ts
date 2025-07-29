@@ -661,7 +661,7 @@ describe('KrakenApiService', () => {
       expect(result).toEqual([
         {
           orderId: 'ORDER456',
-          pair: 'XBTUSD',
+          pair: 'BTCUSD',
           direction: 'sell',
           type: 'market',
           status: 'executed',
@@ -757,7 +757,7 @@ describe('KrakenApiService', () => {
 
       // Should only return orders that match the filter (BTC/USD)
       expect(result).toHaveLength(1);
-      expect(result[0].pair).toBe('XXBTZUSD');
+      expect(result[0].pair).toBe('BTCUSD');
       expect(result[0].orderId).toBe('ORDER456');
     });
 
