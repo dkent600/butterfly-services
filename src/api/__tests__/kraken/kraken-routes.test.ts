@@ -677,7 +677,7 @@ describe('Kraken Exchange Routes', () => {
     });
   });
 
-  describe('GET /api/v1/kraken/orders/closed', () => {
+  describe('POST /api/v1/kraken/orders/closed', () => {
     it('should fetch closed orders from Kraken', async () => {
       // Set up flexible mocking based on URL patterns
       const mockAxiosGet = vi.mocked(axios.get);
@@ -727,13 +727,13 @@ describe('Kraken Exchange Routes', () => {
                     starttm: 0,
                     expiretm: 0,
                     descr: {
-                      pair: 'XBTUSD',
+                      pair: 'XXBTZUSD',
                       type: 'sell',
                       ordertype: 'market',
                       price: '0',
                       price2: '0',
                       leverage: 'none',
-                      order: 'sell 0.5 XBTUSD @ market',
+                      order: 'sell 0.5 XXBTZUSD @ market',
                       close: ''
                     },
                     vol: '0.50000000',
@@ -758,8 +758,12 @@ describe('Kraken Exchange Routes', () => {
       });
 
       const response = await server.inject({
-        method: 'GET',
+        method: 'POST',
         url: '/api/v1/kraken/orders/closed',
+        payload: {
+          baseCoins: ['BTC'],
+          quoteCoins: ['USD']
+        }
       });
 
       expect(response.statusCode).toBe(200);
@@ -771,7 +775,7 @@ describe('Kraken Exchange Routes', () => {
       expect(body.orders.length).toBeGreaterThan(0);
       expect(body.orders[0].orderId).toBe('OGTT3Y-C6I3P-XRI6HX');
       expect(body.orders[0].status).toBe('executed');
-      expect(body.orders[0].pair).toBe('XBTUSD');
+      expect(body.orders[0].pair).toBe('XXBTZUSD');
       expect(body.orders[0].amount).toBe('0.50000000');
     });
 
@@ -802,8 +806,9 @@ describe('Kraken Exchange Routes', () => {
       });
 
       const response = await server.inject({
-        method: 'GET',
+        method: 'POST',
         url: '/api/v1/kraken/orders/closed',
+        payload: {}
       });
 
       expect(response.statusCode).toBe(200);

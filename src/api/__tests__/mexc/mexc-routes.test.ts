@@ -358,7 +358,7 @@ describe('MEXC Exchange Routes', () => {
     });
   });
 
-  describe('GET /api/v1/mexc/orders/closed', () => {
+  describe('POST /api/v1/mexc/orders/closed', () => {
     it('should fetch closed orders successfully', async () => {
       const mockAxiosGet = vi.mocked(axios.get);
       mockAxiosGet.mockClear();
@@ -416,8 +416,12 @@ describe('MEXC Exchange Routes', () => {
       });
 
       const response = await server.inject({
-        method: 'GET',
+        method: 'POST',
         url: '/api/v1/mexc/orders/closed',
+        payload: {
+          baseCoins: ['BTC'],
+          quoteCoins: ['USDT']
+        }
       });
 
       if (response.statusCode !== 200) {
@@ -438,7 +442,7 @@ describe('MEXC Exchange Routes', () => {
       expect(hasOnlyClosedStatuses).toBe(true);
     });
 
-    it('should filter out non-closed orders', async () => {
+    it('should filter out non-closed orders and accept custom base/quote coins', async () => {
       const mockAxiosGet = vi.mocked(axios.get);
       mockAxiosGet.mockClear();
 
@@ -473,8 +477,12 @@ describe('MEXC Exchange Routes', () => {
       });
 
       const response = await server.inject({
-        method: 'GET',
+        method: 'POST',
         url: '/api/v1/mexc/orders/closed',
+        payload: {
+          baseCoins: ['BTC'],
+          quoteCoins: ['USDT']
+        }
       });
 
       expect(response.statusCode).toBe(200);

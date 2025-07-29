@@ -757,7 +757,7 @@ describe('MexcApiService', () => {
       });
     });
 
-    it('should fetch closed orders successfully', async () => {
+    it('should fetch closed orders successfully with default filters', async () => {
       const mockAllOrders = [
         { orderId: '123', symbol: 'BTCUSDT', status: 'FILLED', side: 'SELL' },
         { orderId: '456', symbol: 'BTCUSDT', status: 'NEW', side: 'SELL' },
@@ -807,7 +807,41 @@ describe('MexcApiService', () => {
       );
     });
 
-    it('should fetch closed orders with symbol filter', async () => {
+    it('should fetch closed orders with custom base and quote coins', async () => {
+      const mockAllOrdersETHUSDT = [
+        { orderId: '123', symbol: 'ETHUSDT', status: 'FILLED', side: 'SELL' }
+      ];
+      const mockAllOrdersETHBTC = [
+        { orderId: '456', symbol: 'ETHBTC', status: 'CANCELED', side: 'BUY' }
+      ];
+
+      // Mock multiple axios.get calls for different symbols
+      vi.mocked(axios.get)
+        .mockResolvedValueOnce({ data: mockAllOrdersETHUSDT })  // First call for ETHUSDT
+        .mockResolvedValueOnce({ data: mockAllOrdersETHBTC });  // Second call for ETHBTC
+
+      const filters = { baseCoins: ['ETH'], quoteCoins: ['USDT', 'BTC'] };
+      const result = await mexcApiService.getClosedOrders(filters);
+
+      // Should have called axios.get twice, once for each pair
+      expect(axios.get).toHaveBeenCalledTimes(2);
+      
+      // Verify the symbol parameters for each call
+      expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
+        expect.stringMatching(/symbol=ETHUSDT&timestamp=\d+/),
+        'test-api-secret'
+      );
+      expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
+        expect.stringMatching(/symbol=ETHBTC&timestamp=\d+/),
+        'test-api-secret'
+      );
+
+      // Should return combined results
+      expect(result).toHaveLength(2);
+      expect(result.map((order: any) => order.pair)).toEqual(['ETHUSDT', 'ETHBTC']);
+    });
+
+    it('should use default BTCUSDT when no filters provided', async () => {
       const mockAllOrders = [
         { orderId: '123', symbol: 'BTCUSDT', status: 'FILLED', side: 'SELL' }
       ];
@@ -818,7 +852,7 @@ describe('MexcApiService', () => {
 
       await mexcApiService.getClosedOrders();
 
-      // Verify the symbol parameter is included
+      // Verify the default symbol parameter is included
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
         expect.stringMatching(/symbol=BTCUSDT&timestamp=\d+/),
         'test-api-secret'
@@ -835,7 +869,7 @@ describe('MexcApiService', () => {
         data: mockError
       });
 
-      await expect(mexcApiService.getClosedOrders()).rejects.toThrow('MEXC API error: Invalid symbol.');
+      await expect(mexcApiService.getClosedOrders()).rejects.toThrow('Failed to fetch closed orders: BTCUSDT: Invalid symbol. (Code: -1121)');
     });
 
     it('should handle network errors', async () => {
@@ -850,7 +884,7 @@ describe('MexcApiService', () => {
 
       vi.mocked(axios.get).mockRejectedValueOnce(networkError);
 
-      await expect(mexcApiService.getClosedOrders()).rejects.toThrow('mexc API error: Internal error; unable to process your request. Please try again.');
+      await expect(mexcApiService.getClosedOrders()).rejects.toThrow('Failed to fetch closed orders: BTCUSDT:');
     });
 
     it('should handle missing API credentials', async () => {
@@ -865,7 +899,7 @@ describe('MexcApiService', () => {
         data: 'unexpected format'
       });
 
-      await expect(mexcApiService.getClosedOrders()).rejects.toThrow('mexc API returned unexpected response format');
+      await expect(mexcApiService.getClosedOrders()).rejects.toThrow('Failed to fetch closed orders: BTCUSDT: Unexpected response format');
     });
 
     it('should include proper URL parameters and signature', async () => {

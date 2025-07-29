@@ -614,7 +614,7 @@ describe('KrakenApiService', () => {
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
     });
 
-    it('should successfully fetch closed orders', async () => {
+    it('should successfully fetch closed orders with default filters', async () => {
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { result: { unixtime: 1640995200 } }
@@ -684,6 +684,81 @@ describe('KrakenApiService', () => {
           })
         })
       );
+    });
+
+    it('should fetch closed orders with custom base and quote coins and filter results', async () => {
+      // Mock server time
+      vi.mocked(axios.get).mockResolvedValue({
+        data: { result: { unixtime: 1640995200 } }
+      });
+
+      // Mock successful closed orders response with multiple pairs
+      vi.mocked(axios.post).mockResolvedValue({
+        data: {
+          error: [],
+          result: {
+            closed: {
+              'ORDER456': {
+                refid: null,
+                userref: 0,
+                status: 'closed',
+                reason: 'User requested',
+                opentm: 1640995200.1234,
+                closetm: 1640995300.5678,
+                starttm: 0,
+                expiretm: 0,
+                descr: {
+                  pair: 'XXBTZUSD', // BTC/USD - should match
+                  type: 'sell',
+                  ordertype: 'market',
+                  price: '44500.0',
+                  volume: '0.25'
+                },
+                vol: '0.25',
+                vol_exec: '0.25',
+                cost: '11125.0',
+                fee: '22.25',
+                price: '44500.0',
+                misc: '',
+                oflags: 'fciq'
+              },
+              'ORDER789': {
+                refid: null,
+                userref: 0,
+                status: 'closed',
+                reason: 'User requested',
+                opentm: 1640995200.1234,
+                closetm: 1640995300.5678,
+                starttm: 0,
+                expiretm: 0,
+                descr: {
+                  pair: 'ETHEUR', // ETH/EUR - should NOT match filters
+                  type: 'buy',
+                  ordertype: 'limit',
+                  price: '3500.0',
+                  volume: '1.0'
+                },
+                vol: '1.0',
+                vol_exec: '1.0',
+                cost: '3500.0',
+                fee: '7.0',
+                price: '3500.0',
+                misc: '',
+                oflags: 'fciq'
+              }
+            },
+            count: 2
+          }
+        }
+      });
+
+      const filters = { baseCoins: ['BTC'], quoteCoins: ['USD'] };
+      const result = await krakenApiService.getClosedOrders(filters);
+
+      // Should only return orders that match the filter (BTC/USD)
+      expect(result).toHaveLength(1);
+      expect(result[0].pair).toBe('XXBTZUSD');
+      expect(result[0].orderId).toBe('ORDER456');
     });
 
     it('should handle empty closed orders response', async () => {
