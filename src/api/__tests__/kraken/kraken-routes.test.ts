@@ -775,7 +775,7 @@ describe('Kraken Exchange Routes', () => {
       expect(body.orders.length).toBeGreaterThan(0);
       expect(body.orders[0].orderId).toBe('OGTT3Y-C6I3P-XRI6HX');
       expect(body.orders[0].status).toBe('executed');
-      expect(body.orders[0].pair).toBe('XXBTZUSD');
+      expect(body.orders[0].pair).toBe('BTCUSD');
       expect(body.orders[0].amount).toBe('0.50000000');
     });
 
