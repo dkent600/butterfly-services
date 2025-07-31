@@ -74,149 +74,83 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   }
 
   /**
-   * Transforms Kraken opened order object to standard format
-   * Kraken returns orders as: { [orderId]: orderDetails }
-   * Note: OpenOrders endpoint returns pairs in standard format (e.g., "XLMUSD", "SOLUSD") - no conversion needed
+   * Creates Kraken-specific API signature
+   * Based on Kraken's official algorithm: https://support.kraken.com/articles/360029054811
+   * 
+   * Algorithm:
+   * 1. apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
+   * 2. apiSha512 = crypto.createHmac('sha512', apiSecret).update(apiPath).update(apiSha256).digest();
+   * 3. apiSignature = apiSha512.toString('base64');
    */
-  private transformOpenedOrdersToApiSchema(krakenOrders: Record<string, any>): IOpenedOrderListItem[] {
-    return Object.entries(krakenOrders).map(([orderId, order]) => ({
-      orderId,
-      pair:  order.descr?.pair || '', // is standard coin naming convention
-      price: order.descr?.price || '', // Limit price for limit orders, empty for market
-      amount: order.vol || '',
-      direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
-      type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
-    }));
+  private signKrakenRequest(path: string, postData: string, apiSecret: string): string {
+    // Extract nonce from postData (assumes format: "nonce=123456...")
+    const nonceMatch = postData.match(/nonce=(\d+)/);
+    if (!nonceMatch) {
+      // Fallback for test environments or edge cases - use simple increment
+      const fallbackNonce = Math.max(Date.now(), KrakenApiService.globalNonceRef.value + 1);
+      KrakenApiService.globalNonceRef.value = fallbackNonce;
+      console.warn(`[KRAKEN] Nonce not found in postData "${postData}", using fallback: ${fallbackNonce}`);
+      const apiSha256 = crypto.createHash('sha256').update(`${fallbackNonce}${postData}`).digest();
+      const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
+        .update(path)
+        .update(apiSha256)
+        .digest();
+      return apiSha512.toString('base64');
+    }
+    const nonce = nonceMatch[1];
+    
+    // Follow Kraken's exact algorithm
+    const apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
+    const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
+      .update(path)
+      .update(apiSha256)
+      .digest();
+    const apiSignature = apiSha512.toString('base64');
+    
+    return apiSignature;
   }
-
+  
   /**
-   * Maps Kraken's internal asset names back to standard format
-   * This is the reverse of mapAssetToKraken()
+   * Loads and caches AssetPairs data from Kraken API
    */
-  private mapKrakenAssetToStandard(krakenAssetName: string): string {
-    switch (krakenAssetName.toUpperCase()) {
-      case 'XXBT':
-        return 'BTC';  // Bitcoin
-      case 'XETH':
-        return 'ETH';  // Ethereum
-      case 'ZUSD':
-        return 'USD';  // US Dollar
-      case 'ZCAD':
-        return 'CAD';  // Canadian Dollar
-      case 'ZEUR':
-        return 'EUR';  // Euro
-      case 'XXLM':
-        return 'XLM';  // Stellar
-      case 'XXRP':
-        return 'XRP';  // Ripple
-      case 'XXDG':
-        return 'DOGE'; // Dogecoin
-      default:
-        return krakenAssetName;  // Most assets use their standard names
+  private static async loadAssetPairs(): Promise<any> {
+    const now = Date.now();
+    
+    // Return cached data if it's still fresh
+    if (this.assetPairsCache && (now - this.assetPairsCacheTime) < this.CACHE_TTL) {
+      return this.assetPairsCache;
+    }
+    
+    try {
+      const response = await axios.get('https://api.kraken.com/0/public/AssetPairs');
+      this.assetPairsCache = response.data?.result || {};
+      this.assetPairsCacheTime = now;
+      console.log(`[KRAKEN] Loaded ${Object.keys(this.assetPairsCache).length} asset pairs from API`);
+      return this.assetPairsCache;
+    } catch (error) {
+      console.error('[KRAKEN] Failed to load AssetPairs from API:', error);
+      // Return empty cache if API fails
+      return this.assetPairsCache || {};
     }
   }
-
+  
   /**
-   * Converts a Kraken internal pair format back to standard format
-   * e.g., "XXBTZUSD" -> "BTCUSD", "XETHZUSD" -> "ETHUSD"
-   * 
-   * Uses a cache-first strategy for O(1) performance on repeated conversions.
-   * Cache is populated dynamically from multiple fallback methods.
+   * Clears the pair mapping cache
+   * Useful for testing or when asset mappings change
    */
-  private convertKrakenPairToStandard(krakenPair: string): string {
-    if (!krakenPair) return krakenPair;
-    
-    // FIRST: Check our dynamic mapping cache for O(1) reverse conversion
-    const standardPair = KrakenApiService.pairMappingCache.get(krakenPair);
-    if (!standardPair) {
-      throw new Error(`No cached mapping found for Kraken pair: ${krakenPair}`);
-      // // Cache miss - compute and cache the result using fallback methods
-      // standardPair = this.computeStandardPair(krakenPair);
-      
-      // // Cache the computed result for future O(1) lookups
-      // KrakenApiService.pairMappingCache.set(krakenPair, standardPair);
-      // // for reverse lookups
-      // KrakenApiService.pairMappingCache.set(standardPair, krakenPair);
-    }
-    return standardPair;
+  public static clearPairMappingCache(): void {
+    KrakenApiService.pairMappingCache.clear();
+    console.log('[KRAKEN] Cleared pair mapping cache');
   }
 
-  //   private convertStandardPairToKraken(standardPair: string): string {
-  //   if (!standardPair) return standardPair;
-    
-  //   const krakenPair = KrakenApiService.pairMappingCache.get(standardPair);
-  //   if (!krakenPair) {
-  //     throw new Error(`No cached mapping found for standard pair: ${standardPair}`);
-  //   }
-  //   return krakenPair;
-  // }
-
   /**
-   * Computes the standard pair format from Kraken pair using multiple fallback strategies
-   * This method is only called on cache misses to populate the cache
+   * Gets the current pair mapping cache for debugging
    */
-  // private computeStandardPair(krakenPair: string): string {
-  //   // STRATEGY 1: Check known conversions for common pairs
-  //   const knownConversions: { [key: string]: string } = {
-  //     'XXBTZUSD': 'BTCUSD',
-  //     'XETHZUSD': 'ETHUSD', 
-  //     'ADAZUSD': 'ADAUSD',
-  //     'ADAUSDT': 'ADAUSDT',
-  //     'XXRPZUSD': 'XRPUSD',
-  //     'XXLMZUSD': 'XLMUSD',
-  //     'XXDGZUSD': 'DOGEUSD',
-  //     'XBTUSD': 'BTCUSD',
-  //     'ETHUSD': 'ETHUSD',
-  //   };
-    
-  //   if (knownConversions[krakenPair]) {
-  //     return knownConversions[krakenPair];
-  //   }
-    
-  //   // STRATEGY 2: Try to find the pair in our cached AssetPairs to get base and quote
-  //   if (KrakenApiService.assetPairsCache) {
-  //     for (const [pairKey, pairInfo] of Object.entries(KrakenApiService.assetPairsCache)) {
-  //       const pair = pairInfo as any;
-  //       if (pairKey === krakenPair || pair.altname === krakenPair) {
-  //         // Found the pair, convert base and quote to standard format
-  //         const standardBase = this.mapKrakenAssetToStandard(pair.base);
-  //         const standardQuote = this.mapKrakenAssetToStandard(pair.quote);
-  //         return `${standardBase}${standardQuote}`;
-  //       }
-  //     }
-  //   }
-    
-  //   // STRATEGY 3: Fallback to manual parsing for common patterns
-  //   if (krakenPair.length >= 6) {
-  //     // Try different base/quote splits
-  //     const commonBaseLengths = [3, 4, 5]; // Most common base asset lengths
-      
-  //     for (const baseLength of commonBaseLengths) {
-  //       const potentialBase = krakenPair.substring(0, baseLength);
-  //       const potentialQuote = krakenPair.substring(baseLength);
-        
-  //       const standardBase = this.mapKrakenAssetToStandard(potentialBase);
-  //       const standardQuote = this.mapKrakenAssetToStandard(potentialQuote);
-        
-  //       // If we got different values back, it means we found a mapping
-  //       if (standardBase !== potentialBase || standardQuote !== potentialQuote) {
-  //         return `${standardBase}${standardQuote}`;
-  //       }
-  //     }
-  //   }
-    
-  //   // STRATEGY 4: If all else fails, return the original pair unchanged
-  //   return krakenPair;
-  // }
+  public static getPairMappingCache(): Map<string, string> {
+    return KrakenApiService.pairMappingCache;
+  }
 
-  /**
-   * Maps common asset names to Kraken's naming convention
-   * Based on: https://support.kraken.com/hc/en-us/articles/360001185506-How-to-interpret-asset-codes
-   * 
-   * Only maps assets that have different names on Kraken.
-   * Most assets (like SOL, ADA, DOGE, etc.) use their standard names and don't need mapping.
-   */
-
+  
   /**
    * Maps an asset name to Kraken's naming convention for trading pairs
    */
@@ -244,27 +178,18 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   }
 
   /**
-   * Loads and caches AssetPairs data from Kraken API
+   * Converts a Kraken internal pair format back to standard format
+   * e.g., "XXBTZUSD" -> "BTCUSD", "XETHZUSD" -> "ETHUSD"
    */
-  private static async loadAssetPairs(): Promise<any> {
-    const now = Date.now();
+  private convertKrakenPairToStandard(krakenPair: string): string {
+    if (!krakenPair) return krakenPair;
     
-    // Return cached data if it's still fresh
-    if (this.assetPairsCache && (now - this.assetPairsCacheTime) < this.CACHE_TTL) {
-      return this.assetPairsCache;
+    // FIRST: Check our dynamic mapping cache for O(1) reverse conversion
+    const standardPair = KrakenApiService.pairMappingCache.get(krakenPair);
+    if (!standardPair) {
+      throw new Error(`No cached mapping found for Kraken pair: ${krakenPair}`);
     }
-    
-    try {
-      const response = await axios.get('https://api.kraken.com/0/public/AssetPairs');
-      this.assetPairsCache = response.data?.result || {};
-      this.assetPairsCacheTime = now;
-      console.log(`[KRAKEN] Loaded ${Object.keys(this.assetPairsCache).length} asset pairs from API`);
-      return this.assetPairsCache;
-    } catch (error) {
-      console.error('[KRAKEN] Failed to load AssetPairs from API:', error);
-      // Return empty cache if API fails
-      return this.assetPairsCache || {};
-    }
+    return standardPair;
   }
 
   /**
@@ -438,45 +363,6 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     }
   }
 
-  
-  /**
-   * Creates Kraken-specific API signature
-   * Based on Kraken's official algorithm: https://support.kraken.com/articles/360029054811
-   * 
-   * Algorithm:
-   * 1. apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
-   * 2. apiSha512 = crypto.createHmac('sha512', apiSecret).update(apiPath).update(apiSha256).digest();
-   * 3. apiSignature = apiSha512.toString('base64');
-   */
-  private signKrakenRequest(path: string, postData: string, apiSecret: string): string {
-    // Extract nonce from postData (assumes format: "nonce=123456...")
-    const nonceMatch = postData.match(/nonce=(\d+)/);
-    if (!nonceMatch) {
-      // Fallback for test environments or edge cases - use simple increment
-      const fallbackNonce = Math.max(Date.now(), KrakenApiService.globalNonceRef.value + 1);
-      KrakenApiService.globalNonceRef.value = fallbackNonce;
-      console.warn(`[KRAKEN] Nonce not found in postData "${postData}", using fallback: ${fallbackNonce}`);
-      const apiSha256 = crypto.createHash('sha256').update(`${fallbackNonce}${postData}`).digest();
-      const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
-        .update(path)
-        .update(apiSha256)
-        .digest();
-      return apiSha512.toString('base64');
-    }
-    const nonce = nonceMatch[1];
-    
-    // Follow Kraken's exact algorithm
-    const apiSha256 = crypto.createHash('sha256').update(`${nonce}${postData}`).digest();
-    const apiSha512 = crypto.createHmac('sha512', Buffer.from(apiSecret, 'base64'))
-      .update(path)
-      .update(apiSha256)
-      .digest();
-    const apiSignature = apiSha512.toString('base64');
-    
-    return apiSignature;
-  }
-
-
   async createSellOrder(
     asset: IAsset, 
     options: {
@@ -567,6 +453,22 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     throw new Error(`Could not create ${orderType} sell order for ${asset.name}`);
   }
 }
+
+  /**
+   * Transforms Kraken opened order object to standard format
+   * Kraken returns orders as: { [orderId]: orderDetails }
+   * Note: OpenOrders endpoint returns pairs in standard format (e.g., "XLMUSD", "SOLUSD") - no conversion needed
+   */
+  private transformOpenedOrdersToApiSchema(krakenOrders: Record<string, any>): IOpenedOrderListItem[] {
+    return Object.entries(krakenOrders).map(([orderId, order]) => ({
+      orderId,
+      pair:  order.descr?.pair || '', // is standard coin naming convention
+      price: order.descr?.price || '', // Limit price for limit orders, empty for market
+      amount: order.vol || '',
+      direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
+      type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
+    }));
+  }
 
   /**
    * Retrieves open orders from Kraken
@@ -686,22 +588,6 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     }
     
     return pairs;
-  }
-
-  /**
-   * Clears the pair mapping cache
-   * Useful for testing or when asset mappings change
-   */
-  public static clearPairMappingCache(): void {
-    KrakenApiService.pairMappingCache.clear();
-    console.log('[KRAKEN] Cleared pair mapping cache');
-  }
-
-  /**
-   * Gets the current pair mapping cache for debugging
-   */
-  public static getPairMappingCache(): Map<string, string> {
-    return KrakenApiService.pairMappingCache;
   }
 
   /**
