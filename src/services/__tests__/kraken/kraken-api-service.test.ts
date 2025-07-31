@@ -529,7 +529,7 @@ describe('KrakenApiService', () => {
       expect(result).toEqual([
         {
           orderId: 'ORDER123',
-          pair: 'XBTUSD',
+          pair: 'XBTUSD', // Raw Kraken format - OpenOrders returns mixed formats depending on pair
           price: '45000.0',
           amount: '0.5',
           direction: 'sell',

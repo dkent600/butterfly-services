@@ -76,11 +76,12 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   /**
    * Transforms Kraken opened order object to standard format
    * Kraken returns orders as: { [orderId]: orderDetails }
+   * Note: OpenOrders endpoint returns pairs in standard format (e.g., "XLMUSD", "SOLUSD") - no conversion needed
    */
   private transformOpenedOrdersToApiSchema(krakenOrders: Record<string, any>): IOpenedOrderListItem[] {
     return Object.entries(krakenOrders).map(([orderId, order]) => ({
       orderId,
-      pair: order.descr?.pair || '',
+      pair:  order.descr?.pair || '', // this.convertKrakenPairToStandard(order.descr?.pair || ''),
       price: order.descr?.price || '', // Limit price for limit orders, empty for market
       amount: order.vol || '',
       direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
