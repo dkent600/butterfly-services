@@ -109,6 +109,14 @@ describe('Kraken Closed Orders Integration Tests', () => {
         altname: 'ADAUSDT' 
       },
     };
+    
+    // Populate the pair mapping cache for the simplified conversion logic
+    KrakenApiService.clearPairMappingCache();
+    const cache = KrakenApiService.getPairMappingCache();
+    cache.set('XXBTZUSD', 'BTCUSD');
+    cache.set('XETHZUSD', 'ETHUSD');
+    cache.set('ADAZUSD', 'ADAUSD');
+    cache.set('ADAUSDT', 'ADAUSDT');
   });
 
   afterEach(async () => {

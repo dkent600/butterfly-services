@@ -615,6 +615,11 @@ describe('KrakenApiService', () => {
     });
 
     it('should successfully fetch closed orders with default filters', async () => {
+      // Populate cache with required mapping for the test
+      KrakenApiService.clearPairMappingCache();
+      const cache = KrakenApiService.getPairMappingCache();
+      cache.set('XBTUSD', 'BTCUSD');  // Add mapping that test expects
+      
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { result: { unixtime: 1640995200 } }

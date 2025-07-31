@@ -31,7 +31,7 @@ describe('KrakenApiService Pair Mapping Cache', () => {
     };
     
     // Access the private method for testing
-    const pairs = (krakenService as any).generatePairsFromFilters(filters);
+    const pairs = (krakenService as any).generateClosedOrderPairs(filters);
     
     // Assert: Check that pairs were generated correctly
     expect(pairs).toEqual(['XXBTZUSD', 'XETHZUSD']);
@@ -49,7 +49,7 @@ describe('KrakenApiService Pair Mapping Cache', () => {
       baseCoins: ['BTC'],
       quoteCoins: ['USD'],
     };
-    (krakenService as any).generatePairsFromFilters(filters);
+    (krakenService as any).generateClosedOrderPairs(filters);
     
     // Act: Convert using the cache (should hit cache)
     const standardPair = (krakenService as any).convertKrakenPairToStandard('XXBTZUSD');
@@ -60,8 +60,8 @@ describe('KrakenApiService Pair Mapping Cache', () => {
 
   it('should handle empty filters without populating cache', () => {
     // Act: Generate pairs from empty filters
-    const pairs1 = (krakenService as any).generatePairsFromFilters();
-    const pairs2 = (krakenService as any).generatePairsFromFilters({ baseCoins: [], quoteCoins: [] });
+    const pairs1 = (krakenService as any).generateClosedOrderPairs();
+    const pairs2 = (krakenService as any).generateClosedOrderPairs({ baseCoins: [], quoteCoins: [] });
     
     // Assert: Should return empty arrays
     expect(pairs1).toEqual([]);
@@ -72,20 +72,25 @@ describe('KrakenApiService Pair Mapping Cache', () => {
     expect(cache.size).toBe(0);
   });
 
-  it('should cache conversions from fallback methods', () => {
+  it('should cache conversions from pair generation', () => {
     // Arrange: Start with empty cache
     expect(KrakenApiService.getPairMappingCache().size).toBe(0);
     
-    // Act: Convert a known pair (should use fallback and cache result)
-    const standardPair = (krakenService as any).convertKrakenPairToStandard('ADAZUSD');
+    // Act: Generate pairs which populates the cache
+    const filters = {
+      baseCoins: ['ADA'],
+      quoteCoins: ['USD'],
+    };
+    (krakenService as any).generateClosedOrderPairs(filters);
     
-    // Assert: Should return correct conversion
-    expect(standardPair).toBe('ADAUSD');
-    
-    // Assert: Should have cached the result
+    // Assert: Should have cached the mapping during generation
     const cache = KrakenApiService.getPairMappingCache();
     expect(cache.get('ADAZUSD')).toBe('ADAUSD');
     expect(cache.size).toBe(1);
+    
+    // Act: Now conversion should work using the cache
+    const standardPair = (krakenService as any).convertKrakenPairToStandard('ADAZUSD');
+    expect(standardPair).toBe('ADAUSD');
   });
 
   it('should clear cache correctly', () => {
@@ -94,7 +99,7 @@ describe('KrakenApiService Pair Mapping Cache', () => {
       baseCoins: ['BTC', 'ETH'],
       quoteCoins: ['USD', 'USD'],
     };
-    (krakenService as any).generatePairsFromFilters(filters);
+    (krakenService as any).generateClosedOrderPairs(filters);
     expect(KrakenApiService.getPairMappingCache().size).toBe(2);
     
     // Act: Clear cache
@@ -107,7 +112,7 @@ describe('KrakenApiService Pair Mapping Cache', () => {
   it('should validate paired array lengths', () => {
     // Act & Assert: Should throw error for mismatched array lengths
     expect(() => {
-      (krakenService as any).generatePairsFromFilters({
+      (krakenService as any).generateClosedOrderPairs({
         baseCoins: ['BTC', 'ETH'],
         quoteCoins: ['USD'], // Different length
       });

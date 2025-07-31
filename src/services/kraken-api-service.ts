@@ -81,7 +81,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   private transformOpenedOrdersToApiSchema(krakenOrders: Record<string, any>): IOpenedOrderListItem[] {
     return Object.entries(krakenOrders).map(([orderId, order]) => ({
       orderId,
-      pair:  order.descr?.pair || '', // this.convertKrakenPairToStandard(order.descr?.pair || ''),
+      pair:  order.descr?.pair || '', // is standard coin naming convention
       price: order.descr?.price || '', // Limit price for limit orders, empty for market
       amount: order.vol || '',
       direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
@@ -127,74 +127,87 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     if (!krakenPair) return krakenPair;
     
     // FIRST: Check our dynamic mapping cache for O(1) reverse conversion
-    let standardPair = KrakenApiService.pairMappingCache.get(krakenPair);
+    const standardPair = KrakenApiService.pairMappingCache.get(krakenPair);
     if (!standardPair) {
-      // Cache miss - compute and cache the result using fallback methods
-      standardPair = this.computeStandardPair(krakenPair);
+      throw new Error(`No cached mapping found for Kraken pair: ${krakenPair}`);
+      // // Cache miss - compute and cache the result using fallback methods
+      // standardPair = this.computeStandardPair(krakenPair);
       
-      // Cache the computed result for future O(1) lookups
-      KrakenApiService.pairMappingCache.set(krakenPair, standardPair);
+      // // Cache the computed result for future O(1) lookups
+      // KrakenApiService.pairMappingCache.set(krakenPair, standardPair);
+      // // for reverse lookups
+      // KrakenApiService.pairMappingCache.set(standardPair, krakenPair);
     }
     return standardPair;
   }
+
+  //   private convertStandardPairToKraken(standardPair: string): string {
+  //   if (!standardPair) return standardPair;
+    
+  //   const krakenPair = KrakenApiService.pairMappingCache.get(standardPair);
+  //   if (!krakenPair) {
+  //     throw new Error(`No cached mapping found for standard pair: ${standardPair}`);
+  //   }
+  //   return krakenPair;
+  // }
 
   /**
    * Computes the standard pair format from Kraken pair using multiple fallback strategies
    * This method is only called on cache misses to populate the cache
    */
-  private computeStandardPair(krakenPair: string): string {
-    // STRATEGY 1: Check known conversions for common pairs
-    const knownConversions: { [key: string]: string } = {
-      'XXBTZUSD': 'BTCUSD',
-      'XETHZUSD': 'ETHUSD', 
-      'ADAZUSD': 'ADAUSD',
-      'ADAUSDT': 'ADAUSDT',
-      'XXRPZUSD': 'XRPUSD',
-      'XXLMZUSD': 'XLMUSD',
-      'XXDGZUSD': 'DOGEUSD',
-      'XBTUSD': 'BTCUSD',
-      'ETHUSD': 'ETHUSD',
-    };
+  // private computeStandardPair(krakenPair: string): string {
+  //   // STRATEGY 1: Check known conversions for common pairs
+  //   const knownConversions: { [key: string]: string } = {
+  //     'XXBTZUSD': 'BTCUSD',
+  //     'XETHZUSD': 'ETHUSD', 
+  //     'ADAZUSD': 'ADAUSD',
+  //     'ADAUSDT': 'ADAUSDT',
+  //     'XXRPZUSD': 'XRPUSD',
+  //     'XXLMZUSD': 'XLMUSD',
+  //     'XXDGZUSD': 'DOGEUSD',
+  //     'XBTUSD': 'BTCUSD',
+  //     'ETHUSD': 'ETHUSD',
+  //   };
     
-    if (knownConversions[krakenPair]) {
-      return knownConversions[krakenPair];
-    }
+  //   if (knownConversions[krakenPair]) {
+  //     return knownConversions[krakenPair];
+  //   }
     
-    // STRATEGY 2: Try to find the pair in our cached AssetPairs to get base and quote
-    if (KrakenApiService.assetPairsCache) {
-      for (const [pairKey, pairInfo] of Object.entries(KrakenApiService.assetPairsCache)) {
-        const pair = pairInfo as any;
-        if (pairKey === krakenPair || pair.altname === krakenPair) {
-          // Found the pair, convert base and quote to standard format
-          const standardBase = this.mapKrakenAssetToStandard(pair.base);
-          const standardQuote = this.mapKrakenAssetToStandard(pair.quote);
-          return `${standardBase}${standardQuote}`;
-        }
-      }
-    }
+  //   // STRATEGY 2: Try to find the pair in our cached AssetPairs to get base and quote
+  //   if (KrakenApiService.assetPairsCache) {
+  //     for (const [pairKey, pairInfo] of Object.entries(KrakenApiService.assetPairsCache)) {
+  //       const pair = pairInfo as any;
+  //       if (pairKey === krakenPair || pair.altname === krakenPair) {
+  //         // Found the pair, convert base and quote to standard format
+  //         const standardBase = this.mapKrakenAssetToStandard(pair.base);
+  //         const standardQuote = this.mapKrakenAssetToStandard(pair.quote);
+  //         return `${standardBase}${standardQuote}`;
+  //       }
+  //     }
+  //   }
     
-    // STRATEGY 3: Fallback to manual parsing for common patterns
-    if (krakenPair.length >= 6) {
-      // Try different base/quote splits
-      const commonBaseLengths = [3, 4, 5]; // Most common base asset lengths
+  //   // STRATEGY 3: Fallback to manual parsing for common patterns
+  //   if (krakenPair.length >= 6) {
+  //     // Try different base/quote splits
+  //     const commonBaseLengths = [3, 4, 5]; // Most common base asset lengths
       
-      for (const baseLength of commonBaseLengths) {
-        const potentialBase = krakenPair.substring(0, baseLength);
-        const potentialQuote = krakenPair.substring(baseLength);
+  //     for (const baseLength of commonBaseLengths) {
+  //       const potentialBase = krakenPair.substring(0, baseLength);
+  //       const potentialQuote = krakenPair.substring(baseLength);
         
-        const standardBase = this.mapKrakenAssetToStandard(potentialBase);
-        const standardQuote = this.mapKrakenAssetToStandard(potentialQuote);
+  //       const standardBase = this.mapKrakenAssetToStandard(potentialBase);
+  //       const standardQuote = this.mapKrakenAssetToStandard(potentialQuote);
         
-        // If we got different values back, it means we found a mapping
-        if (standardBase !== potentialBase || standardQuote !== potentialQuote) {
-          return `${standardBase}${standardQuote}`;
-        }
-      }
-    }
+  //       // If we got different values back, it means we found a mapping
+  //       if (standardBase !== potentialBase || standardQuote !== potentialQuote) {
+  //         return `${standardBase}${standardQuote}`;
+  //       }
+  //     }
+  //   }
     
-    // STRATEGY 4: If all else fails, return the original pair unchanged
-    return krakenPair;
-  }
+  //   // STRATEGY 4: If all else fails, return the original pair unchanged
+  //   return krakenPair;
+  // }
 
   /**
    * Maps common asset names to Kraken's naming convention
@@ -279,7 +292,9 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
     if (!KrakenApiService.assetPairsCache) {
       throw new Error('AssetPairs cache is not loaded. Call loadAssetPairs() first.');
     }
-    
+
+    // Kraken has not only their own coin naming convention,
+    // but their own pair naming convention.
     // Try to find pair in cached data
     const foundPair = KrakenApiService.findTradingPair(krakenAsset, krakenTo);
     if (foundPair) {
@@ -626,11 +641,12 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   /**
    * Generates trading pairs from base and quote coin filters for Kraken
    * Uses paired arrays where baseCoins[i] pairs with quoteCoins[i]
-   * Populates the pair mapping cache for efficient reverse conversion
+   * Converts from input standard naming format to Kraken's internal naming format.
+   * Caches the pair mapping cache for efficient reverse conversion kraken => standard pair naming
    * @param filters Optional filters containing base and quote coins arrays
    * @returns Array of trading pair strings (Kraken format)
    */
-  private generatePairsFromFilters(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): string[] {
+  private generateClosedOrderPairs(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): string[] {
     if (!filters || (!filters.baseCoins?.length && !filters.quoteCoins?.length)) {
       // Return empty array to indicate no filtering (fetch all pairs)
       return [];
@@ -685,14 +701,14 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
    * Gets the current pair mapping cache for debugging
    */
   public static getPairMappingCache(): Map<string, string> {
-    return new Map(KrakenApiService.pairMappingCache);
+    return KrakenApiService.pairMappingCache;
   }
 
   /**
    * Retrieves closed orders from Kraken
    * https://docs.kraken.com/api/docs/rest-api/get-orders-history
    * Note: trades=false returns just order info, trades=true includes detailed execution data
-   * @param filters Optional filters with base and quote coin arrays
+   * @param filters Optional filters with base and quote coin arrays.  Standard naming format.
    */
   async getClosedOrders(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): Promise<any> {
     const exchangeName = this.getExchangeName();
@@ -711,7 +727,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       }
 
       // Generate pairs from filters
-      const targetPairs = this.generatePairsFromFilters(filters);
+      const targetPairs = this.generateClosedOrderPairs(filters);
       
       console.log(`[KRAKEN] Fetching closed orders${targetPairs.length > 0 ? ` filtered for pairs: ${targetPairs.join(', ')}` : ' (all pairs)'}`);
 
