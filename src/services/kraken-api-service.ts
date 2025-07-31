@@ -11,7 +11,6 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   private static assetPairsCache: any = null; // Cache for AssetPairs data
   private static assetPairsCacheTime = 0; // Cache timestamp
   private static readonly CACHE_TTL = 60 * 60 * 1000; // 1 hour cache TTL
-  private static pairMappingCache = new Map<string, string>(); // Maps Kraken pairs to standard pairs
   private instanceId: number;
 
   constructor(
@@ -133,23 +132,6 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       return this.assetPairsCache || {};
     }
   }
-  
-  /**
-   * Clears the pair mapping cache
-   * Useful for testing or when asset mappings change
-   */
-  public static clearPairMappingCache(): void {
-    KrakenApiService.pairMappingCache.clear();
-    console.log('[KRAKEN] Cleared pair mapping cache');
-  }
-
-  /**
-   * Gets the current pair mapping cache for debugging
-   */
-  public static getPairMappingCache(): Map<string, string> {
-    return KrakenApiService.pairMappingCache;
-  }
-
   
   /**
    * Maps an asset name to Kraken's naming convention for trading pairs
@@ -528,10 +510,8 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   /**
    * Generates trading pairs from base and quote coin filters for Kraken
    * Uses paired arrays where baseCoins[i] pairs with quoteCoins[i]
-   * Converts from input standard naming format to Kraken's internal naming format.
-   * Caches the pair mapping cache for efficient reverse conversion kraken => standard pair naming
    * @param coinsRequested Optional filters containing base and quote coins arrays
-   * @returns Array of trading pair strings (Kraken format)
+   * @returns Array of trading pair strings (Standard format)
    */
   private generateClosedOrderPairs(coinsRequested?: { baseCoins?: string[]; quoteCoins?: string[] }): string[] {
 

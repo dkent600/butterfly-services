@@ -109,14 +109,6 @@ describe('Kraken Closed Orders Integration Tests', () => {
         altname: 'ADAUSDT' 
       },
     };
-    
-    // Populate the pair mapping cache for the simplified conversion logic
-    KrakenApiService.clearPairMappingCache();
-    const cache = KrakenApiService.getPairMappingCache();
-    cache.set('XXBTZUSD', 'BTCUSD');
-    cache.set('XETHZUSD', 'ETHUSD');
-    cache.set('ADAZUSD', 'ADAUSD');
-    cache.set('ADAUSDT', 'ADAUSDT');
   });
 
   afterEach(async () => {
@@ -137,7 +129,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
             price: '50000.00',
             cost: '50000.00',
             descr: {
-              pair: 'XXBTZUSD',
+              pair: 'BTCUSD',
               type: 'sell',
               ordertype: 'market',
             },
@@ -149,7 +141,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
             price: '3000.00',
             cost: '6000.00',
             descr: {
-              pair: 'XETHZUSD',
+              pair: 'ETHUSD',
               type: 'sell',
               ordertype: 'limit',
               price: '3000.00',
@@ -162,7 +154,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
             price: '1.50',
             cost: '150.00',
             descr: {
-              pair: 'ADAZUSD',  // ADA+USD maps to ADAZUSD in Kraken
+              pair: 'ADAUSD',  // ADA+USD maps to ADAUSD in standard format
               type: 'sell',
               ordertype: 'market',
             },
@@ -447,7 +439,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
               price: '25000.00',
               cost: '112500.00',
               descr: {
-                pair: 'XXBTZUSD',
+                pair: 'BTCUSD',
                 type: 'sell',
                 ordertype: 'limit',
                 price: '25000.00',

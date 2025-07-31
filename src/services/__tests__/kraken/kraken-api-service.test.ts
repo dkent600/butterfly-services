@@ -615,11 +615,6 @@ describe('KrakenApiService', () => {
     });
 
     it('should successfully fetch closed orders with default filters', async () => {
-      // Populate cache with required mapping for the test
-      KrakenApiService.clearPairMappingCache();
-      const cache = KrakenApiService.getPairMappingCache();
-      cache.set('XBTUSD', 'BTCUSD');  // Add mapping that test expects
-      
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { result: { unixtime: 1640995200 } }
@@ -641,7 +636,7 @@ describe('KrakenApiService', () => {
                 starttm: 0,
                 expiretm: 0,
                 descr: {
-                  pair: 'XBTUSD',
+                  pair: 'BTCUSD',
                   type: 'sell',
                   ordertype: 'market',
                   price: '44500.0',
@@ -713,7 +708,7 @@ describe('KrakenApiService', () => {
                 starttm: 0,
                 expiretm: 0,
                 descr: {
-                  pair: 'XXBTZUSD', // BTC/USD - should match
+                  pair: 'BTCUSD', // BTC/USD - should match
                   type: 'sell',
                   ordertype: 'market',
                   price: '44500.0',

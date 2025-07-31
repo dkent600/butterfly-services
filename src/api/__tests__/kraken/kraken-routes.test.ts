@@ -583,13 +583,13 @@ describe('Kraken Exchange Routes', () => {
                     starttm: 0,
                     expiretm: 0,
                     descr: {
-                      pair: 'XBTUSD',
+                      pair: 'BTCUSD',
                       type: 'sell',
                       ordertype: 'limit',
                       price: '50000.0',
                       price2: '0',
                       leverage: 'none',
-                      order: 'sell 0.5 XBTUSD @ limit 50000.0',
+                      order: 'sell 0.5 BTCUSD @ limit 50000.0',
                       close: ''
                     },
                     vol: '0.50000000',
@@ -727,13 +727,13 @@ describe('Kraken Exchange Routes', () => {
                     starttm: 0,
                     expiretm: 0,
                     descr: {
-                      pair: 'XXBTZUSD',
+                      pair: 'BTCUSD',
                       type: 'sell',
                       ordertype: 'market',
                       price: '0',
                       price2: '0',
                       leverage: 'none',
-                      order: 'sell 0.5 XXBTZUSD @ market',
+                      order: 'sell 0.5 BTCUSD @ market',
                       close: ''
                     },
                     vol: '0.50000000',
