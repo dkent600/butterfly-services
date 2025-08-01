@@ -165,15 +165,25 @@ When updating existing methods that don't follow this pattern:
 ### Current Implementation Status
 
 #### ✅ Following Pattern:
-- `KrakenApiService.createSellOrder()` - Uses `exchangeApiService.createSellOrder()`
-- `KrakenApiService.cancelOrder()` - Uses `exchangeApiService.cancelOrder()`
+- `KrakenApiService.createSellOrder()` - Uses `exchangeApiService.sendApiRequest()`
+- `KrakenApiService.cancelOrder()` - Uses `exchangeApiService.sendApiRequest()`
+- `MexcApiService.createSellOrder()` - Uses `exchangeApiService.sendApiRequest()`
+- `MexcApiService.cancelOrder()` - Uses `exchangeApiService.sendApiRequest()` (partial - needs symbol lookup)
 
 #### 🔄 Needs Migration:
-- `KrakenApiService.fetchPrice()` - Direct axios calls
-- `KrakenApiService.fetchBalance()` - Direct axios calls  
+- `KrakenApiService.fetchPrice()` - Direct axios calls (public endpoint - lower priority)
+- `KrakenApiService.fetchBalance()` - Direct axios calls 
 - `KrakenApiService.getOpenedOrders()` - Direct axios calls
 - `KrakenApiService.getClosedOrders()` - Direct axios calls
-- `MexcApiService.*` - Most methods need review
+- `MexcApiService.fetchPrice()` - Direct axios calls (public endpoint - lower priority)
+- `MexcApiService.fetchBalance()` - Direct axios calls
+- `MexcApiService.getOpenedOrders()` - Direct axios calls
+- `MexcApiService.getClosedOrders()` - Direct axios calls
+
+#### 📋 Migration Priority:
+1. **High Priority**: Private endpoints (balance, orders) - security and consistency critical
+2. **Medium Priority**: Public endpoints (price) - consistency helpful but not security critical
+3. **Future**: Consider separating public vs private endpoint patterns
 
 ## Testing Pattern
 

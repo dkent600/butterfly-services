@@ -13,12 +13,14 @@ This directory contains comprehensive documentation for the Butterfly Services p
 
 ## Quick Reference
 
-### Current Status (July 21, 2025)
-- ✅ Order Management APIs (open/closed orders)
+### Current Status (August 1, 2025)
+- ✅ Order Management APIs (open/closed/cancel orders)
 - ✅ Comprehensive Swagger documentation
 - ✅ Production/test mode configuration
 - ✅ Time synchronization and nonce management
-- 🚧 Order cancellation API (planned)
+- ✅ Frontend integration with batch-take-profit application
+- � MEXC order cancellation enhancement (symbol lookup)
+- 🔄 Interface consolidation between frontend and backend
 
 ### Key Commands
 ```bash

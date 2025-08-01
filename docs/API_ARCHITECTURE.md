@@ -72,12 +72,14 @@ GET /api/v1/:exchange/:asset/balance
 
 #### Order Management
 ```
-GET /api/v1/:exchange/orders/open
-GET /api/v1/:exchange/orders/closed
+GET /api/v1/:exchange/orders/open     # ✅ List open orders
+GET /api/v1/:exchange/orders/closed   # ✅ List closed orders  
+DELETE /api/v1/:exchange/orders/:txid # ✅ Cancel specific order
 ```
-- **Purpose**: List open/closed orders
+- **Purpose**: Comprehensive order lifecycle management
 - **Authentication**: Required
-- **Response**: `{ orders: [...], timestamp: string }`
+- **Response**: `{ orders: [...], timestamp: string }` for list operations
+- **Safety**: Order cancellation blocked in test mode for both exchanges
 
 #### Order Creation
 ```
@@ -86,6 +88,7 @@ POST /api/v1/:exchange/:asset/sell
 - **Purpose**: Create sell orders (market/limit)
 - **Body**: `{ orderType: 'market'|'limit', price?: number, to: string }`
 - **Response**: `{ success: boolean, message: string }`
+- **Test Mode**: Uses validation endpoints to prevent real trades
 
 ## Schema Architecture
 
@@ -192,6 +195,24 @@ const headers = {
   'Content-Type': 'application/x-www-form-urlencoded'
 };
 ```
+
+## Performance Considerations
+
+### Request Queuing and Nonce Management
+- **Client-Side Queuing**: Frontend applications should implement request queuing to prevent nonce conflicts
+- **Atomic Nonce Generation**: Server uses compare-and-swap pattern for thread-safe nonce generation
+- **Time Synchronization**: Each exchange maintains server time sync to ensure accurate nonces
+- **Retry Logic**: Clients should implement exponential backoff for nonce-related errors
+
+### Rate Limiting Recommendations
+- **Exchange Limits**: Respect individual exchange rate limits (Kraken: 1 req/sec private, MEXC: varies by endpoint)
+- **Concurrent Requests**: Avoid parallel requests to same exchange for authenticated endpoints
+- **Request Batching**: Group related operations where possible (e.g., balance updates)
+
+### Caching Strategy
+- **AssetPairs**: Kraken trading pairs cached for 1 hour
+- **Time Synchronization**: Server time cached and periodically refreshed
+- **Client-Side**: Frontend should cache non-critical data (prices, balances) appropriately
 
 ## Error Handling Strategy
 

@@ -3,6 +3,19 @@
 ## Project Mission
 Butterfly Services is a TypeScript-based API service that provides secure, reliable interfaces to cryptocurrency exchanges for dApps and other applications. The project emphasizes safety, testing, and production-ready exchange integrations.
 
+## Butterfly App Ecosystem
+
+### Architecture Overview
+The Butterfly App consists of two main components:
+- **butterfly-services** (Backend): REST API service providing exchange integrations
+- **batch-take-profit** (Frontend): Aurelia-based web application for portfolio management
+
+### Integration Patterns
+- **API Communication**: Frontend consumes butterfly-services REST API
+- **Request Queuing**: Frontend implements serialized request queuing to handle exchange nonce requirements
+- **State Management**: Reactive stores in frontend sync with backend API state
+- **Safety First**: Both frontend and backend implement test mode protections
+
 ## Core Architecture
 
 ### Technology Stack
@@ -45,10 +58,17 @@ src/
 - ✅ Order creation (market/limit)
 - ✅ Open orders listing
 - ✅ Closed orders listing
-- 🚧 Order cancellation (planned)
+- ✅ Order cancellation
+
+### MEXC  
+- ✅ Price fetching
+- ✅ Balance retrieval
+- ✅ Order creation (market/limit)
+- ✅ Open orders listing
+- ✅ Closed orders listing
+- 🔄 Order cancellation (basic implementation - needs symbol lookup enhancement)
 
 ### Future Exchanges
-- MEXC (partially implemented)
 - Binance (planned)
 - Coinbase (planned)
 

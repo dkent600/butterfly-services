@@ -1,7 +1,32 @@
 # butterfly-services
-Random services designed to support dApps and more
+REST API service for secure cryptocurrency exchange operations, part of the Butterfly App ecosystem.
 
-This project is a Node.js app running as a service, hosting REST API endpoints for cryptocurrency exchange operations.
+This project provides a Node.js service hosting REST API endpoints for cryptocurrency exchange operations with comprehensive safety mechanisms, testing, and production-ready integrations.
+
+## 🚀 Quick Start
+
+1. **Clone and install**:
+   ```bash
+   git clone <repository-url>
+   cd butterfly-services
+   npm install
+   ```
+
+2. **Configure environment**:
+   ```bash
+   # Copy template and add your API credentials
+   cp .env.development.example .env.development
+   # Edit .env.development with your API keys
+   ```
+
+3. **Start development server**:
+   ```bash
+   npm run dev
+   ```
+
+4. **Access the API**:
+   - API Server: `http://localhost:3000`
+   - Documentation: `http://localhost:3000/docs`
 
 ## Setup
 

@@ -122,17 +122,63 @@ const OrderObjectSchema = {
 }
 ```
 
+## August 1, 2025
+
+### Frontend Integration Analysis
+**Context**: Comprehensive review of batch-take-profit frontend integration with butterfly-services
+
+**Key Findings**:
+- **Nonce Issues Persist**: Frontend still experiences intermittent "EAPI:Invalid nonce" errors despite atomic generation improvements
+- **Request Queue Implementation**: Frontend uses `RequestQueueService` to serialize API calls and prevent race conditions
+- **Retry Logic**: Frontend implements recursive retry for nonce errors in `SellComponent.updateAssetBalance()`
+- **Interface Duplication**: Frontend duplicates `IOpenedOrderListItem` and `IClosedOrderListItem` interfaces from butterfly-services
+
+**Frontend Architecture Observations**:
+- **Aurelia Framework**: Uses dependency injection with `@inject` decorators
+- **Service Layer**: `AssetExchangeApiService` acts as client-side proxy to butterfly-services
+- **State Management**: Separate stores for assets and orders with reactive updates
+- **Validation**: Complex client-side validation for percentage/amount calculations
+
+**Integration Patterns**:
+- Frontend queues all requests: `this.queueService.enqueue(() => this.updateAllCurrentPrices())`
+- Manual balance refresh before order creation to prevent stale data
+- Alert-based user feedback for order operations and validation errors
+
+**Technical Debt Identified**:
+- Interface duplication between frontend and backend
+- Comment indicates nonce issues "due to being unable to avoid requests to the exchange arriving out of order"
+- Recursive retry without exponential backoff could cause issues
+- Mixed promise patterns (manual counting vs Promise.all)
+
+**Recommendations**:
+1. Investigate if recent atomic nonce improvements resolve frontend issues
+2. Consider shared interface definitions between projects
+3. Implement exponential backoff for retry logic
+4. Standardize promise handling patterns
+5. Add request deduplication to prevent unnecessary API calls
+
+### Order Cancellation API Status Update
+**Status**: ✅ **COMPLETED** - Order cancellation implemented for both Kraken and MEXC
+
+**Implementation Details**:
+- `DELETE /api/v1/kraken/orders/:txid` - Fully implemented with safety blocks in test mode
+- `DELETE /api/v1/mexc/orders/:txid` - Basic implementation (requires symbol lookup enhancement)
+- Both exchanges properly block cancellation in test mode for safety
+- Following established design pattern with `ExchangeApiService` delegation
+
 ## Pending Work
 
 ### Immediate
-- **Order Cancellation API**: `DELETE /api/v1/kraken/orders/:txid`
-- **Environment Configuration Verification**: Ensure production settings are correct
+- **MEXC Order Cancellation Enhancement**: Implement symbol lookup for complete cancellation support
+- **Frontend Integration Testing**: Verify recent nonce improvements resolve frontend retry issues
+- **Interface Consolidation**: Consider shared interface definitions between frontend and backend
 
 ### Future Enhancements
-- Additional exchange integrations (MEXC, Binance)
+- Additional exchange integrations (Binance, Coinbase)
 - WebSocket support for real-time data
 - Rate limiting and request throttling
 - Enhanced monitoring and metrics
+- Shared TypeScript interfaces package for frontend/backend consistency
 
 ## Architecture Decisions Record
 

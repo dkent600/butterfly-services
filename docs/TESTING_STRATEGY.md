@@ -10,21 +10,29 @@ Comprehensive testing approach combining unit tests, integration tests, and real
 
 ## Test Structure
 
-### Current Test Coverage (20/20 tests passing)
+### Current Test Coverage (All tests passing)
 
 #### Service Layer Tests (`src/services/__tests__/`)
 - **Container Tests**: Dependency injection verification
 - **Exchange API Service**: Core service functionality
 - **Exchange Time Syncer**: Time synchronization accuracy
+- **Base Exchange Service**: Reentrancy and common functionality
+- **Kraken API Service**: Complete exchange integration tests
 - **MEXC API Service**: Exchange-specific implementations
 
 #### API Route Tests (`src/api/__tests__/`)
 - **Server Tests**: Basic server functionality
-- **Exchange Route Tests**: Complete HTTP endpoint testing
+- **Kraken Route Tests**: Complete HTTP endpoint testing
   - Price fetching endpoints
   - Balance retrieval endpoints
   - Order management endpoints (open/closed orders)
   - Order creation endpoints
+- **MEXC Route Tests**: HTTP endpoint validation
+
+#### Specialized Test Categories
+- **Nonce Stress Tests**: Concurrent nonce generation under load
+- **Race Condition Tests**: Multi-instance service testing
+- **Performance Tests**: Time synchronization and API response times
 
 ## Test Categories
 
@@ -192,6 +200,25 @@ describe('Test Mode Behavior', () => {
 - Environment variable parsing
 - Default value handling
 - Invalid configuration scenarios
+
+## Integration Testing with Frontend
+
+### Frontend Integration Scenarios
+- **Request Queue Testing**: Verify frontend request queuing prevents nonce conflicts
+- **Error Handling**: Test frontend retry logic for nonce and network errors  
+- **State Synchronization**: Ensure frontend stores stay in sync with backend API
+- **Order Flow Testing**: End-to-end order creation and management workflows
+
+### Common Integration Issues
+- **Nonce Conflicts**: Despite atomic generation, frontend still experiences intermittent issues
+- **Interface Drift**: Frontend duplicates backend interfaces - potential for inconsistency
+- **Error Recovery**: Frontend implements recursive retry without exponential backoff
+
+### Testing Recommendations
+1. **Shared Test Data**: Use consistent test fixtures between frontend and backend
+2. **Contract Testing**: Verify API contracts match frontend expectations
+3. **Load Testing**: Test nonce generation under concurrent frontend usage
+4. **Error Simulation**: Test frontend resilience to backend errors
 
 ## Performance Testing
 
