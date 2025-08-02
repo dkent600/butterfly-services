@@ -50,6 +50,31 @@ export const LimitSellOrderRequestSchema = {
   additionalProperties: false,
 } as const;
 
+export const MarketBuyOrderRequestSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string', description: 'Asset symbol to buy (e.g., BTC, ETH)' },
+    amount: { type: 'number', minimum: 0, description: 'Amount to buy (> 0)' },
+    from: { type: 'string', description: 'Quote currency to spend' },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['name', 'amount', 'from'],
+  additionalProperties: false,
+} as const;
+
+export const LimitBuyOrderRequestSchema = {
+  type: 'object',
+  properties: {
+    name: { type: 'string', description: 'Asset symbol to buy (e.g., BTC, ETH)' },
+    amount: { type: 'number', minimum: 0, description: 'Amount to buy (> 0)' },
+    price: { type: 'number', minimum: 0, description: 'Limit price for the order' },
+    from: { type: 'string', description: 'Quote currency to spend' },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['name', 'amount', 'price', 'from'],
+  additionalProperties: false,
+} as const;
+
 export const MarketSellOrderResponseSchema = {
   type: 'object',
   properties: {
@@ -63,6 +88,31 @@ export const MarketSellOrderResponseSchema = {
 } as const;
 
 export const LimitSellOrderResponseSchema = {
+  type: 'object',
+  properties: {
+    message: { type: 'string' },
+    orderId: { type: 'string' },
+    asset: { type: 'string' },
+    quantity: { type: 'number' },
+    price: { type: 'number' },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['message', 'timestamp'],
+} as const;
+
+export const MarketBuyOrderResponseSchema = {
+  type: 'object',
+  properties: {
+    message: { type: 'string' },
+    orderId: { type: 'string' },
+    asset: { type: 'string' },
+    quantity: { type: 'number' },
+    timestamp: { type: 'string', format: 'date-time' },
+  },
+  required: ['message', 'timestamp'],
+} as const;
+
+export const LimitBuyOrderResponseSchema = {
   type: 'object',
   properties: {
     message: { type: 'string' },

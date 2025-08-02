@@ -10,6 +10,10 @@ import {
   MarketSellOrderResponseSchema,
   LimitSellOrderRequestSchema,
   LimitSellOrderResponseSchema,
+  MarketBuyOrderRequestSchema,
+  MarketBuyOrderResponseSchema,
+  LimitBuyOrderRequestSchema,
+  LimitBuyOrderResponseSchema,
   OpenedOrdersResponseSchema,
   ClosedOrdersResponseSchema,
   ClosedOrdersRequestSchema,
@@ -270,6 +274,117 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
 
         return reply.status(201).send({
           message: 'Limit sell order created successfully',
+          asset: fullAsset.name.toUpperCase(),
+          quantity: fullAsset.amount,
+          price,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
+  /**
+   * Generic function to create market buy order route for an exchange
+   */
+  function createMarketBuyOrderRoute(exchange: ExchangeConfig) {
+    fastify.post(`/${exchange.name}/orders/buy/market`, {
+      schema: {
+        description: `Create a market buy order on ${exchange.displayName} exchange`,
+        tags: ['exchanges'],
+        body: MarketBuyOrderRequestSchema,
+        response: {
+          201: MarketBuyOrderResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { name, amount, from } = request.body as { name: string; amount: number; from: string };
+
+        // Create the full asset object with exchange from URL path
+        const fullAsset: IAsset = {
+          name,
+          amount,
+          exchange: exchange.name,
+        };
+
+        // Use singleton service instances to prevent multiple service creation
+        // const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        // TODO: Implement createBuyOrder in exchange services
+        // await exchangeService.createBuyOrder(fullAsset, { orderType: 'market', from: from.toUpperCase() });
+
+        return reply.status(201).send({
+          message: 'Market buy order created successfully',
+          asset: fullAsset.name.toUpperCase(),
+          quantity: fullAsset.amount,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (error) {
+        fastify.log.error(error);
+        return reply.status(500).send({
+          error: 'InternalServerError',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          statusCode: 500,
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+  }
+
+  /**
+   * Generic function to create limit buy order route for an exchange
+   */
+  function createLimitBuyOrderRoute(exchange: ExchangeConfig) {
+    fastify.post(`/${exchange.name}/orders/buy/limit`, {
+      schema: {
+        description: `Create a limit buy order on ${exchange.displayName} exchange`,
+        tags: ['exchanges'],
+        body: LimitBuyOrderRequestSchema,
+        response: {
+          201: LimitBuyOrderResponseSchema,
+          400: ErrorResponseSchema,
+          500: ErrorResponseSchema,
+        },
+      },
+    }, async (request, reply) => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { name, amount, price, from } = request.body as { name: string; amount: number; price: number; from: string };
+
+        // Create the full asset object with exchange from URL path
+        const fullAsset: IAsset = {
+          name,
+          amount,
+          exchange: exchange.name,
+        };
+
+        // Validate price
+        if (price <= 0) {
+          return reply.status(400).send({
+            error: 'InvalidPrice',
+            message: 'Price must be greater than 0',
+            statusCode: 400,
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        // Use singleton service instances to prevent multiple service creation
+        // const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        // TODO: Implement createBuyOrder in exchange services
+        // await exchangeService.createBuyOrder(fullAsset, { orderType: 'limit', price, from: from.toUpperCase() });
+
+        return reply.status(201).send({
+          message: 'Limit buy order created successfully',
           asset: fullAsset.name.toUpperCase(),
           quantity: fullAsset.amount,
           price,
@@ -591,6 +706,8 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
     createPriceRoute(exchange);
     createMarketSellOrderRoute(exchange);
     createLimitSellOrderRoute(exchange);
+    createMarketBuyOrderRoute(exchange);
+    createLimitBuyOrderRoute(exchange);
     
     // Use exchange-specific route functions
     if (exchange.name === 'kraken') {

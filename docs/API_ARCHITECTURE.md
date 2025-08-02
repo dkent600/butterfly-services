@@ -85,11 +85,33 @@ DELETE /api/v1/:exchange/orders/:txid # ✅ Cancel specific order
 ```
 POST /api/v1/:exchange/orders/sell/market
 POST /api/v1/:exchange/orders/sell/limit
+POST /api/v1/:exchange/orders/buy/market
+POST /api/v1/:exchange/orders/buy/limit
 ```
-- **Purpose**: Create sell orders (market/limit)
-- **Body**: `{ name: string, amount: number, price?: number, to: string }`
+- **Purpose**: Create sell/buy orders (market/limit)
+- **Body**: 
+  - Sell orders: `{ name: string, amount: number, price?: number, to: string }`
+  - Buy orders: `{ name: string, amount: number, price?: number, from: string }`
 - **Response**: `{ message: string, asset: string, quantity: number, price?: number, timestamp: string }`
 - **Test Mode**: Uses validation endpoints to prevent real trades
+- **Note**: Buy order implementation pending in exchange services
+
+#### Sell Order Endpoints
+- **Market Sell**: `POST /api/v1/:exchange/orders/sell/market`
+  - Body: `{ name: "BTC", amount: 0.5, to: "USDT" }`
+  - Creates immediate market sell order
+- **Limit Sell**: `POST /api/v1/:exchange/orders/sell/limit`
+  - Body: `{ name: "BTC", amount: 0.5, price: 50000, to: "USDT" }`
+  - Creates limit sell order at specified price
+
+#### Buy Order Endpoints
+- **Market Buy**: `POST /api/v1/:exchange/orders/buy/market`
+  - Body: `{ name: "BTC", amount: 0.5, from: "USDT" }`
+  - Creates immediate market buy order
+- **Limit Buy**: `POST /api/v1/:exchange/orders/buy/limit`
+  - Body: `{ name: "BTC", amount: 0.5, price: 48000, from: "USDT" }`
+  - Creates limit buy order at specified price
+- **Status**: ⚠️ Schema defined, routes created, service implementation pending
 
 ## Schema Architecture
 
