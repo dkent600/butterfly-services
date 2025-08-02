@@ -234,6 +234,18 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     }
   }
 
+  async createBuyOrder(
+    _asset: IAsset, 
+    _options: {
+      orderType: 'market' | 'limit';
+      price?: number;
+      from: string;
+    },
+  ): Promise<any> {
+    // TODO: Implement buy order functionality for MEXC
+    throw new Error('Buy order functionality not yet implemented for MEXC exchange');
+  }
+
   /**
    * Retrieves open orders from MEXC
    * https://mexcdevelop.github.io/apidocs/spot_v3_en/#current-open-orders

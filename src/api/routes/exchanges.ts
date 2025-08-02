@@ -308,7 +308,6 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { name, amount, from } = request.body as { name: string; amount: number; from: string };
 
         // Create the full asset object with exchange from URL path
@@ -319,9 +318,8 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         };
 
         // Use singleton service instances to prevent multiple service creation
-        // const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        // TODO: Implement createBuyOrder in exchange services
-        // await exchangeService.createBuyOrder(fullAsset, { orderType: 'market', from: from.toUpperCase() });
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        await exchangeService.createBuyOrder(fullAsset, { orderType: 'market', from: from.toUpperCase() });
 
         return reply.status(201).send({
           message: 'Market buy order created successfully',
@@ -358,7 +356,6 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       },
     }, async (request, reply) => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { name, amount, price, from } = request.body as { name: string; amount: number; price: number; from: string };
 
         // Create the full asset object with exchange from URL path
@@ -379,9 +376,8 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
         }
 
         // Use singleton service instances to prevent multiple service creation
-        // const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
-        // TODO: Implement createBuyOrder in exchange services
-        // await exchangeService.createBuyOrder(fullAsset, { orderType: 'limit', price, from: from.toUpperCase() });
+        const exchangeService = container.resolve<IExchangeService>(exchange.serviceToken);
+        await exchangeService.createBuyOrder(fullAsset, { orderType: 'limit', price, from: from.toUpperCase() });
 
         return reply.status(201).send({
           message: 'Limit buy order created successfully',

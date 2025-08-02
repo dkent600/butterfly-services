@@ -67,6 +67,14 @@ export interface IExchangeService {
       to: string;
     },
   ): Promise<any>;
+  createBuyOrder(
+    asset: IAsset, 
+    options: {
+      orderType: 'market' | 'limit';
+      price?: number;
+      from: string;
+    },
+  ): Promise<any>;
   getOpenedOrders(): Promise<any>;
   getClosedOrders(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): Promise<any>;
   cancelOrder(txid: string): Promise<void>;

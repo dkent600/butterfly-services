@@ -421,6 +421,97 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   }
 }
 
+  async createBuyOrder(
+    asset: IAsset, 
+    options: {
+      orderType: 'market' | 'limit';
+      price?: number;
+      from: string;
+    },
+  ): Promise<any> {
+    const { orderType, price, from } = options;
+    try {
+    
+    // Validate required parameters based on order type
+    if (orderType === 'limit' && !price) {
+      throw new Error('Price is required for limit orders');
+    }
+
+    const exchangeName = this.getExchangeName();
+    const pair = this.createPair(asset, from);
+    const volume = asset.amount;
+    const nonce = await this.generateUniqueNonce();
+    
+    // console.log(`[KRAKEN ORDER] Instance #${this.instanceId} Using nonce: ${nonce} for ${asset.name} pair: ${pair}, type: ${orderType}`);
+
+    const orderParams: Record<string, string> = {
+      nonce: nonce.toString(),
+      ordertype: orderType,
+      type: 'buy',
+      volume: volume.toString(),
+      pair,
+      ...(this.shouldUseTestMode() && { validate: 'true' }), // Add validate=true for test mode
+    };
+    
+    if (orderType === 'limit' && price) {
+      orderParams.price = price.toString();
+      }
+
+    if (orderParams?.validate !== 'true') {
+      console.log(`[KRAKEN MODE]❗Running in production! Buy ${asset.name} at ${price}`);
+    } else {
+      console.log(`[KRAKEN MODE] Running in test mode! Buy ${asset.name} at ${price}`);
+    }
+
+    const postData = new URLSearchParams(orderParams).toString();
+    const path = '/0/private/AddOrder';
+    const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
+    const apiKey = this.exchangeApiService.getAPIKey(exchangeName).trim();
+
+    if (!apiKey || !apiSecret) {
+      throw new Error(`${exchangeName} API credentials not configured`);
+    }
+
+    const signature = this.signKrakenRequest(path, postData, apiSecret);
+    const url = this.getApiUrl(path);
+
+    const headers = {
+      'API-Key': apiKey,
+      'API-Sign': signature,
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'User-Agent': 'butterfly-services/1.0',
+    };
+
+    // Use the existing architecture via ExchangeApiService
+    await this.exchangeApiService.sendApiRequest(exchangeName, {
+      url,
+      method: 'POST',
+      body: postData,
+      headers,
+    });
+
+    return { success: true, message: `${orderType === 'market' ? 'Market' : 'Limit'} buy order created successfully` };
+  } 
+  catch (error) {
+    // If it's already a specific error we threw, preserve it
+    if (error instanceof Error && error.message.includes('Kraken API error:')) {
+      throw error;
+    }
+
+    console.error(`Failed to create ${orderType} buy order for ${asset.name}:`, error);
+    console.error('Order details:', {
+      orderType,
+      pair: this.createPair(asset, from),
+      volume: asset.amount,
+      price,
+      // hasApiKey: !!this.exchangeApiService.getAPIKey(exchangeName),
+      // hasApiSecret: !!this.exchangeApiService.getAPISecret(exchangeName),
+      // errorResponse: (error as any).response?.data,
+    });
+    throw new Error(`Could not create ${orderType} buy order for ${asset.name}`);
+  }
+}
+
   /**
    * Transforms Kraken opened order object to standard format
    * Kraken returns orders as: { [orderId]: orderDetails }

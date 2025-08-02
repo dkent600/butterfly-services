@@ -94,7 +94,7 @@ POST /api/v1/:exchange/orders/buy/limit
   - Buy orders: `{ name: string, amount: number, price?: number, from: string }`
 - **Response**: `{ message: string, asset: string, quantity: number, price?: number, timestamp: string }`
 - **Test Mode**: Uses validation endpoints to prevent real trades
-- **Note**: Buy order implementation pending in exchange services
+- **Note**: Buy order implementation complete for Kraken, MEXC implementation pending
 
 #### Sell Order Endpoints
 - **Market Sell**: `POST /api/v1/:exchange/orders/sell/market`
@@ -111,7 +111,7 @@ POST /api/v1/:exchange/orders/buy/limit
 - **Limit Buy**: `POST /api/v1/:exchange/orders/buy/limit`
   - Body: `{ name: "BTC", amount: 0.5, price: 48000, from: "USDT" }`
   - Creates limit buy order at specified price
-- **Status**: ⚠️ Schema defined, routes created, service implementation pending
+- **Status**: ✅ Implemented for Kraken, MEXC implementation pending
 
 ## Schema Architecture
 
