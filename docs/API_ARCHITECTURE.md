@@ -83,11 +83,12 @@ DELETE /api/v1/:exchange/orders/:txid # ✅ Cancel specific order
 
 #### Order Creation
 ```
-POST /api/v1/:exchange/:asset/sell
+POST /api/v1/:exchange/orders/sell/market
+POST /api/v1/:exchange/orders/sell/limit
 ```
 - **Purpose**: Create sell orders (market/limit)
-- **Body**: `{ orderType: 'market'|'limit', price?: number, to: string }`
-- **Response**: `{ success: boolean, message: string }`
+- **Body**: `{ name: string, amount: number, price?: number, to: string }`
+- **Response**: `{ message: string, asset: string, quantity: number, price?: number, timestamp: string }`
 - **Test Mode**: Uses validation endpoints to prevent real trades
 
 ## Schema Architecture
