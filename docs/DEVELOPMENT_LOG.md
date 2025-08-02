@@ -130,7 +130,7 @@ const OrderObjectSchema = {
 **Key Findings**:
 - **Nonce Issues Persist**: Frontend still experiences intermittent "EAPI:Invalid nonce" errors despite atomic generation improvements
 - **Request Queue Implementation**: Frontend uses `RequestQueueService` to serialize API calls and prevent race conditions
-- **Retry Logic**: Frontend implements recursive retry for nonce errors in `SellComponent.updateAssetBalance()`
+- **Retry Logic**: Frontend implements recursive retry for nonce errors in `ExchangeComponent.updateAssetBalance()`
 - **Interface Duplication**: Frontend duplicates `IOpenedOrderListItem` and `IClosedOrderListItem` interfaces from butterfly-services
 
 **Frontend Architecture Observations**:
