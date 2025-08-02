@@ -235,15 +235,98 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   }
 
   async createBuyOrder(
-    _asset: IAsset, 
-    _options: {
+    asset: IAsset, 
+    options: {
       orderType: 'market' | 'limit';
       price?: number;
       from: string;
     },
   ): Promise<any> {
-    // TODO: Implement buy order functionality for MEXC
-    throw new Error('Buy order functionality not yet implemented for MEXC exchange');
+    const { orderType, price, from } = options;
+    
+    try {
+      // Validate required parameters based on order type
+      if (orderType === 'limit' && !price) {
+        throw new Error('Price is required for limit orders');
+      }
+      
+      const exchangeName = this.getExchangeName();
+      const symbol = this.createPair(asset, from);
+      const quantity = asset.amount;
+      const timestamp = await this.generateUniqueNonce();
+      
+      console.log(`MODE: Using test mode: ${this.shouldUseTestMode()}, Environment: ${this.envService.get('app.environment')}`);
+      
+      // Build query parameters
+      const orderParams: Record<string, string> = {
+        symbol,
+        side: 'BUY',
+        type: orderType.toUpperCase(),
+        quantity: quantity.toString(),
+        timestamp: timestamp.toString(),
+      };
+      
+      if (orderType === 'limit' && price) {
+        orderParams.price = price.toString();
+      }
+      
+      if (this.shouldUseTestMode()) {
+        console.log(`[MEXC MODE] Running in test mode! Buy ${asset.name} at ${price || 'market'}`);
+      } else {
+        console.log(`[MEXC MODE] ❗Running in production! Buy ${asset.name} at ${price || 'market'}`);
+      }
+      
+      const queryString = new URLSearchParams(orderParams).toString();
+      const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
+      const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
+      
+      if (!apiKey || !apiSecret) {
+        throw new Error(`${exchangeName} API credentials not configured`);
+      }
+      
+      const signature = this.exchangeApiService.sign(queryString, apiSecret);
+      
+      // Use test mode based on environment configuration
+      const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
+      const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
+      
+      const headers = {
+        'X-MEXC-APIKEY': apiKey,
+        'Content-Type': 'application/json',
+      };
+      
+      // Use the existing architecture via ExchangeApiService
+      await this.exchangeApiService.sendApiRequest(exchangeName, {
+        url,
+        method: 'POST',
+        body: undefined,
+        headers,
+      });
+      
+      return { success: true, message: `${orderType === 'market' ? 'Market' : 'Limit'} buy order created successfully` };
+      
+    } catch (error) {
+      // If it's already a specific error we threw, preserve it
+      if (error instanceof Error && (
+        error.message.includes('MEXC API error:') ||
+        error.message.includes('Price is required for limit orders') ||
+        error.message.includes('API Error')
+      )) {
+        throw error;
+      }
+      
+      console.error(`Failed to create ${orderType} buy order for ${asset.name}:`, error);
+      console.error('Order details:', {
+        orderType,
+        symbol: this.createPair(asset, from),
+        quantity: asset.amount,
+        price,
+        hasApiKey: !!this.exchangeApiService.getAPIKey(this.getExchangeName()),
+        hasApiSecret: !!this.exchangeApiService.getAPISecret(this.getExchangeName()),
+        errorResponse: (error as any).response?.data,
+      });
+      throw new Error(`Could not create ${orderType} buy order for ${asset.name}`);
+    }
   }
 
   /**

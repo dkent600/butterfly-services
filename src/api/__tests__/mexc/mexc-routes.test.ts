@@ -273,6 +273,146 @@ describe('MEXC Exchange Routes', () => {
     });
   });
 
+  describe('POST /api/v1/mexc/orders/buy/market', () => {
+    it('should create market buy order', async () => {
+      // Mock server time for nonce generation
+      const mockAxiosGet = vi.mocked(axios.get);
+      mockAxiosGet.mockResolvedValue({ 
+        data: { serverTime: Date.now() }
+      });
+
+      // Set up mock interceptor to track all HTTP calls
+      const callTracker = { 
+        getCount: 0, 
+        postCount: 0, 
+        getUrls: [] as string[]
+      };
+
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
+        callTracker.getCount++;
+        callTracker.getUrls.push(urlStr);
+
+        if (urlStr.includes('/api/v3/time')) {
+          return Promise.resolve({ data: { serverTime: Date.now() } });
+        }
+
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/mexc/orders/buy/market',
+        payload: {
+          name: 'BTC',
+          amount: 0.5,
+          from: 'USDT'
+        },
+      });
+
+      if (response.statusCode !== 201) {
+        console.log('Buy order test error response:', response.body);
+        console.log(`axios.get call count: ${callTracker.getCount}`);
+        console.log(`axios.post call count: ${callTracker.postCount}`);
+        console.log('Get call URLs:', callTracker.getUrls);
+      }
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+
+      expect(body.message).toBe('Market buy order created successfully');
+      expect(body.timestamp).toBeDefined();
+      expect(body.asset).toBe('BTC');
+      expect(body.quantity).toBe(0.5);
+    });
+  });
+
+  describe('POST /api/v1/mexc/orders/buy/limit', () => {
+    it('should create limit buy order', async () => {
+      // Mock server time for nonce generation
+      const mockAxiosGet = vi.mocked(axios.get);
+      mockAxiosGet.mockResolvedValue({ 
+        data: { serverTime: Date.now() }
+      });
+
+      // Set up mock interceptor to track all HTTP calls
+      const callTracker = { 
+        getCount: 0, 
+        postCount: 0, 
+        getUrls: [] as string[]
+      };
+
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
+        callTracker.getCount++;
+        callTracker.getUrls.push(urlStr);
+
+        if (urlStr.includes('/api/v3/time')) {
+          return Promise.resolve({ data: { serverTime: Date.now() } });
+        }
+
+        return Promise.resolve({ data: { serverTime: Date.now() } });
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/mexc/orders/buy/limit',
+        payload: {
+          name: 'BTC',
+          amount: 0.5,
+          from: 'USDT',
+          price: 45000.25
+        },
+      });
+
+      if (response.statusCode !== 201) {
+        console.log('Limit buy order test error response:', response.body);
+        console.log(`axios.get call count: ${callTracker.getCount}`);
+        console.log(`axios.post call count: ${callTracker.postCount}`);
+        console.log('Get call URLs:', callTracker.getUrls);
+      }
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+
+      expect(body.message).toBe('Limit buy order created successfully');
+      expect(body.timestamp).toBeDefined();
+      expect(body.asset).toBe('BTC');
+      expect(body.quantity).toBe(0.5);
+      expect(body.price).toBe(45000.25);
+    });
+
+    it('should reject limit buy order without price', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/mexc/orders/buy/limit',
+        payload: {
+          name: 'BTC',
+          amount: 0.5,
+          from: 'USDT'
+          // Missing price for limit order
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('should reject limit buy order with invalid price', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/mexc/orders/buy/limit',
+        payload: {
+          name: 'BTC',
+          amount: 0.5,
+          from: 'USDT',
+          price: -100 // Invalid negative price
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
   describe('GET /api/v1/mexc/orders/opened', () => {
     it('should fetch open orders successfully', async () => {
       // Set up flexible mocking based on URL patterns
