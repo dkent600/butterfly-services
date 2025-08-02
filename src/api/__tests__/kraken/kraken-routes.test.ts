@@ -535,6 +535,203 @@ describe('Kraken Exchange Routes', () => {
     });
   });
 
+  describe('POST /api/v1/kraken/orders/buy/market', () => {
+    it('should create market buy order', async () => {
+      // Set up flexible mocking based on URL patterns
+      const mockAxiosGet = vi.mocked(axios.get);
+      const mockAxiosPost = vi.mocked(axios.post);
+
+      // Clear any previous calls
+      mockAxiosGet.mockClear();
+      mockAxiosPost.mockClear();
+
+      // Mock based on URL patterns instead of call order
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+        if (urlStr.includes('/0/public/Time')) {
+          // Server time endpoint
+          return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+        } else if (urlStr.includes('/0/public/AssetPairs')) {
+          // AssetPairs endpoint
+          return Promise.resolve({
+            data: {
+              result: {
+                'XXBTZUSD': { 
+                  base: 'XXBT', 
+                  quote: 'ZUSD', 
+                  pair_decimals: 5,
+                  lot_decimals: 8,
+                  lot_multiplier: 1,
+                  leverage_buy: [],
+                  leverage_sell: [],
+                  fees: [],
+                  fees_maker: [],
+                  fee_volume_currency: 'ZUSD',
+                  margin_call: 80,
+                  margin_stop: 40,
+                  ordermin: '0.0001'
+                },
+              },
+            },
+          });
+        } else if (urlStr.includes('/0/private/Balance')) {
+          // Balance endpoint
+          return Promise.resolve({
+            data: {
+              error: [],
+              result: {
+                'ZUSD': '10000.0', // USD balance for buying
+              },
+            },
+          });
+        }
+
+        // Default fallback
+        return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
+      });
+
+      // Mock buy order creation
+      mockAxiosPost.mockResolvedValue({
+        data: { 
+          error: [],
+          result: { txid: ['OQCLML-BW3P3-BUCMWZ'] },
+        },
+        statusText: 'OK',
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/kraken/orders/buy/market',
+        payload: { name: 'BTC', amount: 0.5, from: 'USDT' },
+      });
+
+      if (response.statusCode !== 201) {
+        console.log('Kraken buy order test error response:', response.body);
+        console.log('axios.get call count:', mockAxiosGet.mock.calls.length);
+        console.log('axios.post call count:', mockAxiosPost.mock.calls.length);
+        console.log('Get call URLs:', mockAxiosGet.mock.calls.map(call => call[0]));
+      }
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+
+      expect(body.message).toBe('Market buy order created successfully');
+      expect(body.asset).toBe('BTC');
+      expect(body.quantity).toBe(0.5);
+      expect(body.success).toBeUndefined(); // success field should not exist
+    });
+  });
+
+  describe('POST /api/v1/kraken/orders/buy/limit', () => {
+    it('should create limit buy order', async () => {
+      // Set up flexible mocking based on URL patterns
+      const mockAxiosGet = vi.mocked(axios.get);
+      const mockAxiosPost = vi.mocked(axios.post);
+
+      // Clear any previous calls
+      mockAxiosGet.mockClear();
+      mockAxiosPost.mockClear();
+
+      // Mock based on URL patterns instead of call order
+      mockAxiosGet.mockImplementation((url: any) => {
+        const urlStr = typeof url === 'string' ? url : (url)?.toString?.() || '';
+
+        if (urlStr.includes('/0/public/Time')) {
+          // Server time endpoint
+          return Promise.resolve({ data: { result: { unixtime: 1640995200 } } });
+        } else if (urlStr.includes('/0/public/AssetPairs')) {
+          // AssetPairs endpoint
+          return Promise.resolve({
+            data: {
+              result: {
+                'XXBTZUSD': { 
+                  base: 'XXBT', 
+                  quote: 'ZUSD', 
+                  pair_decimals: 5,
+                  lot_decimals: 8,
+                  lot_multiplier: 1,
+                  leverage_buy: [],
+                  leverage_sell: [],
+                  fees: [],
+                  fees_maker: [],
+                  fee_volume_currency: 'ZUSD',
+                  margin_call: 80,
+                  margin_stop: 40,
+                  ordermin: '0.0001'
+                },
+              },
+            },
+          });
+        } else if (urlStr.includes('/0/private/Balance')) {
+          // Balance endpoint
+          return Promise.resolve({
+            data: {
+              error: [],
+              result: {
+                'ZUSD': '50000.0', // USD balance for buying
+              },
+            },
+          });
+        }
+
+        // Default fallback
+        return Promise.resolve({ data: { error: [], result: {} }, statusText: 'OK' });
+      });
+
+      // Mock limit buy order creation
+      mockAxiosPost.mockResolvedValue({
+        data: { 
+          error: [],
+          result: { txid: ['OQCLML-BW3P3-BUCMWZ'] },
+        },
+        statusText: 'OK',
+      });
+
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/kraken/orders/buy/limit',
+        payload: { name: 'BTC', amount: 0.5, price: 45000.25, from: 'USDT' },
+      });
+
+      if (response.statusCode !== 201) {
+        console.log('Kraken limit buy order test error response:', response.body);
+        console.log('axios.get call count:', mockAxiosGet.mock.calls.length);
+        console.log('axios.post call count:', mockAxiosPost.mock.calls.length);
+        console.log('Get call URLs:', mockAxiosGet.mock.calls.map(call => call[0]));
+      }
+
+      expect(response.statusCode).toBe(201);
+      const body = JSON.parse(response.body);
+
+      expect(body.message).toBe('Limit buy order created successfully');
+      expect(body.asset).toBe('BTC');
+      expect(body.quantity).toBe(0.5);
+      expect(body.price).toBe(45000.25);
+      expect(body.success).toBeUndefined(); // success field should not exist
+    });
+
+    it('should reject limit buy order without price', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/kraken/orders/buy/limit',
+        payload: { name: 'BTC', amount: 0.5, from: 'USDT' },  // Missing price
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+
+    it('should reject limit buy order with invalid price', async () => {
+      const response = await server.inject({
+        method: 'POST',
+        url: '/api/v1/kraken/orders/buy/limit',
+        payload: { name: 'BTC', amount: 0.5, price: 0, from: 'USDT' },  // Invalid zero price
+      });
+
+      expect(response.statusCode).toBe(400);
+    });
+  });
+
   describe('GET /api/v1/kraken/orders/opened', () => {
     it('should fetch open orders from Kraken', async () => {
       // Set up flexible mocking based on URL patterns
