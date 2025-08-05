@@ -712,17 +712,13 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
               type: 'boolean', 
               description: 'True if running in production mode', 
             },
-            environment: { 
-              type: 'string', 
-              description: 'Current NODE_ENV value', 
-            },
             timestamp: { 
               type: 'string', 
               format: 'date-time',
               description: 'Response timestamp', 
             },
           },
-          required: ['isProduction', 'environment', 'timestamp'],
+          required: ['isProduction', 'timestamp'],
         },
         500: ErrorResponseSchema,
       },
@@ -732,11 +728,9 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       // Get EnvService from the container for consistent logic
       const envService = container.resolve<IEnvService>('EnvService');
       const isProduction = envService.isProduction();
-      const environment = envService.get('app.environment') || process.env.NODE_ENV || 'development';
 
       return reply.code(200).send({
         isProduction,
-        environment,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
