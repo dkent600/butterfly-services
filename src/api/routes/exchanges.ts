@@ -1,7 +1,7 @@
 // Exchange routes for butterfly-services API
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { container } from '../../container.js';
-import { IAsset, IExchangeService, IEnvService } from '../../types/interfaces.js';
+import { IAsset, IExchangeService, IEnvService, TYPES } from '../../types/interfaces.js';
 import { KrakenApiService } from '../../services/kraken-api-service.js';
 import {
   BalanceResponseSchema,
@@ -726,7 +726,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
   }, async (request, reply) => {
     try {
       // Get EnvService from the container for consistent logic
-      const envService = container.resolve<IEnvService>('EnvService');
+      const envService = container.resolve<IEnvService>(TYPES.IEnvService);
       const isProduction = envService.isProduction();
 
       return reply.code(200).send({
@@ -738,6 +738,7 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       return reply.code(500).send({
         error: 'Internal Server Error',
         message: 'Failed to check production mode',
+        statusCode: 500,
         timestamp: new Date().toISOString(),
       });
     }

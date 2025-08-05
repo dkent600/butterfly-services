@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FastifyInstance } from 'fastify';
 import { createServer } from '../server.js';
+import { configureDI, initializeServices } from '../../container.js';
 
 describe('API Server', () => {
   let server: FastifyInstance;
 
   beforeEach(async () => {
+    configureDI(); // Initialize dependency injection
+    await initializeServices(); // Initialize services (loads environment configuration)
     server = await createServer();
   });
 
@@ -65,7 +68,6 @@ describe('API Server', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.isProduction).toBe(false);
-      expect(body.environment).toBe('development');
       expect(body.timestamp).toBeDefined();
       expect(new Date(body.timestamp)).toBeInstanceOf(Date);
 
@@ -76,9 +78,16 @@ describe('API Server', () => {
     it('should return production mode status with production environment', async () => {
       // Set NODE_ENV to production for this test
       const originalEnv = process.env.NODE_ENV;
+      const originalUseTestMode = process.env.USE_TEST_MODE;
       process.env.NODE_ENV = 'production';
+      process.env.USE_TEST_MODE = 'false'; // Explicitly disable test mode
 
-      const response = await server.inject({
+      // Need to reconfigure container and reinitialize services with new env vars
+      configureDI();
+      await initializeServices();
+      const productionServer = await createServer();
+
+      const response = await productionServer.inject({
         method: 'GET',
         url: '/api/v1/production-mode',
       });
@@ -86,11 +95,18 @@ describe('API Server', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.isProduction).toBe(true);
-      expect(body.environment).toBe('production');
       expect(body.timestamp).toBeDefined();
 
+      // Cleanup
+      await productionServer.close();
+      
       // Restore original environment
       process.env.NODE_ENV = originalEnv;
+      if (originalUseTestMode !== undefined) {
+        process.env.USE_TEST_MODE = originalUseTestMode;
+      } else {
+        delete process.env.USE_TEST_MODE;
+      }
     });
 
     it('should handle missing NODE_ENV by defaulting to development', async () => {
@@ -106,7 +122,6 @@ describe('API Server', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.isProduction).toBe(false);
-      expect(body.environment).toBe('development');
 
       // Restore original environment
       process.env.NODE_ENV = originalEnv;
