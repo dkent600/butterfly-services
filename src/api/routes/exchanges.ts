@@ -1,7 +1,7 @@
 // Exchange routes for butterfly-services API
 import { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { container } from '../../container.js';
-import { IAsset, IExchangeService } from '../../types/interfaces.js';
+import { IAsset, IExchangeService, IEnvService } from '../../types/interfaces.js';
 import { KrakenApiService } from '../../services/kraken-api-service.js';
 import {
   BalanceResponseSchema,
@@ -695,6 +695,59 @@ const exchangeRoutes: FastifyPluginAsync = async (fastify: FastifyInstance) => {
       }
     });
   }
+
+  /**
+   * Production Mode Check Endpoint
+   * Returns whether the service is running in production mode
+   */
+  fastify.get('/production-mode', {
+    schema: {
+      description: 'Check if the service is running in production mode',
+      tags: ['system'],
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            isProduction: { 
+              type: 'boolean', 
+              description: 'True if running in production mode', 
+            },
+            environment: { 
+              type: 'string', 
+              description: 'Current NODE_ENV value', 
+            },
+            timestamp: { 
+              type: 'string', 
+              format: 'date-time',
+              description: 'Response timestamp', 
+            },
+          },
+          required: ['isProduction', 'environment', 'timestamp'],
+        },
+        500: ErrorResponseSchema,
+      },
+    },
+  }, async (request, reply) => {
+    try {
+      // Get EnvService from the container for consistent logic
+      const envService = container.resolve<IEnvService>('EnvService');
+      const isProduction = envService.isProduction();
+      const environment = envService.get('app.environment') || process.env.NODE_ENV || 'development';
+
+      return reply.code(200).send({
+        isProduction,
+        environment,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      fastify.log.error('Error checking production mode:', error);
+      return reply.code(500).send({
+        error: 'Internal Server Error',
+        message: 'Failed to check production mode',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
 
   // Register all routes for all exchanges
   for (const exchange of exchanges) {

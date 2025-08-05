@@ -130,4 +130,23 @@ export class EnvService implements IEnvService {
     const value = this.get(key);
     return value?.toLowerCase() === 'true';
   }
+
+  /**
+   * Determines if the application is running in production mode.
+   * SAFETY FIRST: Always defaults to test mode unless explicitly configured for production.
+   * 
+   * Production mode requires:
+   * 1. useTestMode is explicitly set to false
+   * 2. NODE_ENV starts with 'production'
+   * 3. Environment is properly configured
+   * 
+   * @returns boolean - True if running in production mode, false for test/development mode
+   */
+  isProduction(): boolean {
+    const useTestMode = this.getBoolean('app.useTestMode') ?? true;
+    const nodeEnv = this.get('app.environment');
+
+    // Production mode requires explicit opt-out of test mode AND production environment
+    return !useTestMode && (nodeEnv?.startsWith('production') ?? false);
+  }
 }

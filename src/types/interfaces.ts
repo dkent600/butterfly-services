@@ -37,6 +37,7 @@ export interface IEnvService {
   get(key: string): string | undefined;
   getNumber(key: string): number | undefined;
   getBoolean(key: string): boolean | undefined;
+  isProduction(): boolean;
 }
 
 export interface IExchangeApiService {

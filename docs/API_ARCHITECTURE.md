@@ -54,6 +54,15 @@ properties: {
 
 ### Exchange Routes (`/api/v1/:exchange/`)
 
+#### System Information
+```
+GET /api/v1/:exchange/production-mode
+```
+- **Purpose**: Check if the service is running in production mode
+- **Authentication**: Not required
+- **Response**: `{ isProduction: boolean, timestamp: string }`
+- **Note**: Returns `false` (test mode) by default for safety. Production mode is determined by the `NODE_ENV` environment variable.
+
 #### Price Fetching
 ```
 GET /api/v1/:exchange/:asset/price/:to
