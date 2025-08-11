@@ -46,25 +46,25 @@ describe('Kraken Closed Orders Integration Tests', () => {
         return Promise.resolve({
           data: {
             result: {
-              'XXBTZUSD': { 
-                base: 'XXBT', 
-                quote: 'ZUSD', 
-                altname: 'XBTUSD' 
+              'XXBTZUSD': {
+                base: 'XXBT',
+                quote: 'ZUSD',
+                altname: 'XBTUSD'
               },
-              'XETHZUSD': { 
-                base: 'XETH', 
-                quote: 'ZUSD', 
-                altname: 'ETHUSD' 
+              'XETHZUSD': {
+                base: 'XETH',
+                quote: 'ZUSD',
+                altname: 'ETHUSD'
               },
-              'ADAZUSD': { 
-                base: 'ADA', 
-                quote: 'ZUSD', 
-                altname: 'ADAZUSD' 
+              'ADAZUSD': {
+                base: 'ADA',
+                quote: 'ZUSD',
+                altname: 'ADAZUSD'
               },
-              'ADAUSDT': { 
-                base: 'ADA', 
-                quote: 'USDT', 
-                altname: 'ADAUSDT' 
+              'ADAUSDT': {
+                base: 'ADA',
+                quote: 'USDT',
+                altname: 'ADAUSDT'
               },
             }
           }
@@ -88,25 +88,25 @@ describe('Kraken Closed Orders Integration Tests', () => {
   beforeEach(() => {
     // Setup the assetPairsCache for pair name conversion
     (KrakenApiService as any).assetPairsCache = {
-      'XXBTZUSD': { 
-        base: 'XXBT', 
-        quote: 'ZUSD', 
-        altname: 'XBTUSD' 
+      'XXBTZUSD': {
+        base: 'XXBT',
+        quote: 'ZUSD',
+        altname: 'XBTUSD'
       },
-      'XETHZUSD': { 
-        base: 'XETH', 
-        quote: 'ZUSD', 
-        altname: 'ETHUSD' 
+      'XETHZUSD': {
+        base: 'XETH',
+        quote: 'ZUSD',
+        altname: 'ETHUSD'
       },
-      'ADAZUSD': { 
-        base: 'ADA', 
-        quote: 'ZUSD', 
-        altname: 'ADAZUSD' 
+      'ADAZUSD': {
+        base: 'ADA',
+        quote: 'ZUSD',
+        altname: 'ADAZUSD'
       },
-      'ADAUSDT': { 
-        base: 'ADA', 
-        quote: 'USDT', 
-        altname: 'ADAUSDT' 
+      'ADAUSDT': {
+        base: 'ADA',
+        quote: 'USDT',
+        altname: 'ADAUSDT'
       },
     };
   });
@@ -191,7 +191,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
 
       expect(body.orders).toHaveLength(4);
       expect(body.timestamp).toBeDefined();
-      
+
       // Verify all orders are included
       expect(body.orders.map((o: any) => o.orderId)).toEqual([
         'ORDER-1', 'ORDER-2', 'ORDER-3', 'ORDER-4'
@@ -218,8 +218,8 @@ describe('Kraken Closed Orders Integration Tests', () => {
       // Should return orders for BTC-USD and ETH-USD pairs only
       expect(body.orders).toHaveLength(2);
       expect(body.orders.map((o: any) => o.pair)).toEqual(['BTCUSD', 'ETHUSD']);
-      
-            // Verify correct order structure
+
+      // Verify correct order structure
       expect(body.orders[0]).toMatchObject({
         orderId: 'ORDER-1',
         pair: 'BTCUSD',
@@ -272,7 +272,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
       const body = JSON.parse(response.body);
 
       expect(body.orders).toHaveLength(2);
-      
+
       // Verify both USD and USDT pairs are included
       const pairs = body.orders.map((o: any) => o.pair);
       expect(pairs).toContain('ADAUSD');
