@@ -26,6 +26,8 @@ export interface IClosedOrderListItem {
   amountExecuted: string;
   limitPrice: string;
   cost: string;
+  createdAt: string;
+  exchange: string;
 }
 
 export interface ILogService {
