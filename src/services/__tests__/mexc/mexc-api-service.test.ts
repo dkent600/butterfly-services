@@ -46,6 +46,7 @@ describe('MexcApiService', () => {
       getBoolean: vi.fn(),
       getNumber: vi.fn(),
       init: vi.fn(),
+      isProduction: vi.fn().mockReturnValue(false), // Default to test mode
     };
 
     // Create mock asset
@@ -57,7 +58,7 @@ describe('MexcApiService', () => {
 
     // Create service with mocked dependencies
     mexcApiService = new MexcApiService(mockExchangeApiService, mockEnvService);
-    
+
     // Reset the time syncer to avoid interference between tests
     (mexcApiService as any).timeSyncer = undefined;
   });
@@ -79,7 +80,7 @@ describe('MexcApiService', () => {
       const mockPriceResponse = {
         data: { price: '50000.00' },
       };
-      
+
       // fetchPrice only makes one call to the price endpoint
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
@@ -110,10 +111,10 @@ describe('MexcApiService', () => {
     });
 
     it('should fetch and return balance for asset', async () => {
-      const mockServerTimeResponse = { 
-        data: { serverTime: 1640995200000 } 
+      const mockServerTimeResponse = {
+        data: { serverTime: 1640995200000 }
       };
-      
+
       const mockBalanceResponse = {
         data: {
           balances: [
@@ -230,7 +231,7 @@ describe('MexcApiService', () => {
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
       vi.mocked(mockExchangeApiService.sign).mockReturnValue('test-signature');
-      
+
       // CRITICAL: Mock createSellOrder to prevent ANY real API calls
       vi.mocked(mockExchangeApiService.sendApiRequest).mockImplementation(async () => {
         // This mock ensures NO real API calls are made during testing
@@ -238,7 +239,7 @@ describe('MexcApiService', () => {
         // which contains axios.post() calls to MEXC APIs
         return Promise.resolve();
       });
-      
+
       // SAFETY VERIFICATION: Confirm our mocks are properly set up
       if (!vi.isMockFunction(mockExchangeApiService.sendApiRequest)) {
         throw new Error('CRITICAL SAFETY FAILURE: createSellOrder is not mocked!');
@@ -279,7 +280,7 @@ describe('MexcApiService', () => {
     it('should SIMULATE production endpoint selection (NO REAL TRADES)', async () => {
       // SAFETY WARNING: This test verifies endpoint logic but makes NO real trades
       // All external calls are mocked to prevent actual API interactions
-      
+
       // Setup: Simulate production mode configuration
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(false); // useTestMode = false
       vi.mocked(mockEnvService.get).mockReturnValue('production'); // nodeEnv = production
@@ -296,7 +297,7 @@ describe('MexcApiService', () => {
       // This ensures that when MexcApiService.createSellOrder() calls 
       // mockExchangeApiService.createSellOrder(), it hits our mock, NOT the real ExchangeApiService
       expect(vi.isMockFunction(mockExchangeApiService.sendApiRequest)).toBe(true);
-      
+
       /**
        * WHY THIS CALL WILL NOT REACH MEXC:
        * 
@@ -325,7 +326,7 @@ describe('MexcApiService', () => {
           })
         })
       );
-      
+
       // SAFETY VERIFICATION: Ensure the mock was called, not real service
       expect(vi.mocked(mockExchangeApiService.sendApiRequest)).toHaveBeenCalled();
     });
@@ -334,20 +335,20 @@ describe('MexcApiService', () => {
       // This test explicitly verifies that NO real external calls are made
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(false); // Simulate production config
       vi.mocked(mockEnvService.get).mockReturnValue('production');
-      
+
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
-      
+
       // Note: getSellAmount no longer exists - using asset.amount directly
 
       // PRE-CALL SAFETY VERIFICATION: Confirm mocks are properly set up
       expect(vi.isMockFunction(mockExchangeApiService.sendApiRequest)).toBe(true);
       expect(vi.isMockFunction(axios.get)).toBe(true);
-      
+
       // Spy on axios.post to ensure it's NEVER called during tests
       const axiosPostSpy = vi.spyOn(axios, 'post');
-      
+
       /**
        * SAFETY EXPLANATION FOR createSellOrder() CALL:
        * 
@@ -369,10 +370,10 @@ describe('MexcApiService', () => {
        * VERIFICATION: We spy on axios.post to ensure it's NEVER invoked
        */
       await mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
-      
+
       // CRITICAL SAFETY CHECK: Ensure axios.post (real API call) was NEVER invoked
       expect(axiosPostSpy).not.toHaveBeenCalled();
-      
+
       // But verify the mocked service was called (testing the logic flow)
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalled();
     });
@@ -403,12 +404,12 @@ describe('MexcApiService', () => {
 
     it('should create correct trading pair and query string', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
-      
+
       // Note: getSellAmount no longer exists - using asset.amount directly
 
       await mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'ETH' });
@@ -425,12 +426,12 @@ describe('MexcApiService', () => {
 
     it('should use USDT as default target currency', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
-      
+
       // Note: getSellAmount no longer exists - using asset.amount directly
 
       await mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
@@ -447,12 +448,12 @@ describe('MexcApiService', () => {
 
     it('should include proper signature in the URL', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
-      
+
       // Note: getSellAmount no longer exists - using asset.amount directly
 
       await mexcApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USDT' });
@@ -474,12 +475,12 @@ describe('MexcApiService', () => {
 
     it('should propagate errors from underlying services', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
-      
+
       // Note: getSellAmount no longer exists - mocking a different error
       vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
 
@@ -488,12 +489,12 @@ describe('MexcApiService', () => {
 
     it('should handle API errors from createSellOrder', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
-      
+
       // Note: getSellAmount no longer exists - using asset.amount directly
       vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
 
@@ -507,7 +508,7 @@ describe('MexcApiService', () => {
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
       vi.mocked(mockExchangeApiService.sign).mockReturnValue('test-signature');
-      
+
       // CRITICAL: Mock createBuyOrder to prevent ANY real API calls
       vi.mocked(mockExchangeApiService.sendApiRequest).mockImplementation(async () => {
         // This mock ensures NO real API calls are made during testing
@@ -515,7 +516,7 @@ describe('MexcApiService', () => {
         // which contains axios.post() calls to MEXC APIs
         return Promise.resolve();
       });
-      
+
       // SAFETY VERIFICATION: Confirm our mocks are properly set up
       if (!vi.isMockFunction(mockExchangeApiService.sendApiRequest)) {
         throw new Error('CRITICAL SAFETY FAILURE: createBuyOrder is not mocked!');
@@ -551,7 +552,7 @@ describe('MexcApiService', () => {
     it('should SIMULATE production endpoint selection (NO REAL TRADES)', async () => {
       // SAFETY WARNING: This test verifies endpoint logic but makes NO real trades
       // All external calls are mocked to prevent actual API interactions
-      
+
       // Setup: Simulate production mode configuration
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(false); // useTestMode = false
       vi.mocked(mockEnvService.get).mockReturnValue('production'); // nodeEnv = production
@@ -565,7 +566,7 @@ describe('MexcApiService', () => {
       // This ensures that when MexcApiService.createBuyOrder() calls 
       // mockExchangeApiService.createBuyOrder(), it hits our mock, NOT the real ExchangeApiService
       expect(vi.isMockFunction(mockExchangeApiService.sendApiRequest)).toBe(true);
-      
+
       /**
        * WHY THIS CALL WILL NOT REACH MEXC:
        * 
@@ -594,7 +595,7 @@ describe('MexcApiService', () => {
           })
         })
       );
-      
+
       // SAFETY VERIFICATION: Ensure the mock was called, not real service
       expect(vi.mocked(mockExchangeApiService.sendApiRequest)).toHaveBeenCalled();
     });
@@ -603,7 +604,7 @@ describe('MexcApiService', () => {
       // This test explicitly verifies that NO real external calls are made
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(false); // Simulate production config
       vi.mocked(mockEnvService.get).mockReturnValue('production');
-      
+
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
@@ -611,10 +612,10 @@ describe('MexcApiService', () => {
       // PRE-CALL SAFETY VERIFICATION: Confirm mocks are properly set up
       expect(vi.isMockFunction(mockExchangeApiService.sendApiRequest)).toBe(true);
       expect(vi.isMockFunction(axios.get)).toBe(true);
-      
+
       // Spy on axios.post to ensure it's NEVER called during tests
       const axiosPostSpy = vi.spyOn(axios, 'post');
-      
+
       /**
        * SAFETY EXPLANATION FOR createBuyOrder() CALL:
        * 
@@ -636,10 +637,10 @@ describe('MexcApiService', () => {
        * VERIFICATION: We spy on axios.post to ensure it's NEVER invoked
        */
       await mexcApiService.createBuyOrder(mockAsset, { orderType: 'market', from: 'USDT' });
-      
+
       // CRITICAL SAFETY CHECK: Ensure axios.post (real API call) was NEVER invoked
       expect(axiosPostSpy).not.toHaveBeenCalled();
-      
+
       // But verify the mocked service was called (testing the logic flow)
       expect(mockExchangeApiService.sendApiRequest).toHaveBeenCalled();
     });
@@ -668,7 +669,7 @@ describe('MexcApiService', () => {
 
     it('should create correct trading pair and query string', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
@@ -688,7 +689,7 @@ describe('MexcApiService', () => {
 
     it('should use USDT as default source currency when from is not specified', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
@@ -708,7 +709,7 @@ describe('MexcApiService', () => {
 
     it('should include proper signature in the URL', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
@@ -733,12 +734,12 @@ describe('MexcApiService', () => {
 
     it('should propagate errors from underlying services', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
-      
+
       vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
 
       await expect(mexcApiService.createBuyOrder(mockAsset, { orderType: 'market', from: 'USDT' })).rejects.toThrow('API Error');
@@ -746,12 +747,12 @@ describe('MexcApiService', () => {
 
     it('should handle API errors from createBuyOrder', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
       });
-      
+
       vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
 
       await expect(mexcApiService.createBuyOrder(mockAsset, { orderType: 'market', from: 'USDT' })).rejects.toThrow('API Error');
@@ -793,12 +794,12 @@ describe('MexcApiService', () => {
       });
 
       const orderId = 'ORDER_123456';
-      
+
       const result = await mexcApiService.cancelOrder(orderId);
-      
+
       // In test mode, cancelOrder returns void (proper DELETE semantics)
       expect(result).toBeUndefined();
-      
+
       // Verify no actual API calls were made
       expect(mockExchangeApiService.sendApiRequest).not.toHaveBeenCalled();
     });
@@ -819,7 +820,7 @@ describe('MexcApiService', () => {
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('mock-api-secret');
 
       const orderId = 'ORDER_123456';
-      
+
       await expect(mexcApiService.cancelOrder(orderId)).rejects.toThrow(
         'MEXC cancel order requires symbol parameter. Implementation needs order symbol lookup or modified order storage to include symbol.'
       );
@@ -847,7 +848,7 @@ describe('MexcApiService', () => {
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('');
 
       const orderId = 'ORDER_123456';
-      
+
       await expect(mexcApiService.cancelOrder(orderId)).rejects.toThrow(
         'mexc API credentials not configured'
       );
@@ -860,7 +861,7 @@ describe('MexcApiService', () => {
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
       vi.mocked(mockExchangeApiService.sign).mockReturnValue('test-signature');
-      
+
       // Mock server time for unique nonce generation
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
@@ -868,6 +869,10 @@ describe('MexcApiService', () => {
     });
 
     it('should fetch open orders successfully', async () => {
+      const mockServerTimeResponse = {
+        data: { serverTime: 1640995200000 }
+      };
+
       const mockOpenOrders = [
         {
           symbol: 'BTCUSDT',
@@ -891,20 +896,24 @@ describe('MexcApiService', () => {
       ];
 
       // Mock the axios.get call that getOpenedOrders makes
-      vi.mocked(axios.get).mockResolvedValueOnce({
-        data: mockOpenOrders
-      });
+      vi.mocked(axios.get)
+        .mockResolvedValueOnce(mockServerTimeResponse)  // For time syncer
+        .mockResolvedValueOnce({
+          data: mockOpenOrders
+        });
 
       const result = await mexcApiService.getOpenedOrders();
 
       expect(result).toEqual([
         {
           orderId: '12345',
-          pair: 'BTCUSDT', 
+          pair: 'BTCUSDT',
           price: '50000.00',
           amount: '0.001',
           direction: 'sell',
-          type: 'limit'
+          type: 'limit',
+          createdAt: '2022-01-01T00:00:00.000Z',
+          exchange: 'mexc'
         }
       ]);
 
@@ -1007,7 +1016,7 @@ describe('MexcApiService', () => {
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
       vi.mocked(mockExchangeApiService.sign).mockReturnValue('test-signature');
-      
+
       // Mock server time for unique nonce generation
       vi.mocked(axios.get).mockResolvedValue({
         data: { serverTime: 1640995200000 }
@@ -1042,7 +1051,7 @@ describe('MexcApiService', () => {
         },
         {
           orderId: '789',
-          pair: 'BTCUSDT', 
+          pair: 'BTCUSDT',
           direction: 'buy',
           type: 'limit',
           status: 'canceled',
@@ -1082,7 +1091,7 @@ describe('MexcApiService', () => {
 
       // Should have called axios.get twice, once for each pair
       expect(axios.get).toHaveBeenCalledTimes(2);
-      
+
       // Verify the symbol parameters for each call
       expect(mockExchangeApiService.sign).toHaveBeenCalledWith(
         expect.stringMatching(/symbol=ETHUSDT&timestamp=\d+/),

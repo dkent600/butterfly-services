@@ -12,9 +12,11 @@ describe('Dependency Injection Container', () => {
   it('should resolve LogService', () => {
     const logService = container.resolve<ILogService>(TYPES.ILogService);
     expect(logService).toBeDefined();
-    expect(typeof logService.log).toBe('function');
-    expect(typeof logService.logError).toBe('function');
-    expect(typeof logService.logReport).toBe('function');
+    expect(typeof logService.info).toBe('function');
+    expect(typeof logService.error).toBe('function');
+    expect(typeof logService.report).toBe('function');
+    expect(typeof logService.warn).toBe('function');
+    expect(typeof logService.trace).toBe('function');
   });
 
   it('should resolve EnvService', () => {
@@ -23,6 +25,7 @@ describe('Dependency Injection Container', () => {
     expect(typeof envService.get).toBe('function');
     expect(typeof envService.getNumber).toBe('function');
     expect(typeof envService.getBoolean).toBe('function');
+    expect(typeof envService.isProduction).toBe('function');
   });
 
   it('should resolve ExchangeApiService with dependencies', () => {

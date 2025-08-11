@@ -142,8 +142,10 @@ export const OpenedOrdersResponseSchema = {
           amount: { type: 'string', description: 'Order amount/volume' },
           direction: { type: 'string', enum: ['buy', 'sell'], description: 'Order direction (buy or sell)' },
           type: { type: 'string', enum: ['market', 'limit'], description: 'Order type' },
+          createdAt: { type: 'string', format: 'date-time', description: 'ISO timestamp when the order was created' },
+          exchange: { type: 'string', description: 'Exchange name (kraken, mexc, etc.)' },
         },
-        required: ['orderId', 'pair', 'price', 'amount', 'direction', 'type'],
+        required: ['orderId', 'pair', 'price', 'amount', 'direction', 'type', 'createdAt', 'exchange'],
         additionalProperties: false,
       },
     },
@@ -187,12 +189,12 @@ export const ClosedOrdersResponseSchema = {
 export const ClosedOrdersRequestSchema = {
   type: 'object',
   properties: {
-    baseCoins: { 
+    baseCoins: {
       type: 'array',
       items: { type: 'string' },
       description: 'Array of base coins to filter orders for (e.g., ["BTC", "ETH"]). Must be same length as quoteCoins.',
     },
-    quoteCoins: { 
+    quoteCoins: {
       type: 'array',
       items: { type: 'string' },
       description: 'Array of quote coins to filter orders for (e.g., ["USD", "USDT"]). Must be same length as baseCoins.',

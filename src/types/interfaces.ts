@@ -11,6 +11,8 @@ export interface IOpenedOrderListItem {
   amount: string;
   direction: 'buy' | 'sell';
   type: 'market' | 'limit';
+  createdAt: string;
+  exchange: string;
 }
 
 export interface IClosedOrderListItem {

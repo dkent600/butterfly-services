@@ -49,6 +49,8 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       amount: order.origQty || '',
       direction: (order.side || 'SELL').toLowerCase().replace('sell', 'sell').replace('buy', 'buy') as 'buy' | 'sell',
       type: (order.type || 'LIMIT').toLowerCase().replace('limit', 'limit').replace('market', 'market') as 'market' | 'limit',
+      createdAt: order.time ? new Date(order.time).toISOString() : "unknown",
+      exchange: this.getExchangeName(),
     }));
   }
 
@@ -140,7 +142,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   }
 
   async createSellOrder(
-    asset: IAsset, 
+    asset: IAsset,
     options: {
       orderType: 'market' | 'limit';
       price?: number;
@@ -148,20 +150,20 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     },
   ): Promise<any> {
     const { orderType, price, to } = options;
-    
+
     try {
       // Validate required parameters based on order type
       if (orderType === 'limit' && !price) {
         throw new Error('Price is required for limit orders');
       }
-      
+
       const exchangeName = this.getExchangeName();
       const symbol = this.createPair(asset, to);
       const quantity = asset.amount;
       const timestamp = await this.generateUniqueNonce();
-      
+
       console.log(`MODE: Using test mode: ${this.shouldUseTestMode()}, Environment: ${this.envService.get('app.environment')}`);
-      
+
       // Build query parameters
       const orderParams: Record<string, string> = {
         symbol,
@@ -170,36 +172,36 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         quantity: quantity.toString(),
         timestamp: timestamp.toString(),
       };
-      
+
       if (orderType === 'limit' && price) {
         orderParams.price = price.toString();
       }
-      
+
       if (this.shouldUseTestMode()) {
         console.log(`[MEXC MODE] Running in test mode! ${asset.name} at ${price || 'market'}`);
       } else {
         console.log(`[MEXC MODE] ❗Running in production! ${asset.name} at ${price || 'market'}`);
       }
-      
+
       const queryString = new URLSearchParams(orderParams).toString();
       const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
       const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
-      
+
       if (!apiKey || !apiSecret) {
         throw new Error(`${exchangeName} API credentials not configured`);
       }
-      
+
       const signature = this.exchangeApiService.sign(queryString, apiSecret);
-      
+
       // Use test mode based on environment configuration
       const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
       const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
-      
+
       const headers = {
         'X-MEXC-APIKEY': apiKey,
         'Content-Type': 'application/json',
       };
-      
+
       // Use the existing architecture via ExchangeApiService
       await this.exchangeApiService.sendApiRequest(exchangeName, {
         url,
@@ -207,9 +209,9 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         body: undefined,
         headers,
       });
-      
+
       return { success: true, message: `${orderType === 'market' ? 'Market' : 'Limit'} sell order created successfully` };
-      
+
     } catch (error) {
       // If it's already a specific error we threw, preserve it
       if (error instanceof Error && (
@@ -219,7 +221,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       )) {
         throw error;
       }
-      
+
       console.error(`Failed to create ${orderType} sell order for ${asset.name}:`, error);
       console.error('Order details:', {
         orderType,
@@ -235,7 +237,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   }
 
   async createBuyOrder(
-    asset: IAsset, 
+    asset: IAsset,
     options: {
       orderType: 'market' | 'limit';
       price?: number;
@@ -243,20 +245,20 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
     },
   ): Promise<any> {
     const { orderType, price, from } = options;
-    
+
     try {
       // Validate required parameters based on order type
       if (orderType === 'limit' && !price) {
         throw new Error('Price is required for limit orders');
       }
-      
+
       const exchangeName = this.getExchangeName();
       const symbol = this.createPair(asset, from);
       const quantity = asset.amount;
       const timestamp = await this.generateUniqueNonce();
-      
+
       console.log(`MODE: Using test mode: ${this.shouldUseTestMode()}, Environment: ${this.envService.get('app.environment')}`);
-      
+
       // Build query parameters
       const orderParams: Record<string, string> = {
         symbol,
@@ -265,36 +267,36 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         quantity: quantity.toString(),
         timestamp: timestamp.toString(),
       };
-      
+
       if (orderType === 'limit' && price) {
         orderParams.price = price.toString();
       }
-      
+
       if (this.shouldUseTestMode()) {
         console.log(`[MEXC MODE] Running in test mode! Buy ${asset.name} at ${price || 'market'}`);
       } else {
         console.log(`[MEXC MODE] ❗Running in production! Buy ${asset.name} at ${price || 'market'}`);
       }
-      
+
       const queryString = new URLSearchParams(orderParams).toString();
       const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
       const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
-      
+
       if (!apiKey || !apiSecret) {
         throw new Error(`${exchangeName} API credentials not configured`);
       }
-      
+
       const signature = this.exchangeApiService.sign(queryString, apiSecret);
-      
+
       // Use test mode based on environment configuration
       const endpoint = this.shouldUseTestMode() ? '/api/v3/order/test' : '/api/v3/order';
       const url = `${this.getApiUrl(endpoint)}?${queryString}&signature=${signature}`;
-      
+
       const headers = {
         'X-MEXC-APIKEY': apiKey,
         'Content-Type': 'application/json',
       };
-      
+
       // Use the existing architecture via ExchangeApiService
       await this.exchangeApiService.sendApiRequest(exchangeName, {
         url,
@@ -302,9 +304,9 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         body: undefined,
         headers,
       });
-      
+
       return { success: true, message: `${orderType === 'market' ? 'Market' : 'Limit'} buy order created successfully` };
-      
+
     } catch (error) {
       // If it's already a specific error we threw, preserve it
       if (error instanceof Error && (
@@ -314,7 +316,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       )) {
         throw error;
       }
-      
+
       console.error(`Failed to create ${orderType} buy order for ${asset.name}:`, error);
       console.error('Order details:', {
         orderType,
@@ -336,31 +338,31 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    */
   async getOpenedOrders(): Promise<any> {
     const exchangeName = this.getExchangeName();
-    
+
     try {
       const timestamp = await this.generateUniqueNonce();
       const queryString = `timestamp=${timestamp}`;
-      
+
       const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
       const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
-      
+
       if (!apiKey || !apiSecret) {
         throw new Error(`${exchangeName} API credentials not configured`);
       }
 
       // Log environment context (without exposing secrets)
       console.log(`[MEXC AUTH] Open Orders - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
-      
+
       const signature = this.exchangeApiService.sign(queryString, apiSecret);
       const url = `${this.getApiUrl('/api/v3/openOrders')}?${queryString}&signature=${signature}`;
-      
+
       const headers = {
         'X-MEXC-APIKEY': apiKey,
         'Content-Type': 'application/json',
       };
 
       const { data } = await axios.get(url, { headers });
-      
+
       // MEXC returns array directly or error object
       if (Array.isArray(data)) {
         const orderList = this.transformToOpenedOrdersApiSchema(data);
@@ -374,7 +376,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       }
     } catch (error: any) {
       console.error('[MEXC ERROR] Get open orders failed:', error);
-      
+
       // Check for MEXC API error format
       if (error.response?.data?.code && error.response?.data?.msg) {
         const mexcError = error.response.data.msg;
@@ -397,10 +399,10 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       // Default to BTCUSDT if no filters provided
       return ['BTCUSDT'];
     }
-    
+
     const baseCoins = filters.baseCoins || ['BTC'];
     const quoteCoins = filters.quoteCoins || ['USDT'];
-    
+
     // Generate all combinations of base and quote coins
     const pairs: string[] = [];
     for (const base of baseCoins) {
@@ -408,7 +410,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
         pairs.push(`${base.toUpperCase()}${quote.toUpperCase()}`);
       }
     }
-    
+
     return pairs.length > 0 ? pairs : ['BTCUSDT'];
   }
 
@@ -420,57 +422,57 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
    */
   async getClosedOrders(filters?: { baseCoins?: string[]; quoteCoins?: string[] }): Promise<any> {
     const exchangeName = this.getExchangeName();
-    
+
     try {
       // Generate pairs from base and quote coins
       const targetPairs = this.generatePairsFromFilters(filters);
-      
+
       console.log(`[MEXC] Fetching closed orders for pairs: ${targetPairs.join(', ')}`);
-      
+
       // Collect all orders from all pairs
       const allClosedOrders: any[] = [];
       const errors: string[] = [];
-      
+
       // MEXC requires separate API calls for each symbol
       for (const symbol of targetPairs) {
         try {
           const timestamp = await this.generateUniqueNonce();
-          
+
           // Build query parameters for this symbol
           const queryParams: Record<string, string> = {
             symbol,
             timestamp: timestamp.toString(),
           };
-          
+
           const queryString = new URLSearchParams(queryParams).toString();
-          
+
           const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
           const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
-          
+
           if (!apiKey || !apiSecret) {
             throw new Error(`${exchangeName} API credentials not configured`);
           }
 
           // Log environment context (without exposing secrets)
           console.log(`[MEXC AUTH] Closed Orders for ${symbol} - Key: ${apiKey.substring(0, 6)}..., Secret: ${apiSecret.substring(0, 6)}..., Env: ${process.env.NODE_ENV || 'unknown'}`);
-          
+
           const signature = this.exchangeApiService.sign(queryString, apiSecret);
           const url = `${this.getApiUrl('/api/v3/allOrders')}?${queryString}&signature=${signature}`;
-          
+
           const headers = {
             'X-MEXC-APIKEY': apiKey,
             'Content-Type': 'application/json',
           };
 
           const { data } = await axios.get(url, { headers });
-          
+
           // MEXC returns array directly or error object
           if (Array.isArray(data)) {
             // Filter for closed orders (status: FILLED, CANCELED, REJECTED, EXPIRED)
-            const closedOrdersForSymbol = data.filter(order => 
+            const closedOrdersForSymbol = data.filter(order =>
               ['FILLED', 'CANCELED', 'REJECTED', 'EXPIRED'].includes(order.status),
             );
-            
+
             console.log(`[MEXC] Found ${closedOrdersForSymbol.length} closed orders for ${symbol}`);
             allClosedOrders.push(...closedOrdersForSymbol);
           } else if (data.code && data.msg) {
@@ -490,28 +492,28 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
           console.warn(`[MEXC WARNING] Failed to fetch closed orders for ${symbol}:`, symbolError.message);
         }
       }
-      
+
       // If we have errors and no successful results, throw an error
       if (errors.length > 0 && allClosedOrders.length === 0) {
         const combinedError = `Failed to fetch closed orders: ${errors.join('; ')}`;
         console.error(`[MEXC ERROR] ${combinedError}`);
         throw new Error(combinedError);
       }
-      
+
       // If we have some errors but also some results, log warnings but continue
       if (errors.length > 0) {
         console.warn(`[MEXC WARNING] Some pairs failed: ${errors.join('; ')}`);
       }
-      
+
       console.log(`[MEXC] Total closed orders found across all pairs: ${allClosedOrders.length}`);
-      
+
       // Transform all collected orders to standard format
       const orderList = this.transformClosedOrdersToApiSchema(allClosedOrders);
-      
+
       return orderList;
     } catch (error: any) {
       console.error('[MEXC ERROR] Get closed orders failed:', error);
-      
+
       // Check for MEXC API error format
       if (error.response?.data?.code && error.response?.data?.msg) {
         const mexcError = error.response.data.msg;
@@ -538,19 +540,19 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       }
 
       const exchangeName = this.getExchangeName();
-      
+
       // CRITICAL SAFETY CHECK: Block cancel orders in test mode
       // Production cancellations could result in financial loss during testing
       if (this.shouldUseTestMode()) {
         console.log(`[MEXC MODE] 🚫 BLOCKED: Cancel order in test mode! Order cancel: (${txid})`);
         console.log('[MEXC MODE] 🛡️  SAFETY: Preventing real cancellation during testing');
-        
+
         // In test mode, still return successfully (no exception) but don't make API call
         return;
       }
-      
+
       console.log(`[MEXC MODE] ❗Running in production! Order cancel: (${txid})`);
-      
+
       // Check API credentials
       const apiKey = this.exchangeApiService.getAPIKey(exchangeName);
       const apiSecret = this.exchangeApiService.getAPISecret(exchangeName);
@@ -563,7 +565,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       // Since we don't have the symbol, we'll need to fetch it from open orders first
       // This is a limitation that could be improved by storing symbol with order ID
       // or by implementing a different cancellation strategy
-      
+
       // For now, throw an informative error about the implementation limitation
       throw new Error('MEXC cancel order requires symbol parameter. Implementation needs order symbol lookup or modified order storage to include symbol.');
 

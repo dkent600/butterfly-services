@@ -46,6 +46,7 @@ describe('KrakenApiService', () => {
       getBoolean: vi.fn(),
       getNumber: vi.fn(),
       init: vi.fn(),
+      isProduction: vi.fn().mockReturnValue(false), // Default to test mode
     };
 
     // Create mock asset
@@ -145,7 +146,7 @@ describe('KrakenApiService', () => {
           },
         },
       };
-      
+
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
       const result = await krakenApiService.fetchPrice(mockAsset, 'USD');
@@ -167,7 +168,7 @@ describe('KrakenApiService', () => {
           },
         },
       };
-      
+
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
       const result = await krakenApiService.fetchPrice(mockAsset, 'USD');
@@ -188,7 +189,7 @@ describe('KrakenApiService', () => {
       const mockPriceResponse = {
         data: { result: {} },
       };
-      
+
       vi.mocked(axios.get).mockResolvedValueOnce(mockPriceResponse);
 
       await expect(krakenApiService.fetchPrice(mockAsset, 'USD')).rejects.toThrow(
@@ -284,7 +285,7 @@ describe('KrakenApiService', () => {
       vi.mocked(axios.get).mockResolvedValueOnce({
         data: { result: { unixtime: 1640000000 } }
       });
-      
+
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-secret');
 
@@ -300,12 +301,12 @@ describe('KrakenApiService', () => {
       // Note: Integration tests with real API calls are in separate test suite below
       vi.mocked(mockExchangeApiService.getAPIKey).mockReturnValue('test-api-key');
       vi.mocked(mockExchangeApiService.getAPISecret).mockReturnValue('test-api-secret');
-      
+
       // CRITICAL: Mock createSellOrder for unit testing (real calls in integration tests)
       vi.mocked(mockExchangeApiService.sendApiRequest).mockImplementation(async () => {
         return Promise.resolve();
       });
-      
+
       // SAFETY VERIFICATION: Confirm our mocks are properly set up for unit testing
       if (!vi.isMockFunction(mockExchangeApiService.sendApiRequest)) {
         throw new Error('CRITICAL FAILURE: createSellOrder is not mocked for unit tests!');
@@ -353,7 +354,7 @@ describe('KrakenApiService', () => {
 
     it('should SIMULATE production endpoint selection (NO REAL TRADES)', async () => {
       // SAFETY WARNING: This test verifies endpoint logic but makes NO real trades
-      
+
       // Setup: Simulate production mode configuration
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(false); // useTestMode = false
       vi.mocked(mockEnvService.get).mockReturnValue('production'); // nodeEnv = production
@@ -373,12 +374,12 @@ describe('KrakenApiService', () => {
 
     it('should create correct trading pair and query string', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { result: { unixtime: 1640995200 } }
       });
-      
+
       // Note: getSellAmount no longer exists - using asset.amount directly
       // This test should fail since SOL pair doesn't exist in our mock cache
       await expect(krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'SOL' })).rejects.toThrow('No trading pair found for BTC to SOL');
@@ -386,12 +387,12 @@ describe('KrakenApiService', () => {
 
     it('should use USD as default target currency', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { result: { unixtime: 1640995200 } }
       });
-      
+
       // Note: getSellAmount no longer exists - using asset.amount directly
 
       await krakenApiService.createSellOrder(mockAsset, { orderType: 'market', to: 'USD' });
@@ -409,12 +410,12 @@ describe('KrakenApiService', () => {
 
     it('should propagate errors from underlying services', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { result: { unixtime: 1640995200 } }
       });
-      
+
       // Note: getSellAmount no longer exists - mocking a different error
       vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
 
@@ -423,12 +424,12 @@ describe('KrakenApiService', () => {
 
     it('should handle API errors from createSellOrder', async () => {
       vi.mocked(mockEnvService.getBoolean).mockReturnValue(true);
-      
+
       // Mock server time
       vi.mocked(axios.get).mockResolvedValue({
         data: { result: { unixtime: 1640995200 } }
       });
-      
+
       // Note: getSellAmount no longer exists - directly testing error handling
       vi.mocked(mockExchangeApiService.sendApiRequest).mockRejectedValue(new Error('API Error'));
 
@@ -464,7 +465,7 @@ describe('KrakenApiService', () => {
   describe('signKrakenRequest', () => {
     it('should create proper Kraken signature', () => {
       const signKrakenRequest = (krakenApiService as any).signKrakenRequest.bind(krakenApiService);
-      
+
       const urlPath = '/0/private/Balance';
       const queryString = 'nonce=1640995200000';
       const apiSecret = 'test-secret-base64';
@@ -533,7 +534,9 @@ describe('KrakenApiService', () => {
           price: '45000.0',
           amount: '0.5',
           direction: 'sell',
-          type: 'limit'
+          type: 'limit',
+          createdAt: '2022-01-01T00:00:00.123Z',
+          exchange: 'kraken'
         }
       ]);
 
@@ -974,17 +977,17 @@ describe('KrakenApiService Integration Tests', () => {
     it('should make real API call to fetch BTC price', async () => {
       // Import real axios for this test
       const realAxios = await import('axios');
-      
+
       // Temporarily replace the mocked axios with real axios
       const originalGet = axios.get;
       axios.get = realAxios.default.get;
-      
+
       try {
         // This makes a real API call to Kraken (public endpoint, no auth needed)
         // Use a more common pair that Kraken is likely to have
         const testAsset = { ...mockAsset, name: 'BTC' };
         const price = await krakenApiService.fetchPrice(testAsset, 'USD');
-        
+
         expect(typeof price).toBe('number');
         expect(price).toBeGreaterThan(0);
         console.log(`Current BTC price from Kraken: $${price}`);
@@ -1009,7 +1012,7 @@ describe('KrakenApiService Integration Tests', () => {
 
       // Import real axios for this test
       const realAxios = await import('axios');
-      
+
       // Temporarily replace the mocked axios with real axios
       const originalGet = axios.get;
       const originalPost = axios.post;
