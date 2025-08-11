@@ -4,7 +4,7 @@ import { ILogService } from '../types/interfaces.js';
 @injectable()
 export class LogService implements ILogService {
 
-  log(message: string): void {
+  info(message: string): void {
     const timestamp = new Date().toISOString();
     const logMessage = `[${timestamp}] ${message}`;
 
@@ -13,24 +13,24 @@ export class LogService implements ILogService {
     console.log(logMessage);
   }
 
-  logReport(report: string | string[]): void {
+  report(report: string | string[]): void {
     if (!Array.isArray(report)) {
       report = [report];
     }
     const _log = [...report].join('\n');
 
-    this.log(`${_log  }\n`);
+    this.info(`${_log}\n`);
   }
 
-  async logError(err: Error | string): Promise<void> {
+  async error(err: Error | string): Promise<void> {
     // try {
     //   await this.telegramService.sendTelegramErrorMessage(errorToTelegramMessage(err));
     // } catch { }
 
     if (err instanceof Error) {
-      this.log(err.stack ?? err.message);
+      this.info(err.stack ?? err.message);
     } else {
-      this.log(String(err));
+      this.info(String(err));
     }
   }
 }

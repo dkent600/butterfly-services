@@ -54,7 +54,7 @@ export class ExchangeApiService implements IExchangeApiService {
       console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] Headers: ${JSON.stringify(requestOptions.headers, null, 2)}`);
 
       let response;
-      
+
       if (requestOptions.method === 'POST') {
         response = await axios.post(requestOptions.url, requestOptions.body || null, {
           headers: requestOptions.headers,
@@ -65,10 +65,10 @@ export class ExchangeApiService implements IExchangeApiService {
         });
       }
 
-      this.logService.log(`✅ Exchange API Request successful: ${exchangeName} - ${response.statusText}`);
+      this.logService.info(`✅ Exchange API Request successful: ${exchangeName} - ${response.statusText}`);
     } catch (error) {
       const errorMessage = `❌ Exchange API Request Failed: ${exchangeName} - ${error}`;
-      this.logService.logError(errorMessage);
+      this.logService.error(errorMessage);
       throw error;
     }
   }

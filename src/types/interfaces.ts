@@ -27,9 +27,9 @@ export interface IClosedOrderListItem {
 }
 
 export interface ILogService {
-  log(message: string): void;
-  logError(err: Error | string): void;
-  logReport(message: string): void;
+  info(message: string): void;
+  error(err: Error | string): void;
+  report(message: string): void;
 }
 
 export interface IEnvService {
@@ -61,7 +61,7 @@ export interface IExchangeService {
   fetchPrice(asset: IAsset, to: string): Promise<number>;
   fetchBalance(asset: IAsset): Promise<number>;
   createSellOrder(
-    asset: IAsset, 
+    asset: IAsset,
     options: {
       orderType: 'market' | 'limit';
       price?: number;
@@ -69,7 +69,7 @@ export interface IExchangeService {
     },
   ): Promise<any>;
   createBuyOrder(
-    asset: IAsset, 
+    asset: IAsset,
     options: {
       orderType: 'market' | 'limit';
       price?: number;
