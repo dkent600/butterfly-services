@@ -48,10 +48,10 @@ export class ExchangeApiService implements IExchangeApiService {
   ): Promise<void> {
     try {
       // Debug logging for URL and body
-      console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] URL: ${requestOptions.url}`);
-      console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] Method: ${requestOptions.method}`);
-      console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] Body: ${requestOptions.body || 'null'}`);
-      console.log(`[${exchangeName.toUpperCase()} EXCHANGE API] Headers: ${JSON.stringify(requestOptions.headers, null, 2)}`);
+      this.logService.trace(`[${exchangeName.toUpperCase()} EXCHANGE API] URL: ${requestOptions.url}`);
+      this.logService.trace(`[${exchangeName.toUpperCase()} EXCHANGE API] Method: ${requestOptions.method}`);
+      this.logService.trace(`[${exchangeName.toUpperCase()} EXCHANGE API] Body: ${requestOptions.body || 'null'}`);
+      this.logService.trace(`[${exchangeName.toUpperCase()} EXCHANGE API] Headers: ${JSON.stringify(requestOptions.headers, null, 2)}`);
 
       let response;
 

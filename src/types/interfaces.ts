@@ -30,6 +30,8 @@ export interface ILogService {
   info(message: string): void;
   error(err: Error | string): void;
   report(message: string): void;
+  warn(message: string): void;
+  trace(message: string): void;
 }
 
 export interface IEnvService {

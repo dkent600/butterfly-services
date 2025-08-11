@@ -13,6 +13,18 @@ export class LogService implements ILogService {
     console.log(logMessage);
   }
 
+  warn(message: string): void {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] WARN: ${message}`;
+    console.warn(logMessage);
+  }
+
+  trace(message: string): void {
+    const timestamp = new Date().toISOString();
+    const logMessage = `[${timestamp}] TRACE: ${message}`;
+    console.debug(logMessage);
+  }
+
   report(report: string | string[]): void {
     if (!Array.isArray(report)) {
       report = [report];
