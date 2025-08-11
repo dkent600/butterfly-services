@@ -49,7 +49,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       amount: order.origQty || '',
       direction: (order.side || 'SELL').toLowerCase().replace('sell', 'sell').replace('buy', 'buy') as 'buy' | 'sell',
       type: (order.type || 'LIMIT').toLowerCase().replace('limit', 'limit').replace('market', 'market') as 'market' | 'limit',
-      createdAt: order.time ? new Date(order.time).toISOString() : "unknown",
+      createdAt: order.time ? new Date(order.time).toISOString() : "0",
       exchange: this.getExchangeName(),
     }));
   }

@@ -525,7 +525,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       amount: order.vol || '',
       direction: (order.descr?.type || 'sell').toLowerCase() as 'buy' | 'sell',
       type: (order.descr?.ordertype || 'market').toLowerCase() as 'market' | 'limit',
-      createdAt: order.opentm ? new Date(order.opentm * 1000).toISOString() : "unknown",
+      createdAt: order.opentm ? new Date(order.opentm * 1000).toISOString() : "0",
       exchange: this.getExchangeName(),
     }));
   }
