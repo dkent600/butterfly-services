@@ -733,6 +733,7 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
           limitPrice: order.descr?.ordertype === 'limit' ? (order.descr?.price || '') : '',
           cost: order.cost || '',
           createdAt: order.opentm ? new Date(parseFloat(order.opentm) * 1000).toISOString() : '',
+          closedAt: order.closetm ? new Date(parseFloat(order.closetm) * 1000).toISOString() : '',
           exchange: this.getExchangeName(),
         }));
 
@@ -770,13 +771,13 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
 
       const exchangeName = this.getExchangeName();
 
-      // CRITICAL SAFETY CHECK: Block cancel orders in test mode
+      // TECHNICAL LIMITATION: Block cancel orders in test mode
       // Unlike AddOrder, Kraken's CancelOrder endpoint does NOT respect validate=true
-      // It will actually cancel orders even with validate=true, so we must block entirely
+      // The API doesn't provide a test mode for cancellations - they're always "live"
       if (this.shouldUseTestMode()) {
         console.log(`[KRAKEN MODE] 🚫 BLOCKED: Cancel order in test mode! Order cancel: (${txid})`);
         console.log('[KRAKEN MODE] ⚠️  WARNING: Kraken CancelOrder API ignores validate=true parameter');
-        console.log('[KRAKEN MODE] 🛡️  SAFETY: Preventing real cancellation during testing');
+        console.log('[KRAKEN MODE] 🛡️  LIMITATION: No test mode available for cancellation operations');
 
         // In test mode, still return successfully (no exception) but don't make API call
         return;

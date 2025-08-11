@@ -27,6 +27,7 @@ export interface IClosedOrderListItem {
   limitPrice: string;
   cost: string;
   createdAt: string;
+  closedAt: string;
   exchange: string;
 }
 

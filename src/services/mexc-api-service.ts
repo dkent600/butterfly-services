@@ -71,6 +71,7 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
       limitPrice: order.type === 'LIMIT' ? (order.price || '') : '',
       cost: order.cummulativeQuoteQty || '',
       createdAt: order.time ? new Date(order.time).toISOString() : '',
+      closedAt: order.updateTime ? new Date(order.updateTime).toISOString() : '',
       exchange: this.getExchangeName(),
     }));
   }
@@ -543,11 +544,12 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
 
       const exchangeName = this.getExchangeName();
 
-      // CRITICAL SAFETY CHECK: Block cancel orders in test mode
-      // Production cancellations could result in financial loss during testing
+      // TECHNICAL LIMITATION: Block cancel orders in test mode
+      // MEXC cancellation API doesn't provide a test/validation mode
+      // Order cancellations are always "live" operations on the exchange
       if (this.shouldUseTestMode()) {
         console.log(`[MEXC MODE] 🚫 BLOCKED: Cancel order in test mode! Order cancel: (${txid})`);
-        console.log('[MEXC MODE] 🛡️  SAFETY: Preventing real cancellation during testing');
+        console.log('[MEXC MODE] 🛡️  LIMITATION: No test mode available for cancellation operations');
 
         // In test mode, still return successfully (no exception) but don't make API call
         return;

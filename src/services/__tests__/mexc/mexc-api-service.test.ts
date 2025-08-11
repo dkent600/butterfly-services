@@ -805,11 +805,8 @@ describe('MexcApiService', () => {
     });
 
     it('should throw error about symbol requirement in production mode', async () => {
-      // Mock production mode by setting proper environment variables
-      vi.mocked(mockEnvService.getBoolean).mockImplementation((key: string) => {
-        if (key === 'app.useTestMode') return false;
-        return true; // default to true for safety
-      });
+      // Mock production mode
+      vi.mocked(mockEnvService.isProduction).mockReturnValue(true);
       vi.mocked(mockEnvService.get).mockImplementation((key: string) => {
         if (key === 'app.environment') return 'production';
         return undefined;
@@ -833,11 +830,8 @@ describe('MexcApiService', () => {
     });
 
     it('should throw error for missing API credentials in production', async () => {
-      // Mock production mode by setting proper environment variables
-      vi.mocked(mockEnvService.getBoolean).mockImplementation((key: string) => {
-        if (key === 'app.useTestMode') return false;
-        return true; // default to true for safety
-      });
+      // Mock production mode
+      vi.mocked(mockEnvService.isProduction).mockReturnValue(true);
       vi.mocked(mockEnvService.get).mockImplementation((key: string) => {
         if (key === 'app.environment') return 'production';
         return undefined;
@@ -895,12 +889,24 @@ describe('MexcApiService', () => {
         }
       ];
 
-      // Mock the axios.get call that getOpenedOrders makes
-      vi.mocked(axios.get)
-        .mockResolvedValueOnce(mockServerTimeResponse)  // For time syncer
-        .mockResolvedValueOnce({
-          data: mockOpenOrders
+      // Mock axios.get to handle both time sync and open orders calls
+      vi.mocked(axios.get).mockImplementation((url: string) => {
+        if (url.includes('/api/v3/time')) {
+          // Time syncer call
+          return Promise.resolve({
+            data: { serverTime: 1640995200000 }
+          });
+        } else if (url.includes('/api/v3/openOrders')) {
+          // Open orders call
+          return Promise.resolve({
+            data: mockOpenOrders
+          });
+        }
+        // Default fallback
+        return Promise.resolve({
+          data: { serverTime: 1640995200000 }
         });
+      });
 
       const result = await mexcApiService.getOpenedOrders();
 
@@ -1048,6 +1054,9 @@ describe('MexcApiService', () => {
           price: '',
           limitPrice: '',
           cost: '',
+          createdAt: '',
+          exchange: 'mexc',
+          closedAt: '',
         },
         {
           orderId: '789',
@@ -1060,6 +1069,9 @@ describe('MexcApiService', () => {
           price: '',
           limitPrice: '',
           cost: '',
+          createdAt: '',
+          exchange: 'mexc',
+          closedAt: '',
         },
       ]);
 

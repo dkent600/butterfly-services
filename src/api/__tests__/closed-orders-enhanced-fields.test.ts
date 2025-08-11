@@ -113,6 +113,7 @@ describe('Closed Orders Enhanced Fields Tests', () => {
             price: '50000.00',
             cost: '50000.00',
             opentm: '1672531200.000', // Unix timestamp: 2023-01-01 00:00:00 UTC
+            closetm: '1672531260.000', // Unix timestamp: 2023-01-01 00:01:00 UTC (closed 1 minute later)
             descr: {
               pair: 'BTCUSD',
               type: 'sell',
@@ -126,6 +127,7 @@ describe('Closed Orders Enhanced Fields Tests', () => {
             price: '3000.00',
             cost: '6000.00',
             opentm: '1672617600.000', // Unix timestamp: 2023-01-02 00:00:00 UTC
+            closetm: '1672617720.000', // Unix timestamp: 2023-01-02 00:02:00 UTC (closed 2 minutes later)
             descr: {
               pair: 'ETHUSD',
               type: 'buy',
@@ -158,12 +160,14 @@ describe('Closed Orders Enhanced Fields Tests', () => {
       const order1 = body.orders.find((o: any) => o.orderId === 'KRAKEN-ORDER-1');
       expect(order1).toBeDefined();
       expect(order1.createdAt).toBe('2023-01-01T00:00:00.000Z');
+      expect(order1.closedAt).toBe('2023-01-01T00:01:00.000Z');
       expect(order1.exchange).toBe('kraken');
 
       // Verify second order has required enhanced fields
       const order2 = body.orders.find((o: any) => o.orderId === 'KRAKEN-ORDER-2');
       expect(order2).toBeDefined();
       expect(order2.createdAt).toBe('2023-01-02T00:00:00.000Z');
+      expect(order2.closedAt).toBe('2023-01-02T00:02:00.000Z');
       expect(order2.exchange).toBe('kraken');
 
       // Verify all orders have the enhanced fields
@@ -171,6 +175,9 @@ describe('Closed Orders Enhanced Fields Tests', () => {
         expect(order.createdAt).toBeDefined();
         expect(typeof order.createdAt).toBe('string');
         expect(order.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/); // ISO format
+        expect(order.closedAt).toBeDefined();
+        expect(typeof order.closedAt).toBe('string');
+        expect(order.closedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/); // ISO format
         expect(order.exchange).toBe('kraken');
       });
     });
@@ -217,6 +224,9 @@ describe('Closed Orders Enhanced Fields Tests', () => {
       expect(order.createdAt).toBeDefined();
       expect(typeof order.createdAt).toBe('string');
       expect(order.createdAt).toBe(''); // Empty string when timestamp is missing
+      expect(order.closedAt).toBeDefined();
+      expect(typeof order.closedAt).toBe('string');
+      expect(order.closedAt).toBe(''); // Empty string when timestamp is missing
       expect(order.exchange).toBe('kraken');
     });
   });
@@ -235,6 +245,7 @@ describe('Closed Orders Enhanced Fields Tests', () => {
         price: '50000.00',
         cummulativeQuoteQty: '50.00',
         time: 1672531200000, // Unix timestamp in milliseconds: 2023-01-01 00:00:00 UTC
+        updateTime: 1672531260000, // Unix timestamp in milliseconds: 2023-01-01 00:01:00 UTC (closed 1 minute later)
       },
       {
         orderId: 987654321,
@@ -248,6 +259,7 @@ describe('Closed Orders Enhanced Fields Tests', () => {
         price: '3000.00',
         cummulativeQuoteQty: '0.00',
         time: 1672617600000, // Unix timestamp in milliseconds: 2023-01-02 00:00:00 UTC
+        updateTime: 1672617720000, // Unix timestamp in milliseconds: 2023-01-02 00:02:00 UTC (closed 2 minutes later)
       },
     ];
 
@@ -301,12 +313,14 @@ describe('Closed Orders Enhanced Fields Tests', () => {
       const order1 = body.orders.find((o: any) => o.orderId === '123456789');
       expect(order1).toBeDefined();
       expect(order1.createdAt).toBe('2023-01-01T00:00:00.000Z');
+      expect(order1.closedAt).toBe('2023-01-01T00:01:00.000Z');
       expect(order1.exchange).toBe('mexc');
 
       // Verify second order has required enhanced fields
       const order2 = body.orders.find((o: any) => o.orderId === '987654321');
       expect(order2).toBeDefined();
       expect(order2.createdAt).toBe('2023-01-02T00:00:00.000Z');
+      expect(order2.closedAt).toBe('2023-01-02T00:02:00.000Z');
       expect(order2.exchange).toBe('mexc');
 
       // Verify all orders have the enhanced fields
@@ -314,6 +328,9 @@ describe('Closed Orders Enhanced Fields Tests', () => {
         expect(order.createdAt).toBeDefined();
         expect(typeof order.createdAt).toBe('string');
         expect(order.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/); // ISO format
+        expect(order.closedAt).toBeDefined();
+        expect(typeof order.closedAt).toBe('string');
+        expect(order.closedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/); // ISO format
         expect(order.exchange).toBe('mexc');
       });
     });
@@ -368,6 +385,9 @@ describe('Closed Orders Enhanced Fields Tests', () => {
       expect(order.createdAt).toBeDefined();
       expect(typeof order.createdAt).toBe('string');
       expect(order.createdAt).toBe(''); // Empty string when timestamp is missing
+      expect(order.closedAt).toBeDefined();
+      expect(typeof order.closedAt).toBe('string');
+      expect(order.closedAt).toBe(''); // Empty string when timestamp is missing
       expect(order.exchange).toBe('mexc');
     });
   });
@@ -422,6 +442,7 @@ describe('Closed Orders Enhanced Fields Tests', () => {
         expect(order).toHaveProperty('limitPrice');
         expect(order).toHaveProperty('cost');
         expect(order).toHaveProperty('createdAt'); // New field
+        expect(order).toHaveProperty('closedAt'); // New field
         expect(order).toHaveProperty('exchange'); // New field
       });
 
@@ -438,6 +459,7 @@ describe('Closed Orders Enhanced Fields Tests', () => {
           price: '50000.00',
           cummulativeQuoteQty: '50.00',
           time: 1672531200000,
+          updateTime: 1672531260000,
         },
       ];
 
@@ -480,6 +502,7 @@ describe('Closed Orders Enhanced Fields Tests', () => {
         expect(order).toHaveProperty('limitPrice');
         expect(order).toHaveProperty('cost');
         expect(order).toHaveProperty('createdAt'); // New field
+        expect(order).toHaveProperty('closedAt'); // New field
         expect(order).toHaveProperty('exchange'); // New field
       });
     });

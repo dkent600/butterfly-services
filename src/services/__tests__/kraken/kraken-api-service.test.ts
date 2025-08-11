@@ -356,7 +356,7 @@ describe('KrakenApiService', () => {
       // SAFETY WARNING: This test verifies endpoint logic but makes NO real trades
 
       // Setup: Simulate production mode configuration
-      vi.mocked(mockEnvService.getBoolean).mockReturnValue(false); // useTestMode = false
+      vi.mocked(mockEnvService.isProduction).mockReturnValue(true); // isProduction = true
       vi.mocked(mockEnvService.get).mockReturnValue('production'); // nodeEnv = production
 
       // Mock server time
@@ -673,6 +673,9 @@ describe('KrakenApiService', () => {
           price: '44500.0',
           limitPrice: '',
           cost: '11125.0',
+          createdAt: '2022-01-01T00:00:00.123Z',
+          exchange: 'kraken',
+          closedAt: '2022-01-01T00:01:40.567Z',
         },
       ]);
 

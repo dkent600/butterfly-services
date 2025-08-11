@@ -475,6 +475,7 @@ describe('Kraken Closed Orders Integration Tests', () => {
         limitPrice: '25000.00', // Should include limit price for limit orders
         cost: '112500.00',
         createdAt: '', // Empty string when opentm is missing
+        closedAt: '', // Empty string when closetm is missing
         exchange: 'kraken',
       });
     });

@@ -35,6 +35,7 @@ describe('MEXC Exchange Routes', () => {
       }),
       getNumber: vi.fn(),
       getBoolean: vi.fn(),
+      isProduction: vi.fn().mockReturnValue(false), // Default to test mode for safety
     } as unknown as EnvService;
 
     container.registerInstance(TYPES.IEnvService, mockEnvService);
@@ -277,14 +278,14 @@ describe('MEXC Exchange Routes', () => {
     it('should create market buy order', async () => {
       // Mock server time for nonce generation
       const mockAxiosGet = vi.mocked(axios.get);
-      mockAxiosGet.mockResolvedValue({ 
+      mockAxiosGet.mockResolvedValue({
         data: { serverTime: Date.now() }
       });
 
       // Set up mock interceptor to track all HTTP calls
-      const callTracker = { 
-        getCount: 0, 
-        postCount: 0, 
+      const callTracker = {
+        getCount: 0,
+        postCount: 0,
         getUrls: [] as string[]
       };
 
@@ -331,14 +332,14 @@ describe('MEXC Exchange Routes', () => {
     it('should create limit buy order', async () => {
       // Mock server time for nonce generation
       const mockAxiosGet = vi.mocked(axios.get);
-      mockAxiosGet.mockResolvedValue({ 
+      mockAxiosGet.mockResolvedValue({
         data: { serverTime: Date.now() }
       });
 
       // Set up mock interceptor to track all HTTP calls
-      const callTracker = { 
-        getCount: 0, 
-        postCount: 0, 
+      const callTracker = {
+        getCount: 0,
+        postCount: 0,
         getUrls: [] as string[]
       };
 
@@ -574,9 +575,9 @@ describe('MEXC Exchange Routes', () => {
       expect(body.orders).toBeDefined();
       expect(Array.isArray(body.orders)).toBe(true);
       expect(body.timestamp).toBeDefined();
-      
+
       // Should only include closed orders in our standardized format (executed, canceled, rejected, expired)
-      const hasOnlyClosedStatuses = body.orders.every((order: any) => 
+      const hasOnlyClosedStatuses = body.orders.every((order: any) =>
         ['executed', 'canceled', 'rejected', 'expired'].includes(order.status)
       );
       expect(hasOnlyClosedStatuses).toBe(true);
@@ -591,7 +592,7 @@ describe('MEXC Exchange Routes', () => {
         console.log('[DEBUG 2] Config:', config);
         console.log('[DEBUG 2] URL type:', typeof url);
         console.log('[DEBUG 2] URL string representation:', url?.toString?.());
-        
+
         const urlStr = typeof url === 'string' ? url : url?.toString?.() || '';
         console.log('[DEBUG 2] Final URL string for matching:', urlStr);
 

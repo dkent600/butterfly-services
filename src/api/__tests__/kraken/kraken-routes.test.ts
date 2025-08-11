@@ -35,6 +35,7 @@ describe('Kraken Exchange Routes', () => {
       }),
       getNumber: vi.fn(),
       getBoolean: vi.fn(),
+      isProduction: vi.fn().mockReturnValue(false), // Default to test mode for safety
     } as unknown as EnvService;
 
     container.registerInstance(TYPES.IEnvService, mockEnvService);
@@ -47,25 +48,25 @@ describe('Kraken Exchange Routes', () => {
         return Promise.resolve({
           data: {
             result: {
-              'XXBTZUSD': { 
-                base: 'XXBT', 
-                quote: 'ZUSD', 
-                altname: 'XBTUSD' 
+              'XXBTZUSD': {
+                base: 'XXBT',
+                quote: 'ZUSD',
+                altname: 'XBTUSD'
               },
-              'XXBTUSDT': { 
-                base: 'XXBT', 
-                quote: 'USDT', 
-                altname: 'BTCUSDT' 
+              'XXBTUSDT': {
+                base: 'XXBT',
+                quote: 'USDT',
+                altname: 'BTCUSDT'
               },
-              'XETHXXBT': { 
-                base: 'XETH', 
-                quote: 'XXBT', 
+              'XETHXXBT': {
+                base: 'XETH',
+                quote: 'XXBT',
                 altname: 'ETHXBT'  // Real Kraken pair
               },
-              'XETHZUSD': { 
-                base: 'XETH', 
-                quote: 'ZUSD', 
-                altname: 'ETHUSD' 
+              'XETHZUSD': {
+                base: 'XETH',
+                quote: 'ZUSD',
+                altname: 'ETHUSD'
               },
             }
           }
@@ -114,25 +115,25 @@ describe('Kraken Exchange Routes', () => {
           return Promise.resolve({
             data: {
               result: {
-                'XXBTZUSD': { 
-                  base: 'XXBT', 
-                  quote: 'ZUSD', 
-                  altname: 'XBTUSD' 
+                'XXBTZUSD': {
+                  base: 'XXBT',
+                  quote: 'ZUSD',
+                  altname: 'XBTUSD'
                 },
-                'XXBTUSDT': { 
-                  base: 'XXBT', 
-                  quote: 'USDT', 
-                  altname: 'BTCUSDT' 
+                'XXBTUSDT': {
+                  base: 'XXBT',
+                  quote: 'USDT',
+                  altname: 'BTCUSDT'
                 },
-                'XXBTXETH': { 
-                  base: 'XXBT', 
-                  quote: 'XETH', 
-                  altname: 'BTCETH' 
+                'XXBTXETH': {
+                  base: 'XXBT',
+                  quote: 'XETH',
+                  altname: 'BTCETH'
                 },
-                'XETHZUSD': { 
-                  base: 'XETH', 
-                  quote: 'ZUSD', 
-                  altname: 'ETHUSD' 
+                'XETHZUSD': {
+                  base: 'XETH',
+                  quote: 'ZUSD',
+                  altname: 'ETHUSD'
                 },
               }
             }
@@ -141,7 +142,7 @@ describe('Kraken Exchange Routes', () => {
           const pair = config?.params?.pair;
           if (pair === 'BTCUSDT') {
             return Promise.resolve({
-              data: { 
+              data: {
                 result: {
                   'BTCUSDT': {  // Use altname since createPair returns altname
                     c: ['50000.00', '0.5'], // Kraken format: [price, volume]
@@ -174,19 +175,19 @@ describe('Kraken Exchange Routes', () => {
           return Promise.resolve({
             data: {
               result: {
-                'XXBTZUSD': { 
-                  base: 'XXBT', 
-                  quote: 'ZUSD', 
-                  altname: 'XBTUSD' 
+                'XXBTZUSD': {
+                  base: 'XXBT',
+                  quote: 'ZUSD',
+                  altname: 'XBTUSD'
                 },
-                'XXBTUSDT': { 
-                  base: 'XXBT', 
-                  quote: 'USDT', 
-                  altname: 'BTCUSDT' 
+                'XXBTUSDT': {
+                  base: 'XXBT',
+                  quote: 'USDT',
+                  altname: 'BTCUSDT'
                 },
-                'XETHZUSD': { 
-                  base: 'XETH', 
-                  quote: 'ZUSD', 
+                'XETHZUSD': {
+                  base: 'XETH',
+                  quote: 'ZUSD',
                   altname: 'ETHUSD'  // ETH to USD pair
                 },
               }
@@ -196,7 +197,7 @@ describe('Kraken Exchange Routes', () => {
           const pair = config?.params?.pair;
           if (pair === 'ETHUSD') {
             return Promise.resolve({
-              data: { 
+              data: {
                 result: {
                   'ETHUSD': {  // Use altname since createPair returns altname
                     c: ['2500.00', '1.5'],  // ETH priced in USD
@@ -226,25 +227,25 @@ describe('Kraken Exchange Routes', () => {
           return Promise.resolve({
             data: {
               result: {
-                'XXBTZUSD': { 
-                  base: 'XXBT', 
-                  quote: 'ZUSD', 
-                  altname: 'XBTUSD' 
+                'XXBTZUSD': {
+                  base: 'XXBT',
+                  quote: 'ZUSD',
+                  altname: 'XBTUSD'
                 },
-                'XXBTUSDT': { 
-                  base: 'XXBT', 
-                  quote: 'USDT', 
-                  altname: 'BTCUSDT' 
+                'XXBTUSDT': {
+                  base: 'XXBT',
+                  quote: 'USDT',
+                  altname: 'BTCUSDT'
                 },
-                'XXBTXETH': { 
-                  base: 'XXBT', 
-                  quote: 'XETH', 
-                  altname: 'BTCETH' 
+                'XXBTXETH': {
+                  base: 'XXBT',
+                  quote: 'XETH',
+                  altname: 'BTCETH'
                 },
-                'XETHZUSD': { 
-                  base: 'XETH', 
-                  quote: 'ZUSD', 
-                  altname: 'ETHUSD' 
+                'XETHZUSD': {
+                  base: 'XETH',
+                  quote: 'ZUSD',
+                  altname: 'ETHUSD'
                 },
               }
             }
@@ -253,7 +254,7 @@ describe('Kraken Exchange Routes', () => {
           const pair = config?.params?.pair;
           if (pair === 'BTCUSDT') {
             return Promise.resolve({
-              data: { 
+              data: {
                 result: {
                   'BTCUSDT': {  // Use altname since createPair returns altname
                     c: ['50000.00', '0.5'],
@@ -280,7 +281,7 @@ describe('Kraken Exchange Routes', () => {
       // Mock server time and balance calls
       vi.mocked(axios.get)
         .mockResolvedValueOnce({ data: { result: { unixtime: 1640995200 } } }) // server time
-        
+
       vi.mocked(axios.post).mockResolvedValueOnce({ // balance
         data: {
           error: [],
@@ -330,25 +331,25 @@ describe('Kraken Exchange Routes', () => {
           return Promise.resolve({
             data: {
               result: {
-                'XXBTZUSD': { 
-                  base: 'XXBT', 
-                  quote: 'ZUSD', 
-                  altname: 'XBTUSD' 
+                'XXBTZUSD': {
+                  base: 'XXBT',
+                  quote: 'ZUSD',
+                  altname: 'XBTUSD'
                 },
-                'XXBTUSDT': { 
-                  base: 'XXBT', 
-                  quote: 'USDT', 
-                  altname: 'BTCUSDT' 
+                'XXBTUSDT': {
+                  base: 'XXBT',
+                  quote: 'USDT',
+                  altname: 'BTCUSDT'
                 },
-                'XXBTXETH': { 
-                  base: 'XXBT', 
-                  quote: 'XETH', 
-                  altname: 'BTCETH' 
+                'XXBTXETH': {
+                  base: 'XXBT',
+                  quote: 'XETH',
+                  altname: 'BTCETH'
                 },
-                'XETHZUSD': { 
-                  base: 'XETH', 
-                  quote: 'ZUSD', 
-                  altname: 'ETHUSD' 
+                'XETHZUSD': {
+                  base: 'XETH',
+                  quote: 'ZUSD',
+                  altname: 'ETHUSD'
                 },
               }
             }
@@ -376,7 +377,7 @@ describe('Kraken Exchange Routes', () => {
         } else if (urlStr.includes('/0/private/AddOrder')) {
           // Order creation endpoint
           return Promise.resolve({
-            data: { 
+            data: {
               error: [],
               result: { txid: ['OQCLML-BW3P3-BUCMWZ'] },
             },
@@ -433,25 +434,25 @@ describe('Kraken Exchange Routes', () => {
           return Promise.resolve({
             data: {
               result: {
-                'XXBTZUSD': { 
-                  base: 'XXBT', 
-                  quote: 'ZUSD', 
-                  altname: 'XBTUSD' 
+                'XXBTZUSD': {
+                  base: 'XXBT',
+                  quote: 'ZUSD',
+                  altname: 'XBTUSD'
                 },
-                'XXBTUSDT': { 
-                  base: 'XXBT', 
-                  quote: 'USDT', 
-                  altname: 'BTCUSDT' 
+                'XXBTUSDT': {
+                  base: 'XXBT',
+                  quote: 'USDT',
+                  altname: 'BTCUSDT'
                 },
-                'XXBTXETH': { 
-                  base: 'XXBT', 
-                  quote: 'XETH', 
-                  altname: 'BTCETH' 
+                'XXBTXETH': {
+                  base: 'XXBT',
+                  quote: 'XETH',
+                  altname: 'BTCETH'
                 },
-                'XETHZUSD': { 
-                  base: 'XETH', 
-                  quote: 'ZUSD', 
-                  altname: 'ETHUSD' 
+                'XETHZUSD': {
+                  base: 'XETH',
+                  quote: 'ZUSD',
+                  altname: 'ETHUSD'
                 },
               }
             }
@@ -479,7 +480,7 @@ describe('Kraken Exchange Routes', () => {
         } else if (urlStr.includes('/0/private/AddOrder')) {
           // Order creation endpoint
           return Promise.resolve({
-            data: { 
+            data: {
               error: [],
               result: { txid: ['OQCLML-BW3P3-BUCMWZ'] },
             },
@@ -557,9 +558,9 @@ describe('Kraken Exchange Routes', () => {
           return Promise.resolve({
             data: {
               result: {
-                'XXBTZUSD': { 
-                  base: 'XXBT', 
-                  quote: 'ZUSD', 
+                'XXBTZUSD': {
+                  base: 'XXBT',
+                  quote: 'ZUSD',
                   pair_decimals: 5,
                   lot_decimals: 8,
                   lot_multiplier: 1,
@@ -593,7 +594,7 @@ describe('Kraken Exchange Routes', () => {
 
       // Mock buy order creation
       mockAxiosPost.mockResolvedValue({
-        data: { 
+        data: {
           error: [],
           result: { txid: ['OQCLML-BW3P3-BUCMWZ'] },
         },
@@ -645,9 +646,9 @@ describe('Kraken Exchange Routes', () => {
           return Promise.resolve({
             data: {
               result: {
-                'XXBTZUSD': { 
-                  base: 'XXBT', 
-                  quote: 'ZUSD', 
+                'XXBTZUSD': {
+                  base: 'XXBT',
+                  quote: 'ZUSD',
                   pair_decimals: 5,
                   lot_decimals: 8,
                   lot_multiplier: 1,
@@ -681,7 +682,7 @@ describe('Kraken Exchange Routes', () => {
 
       // Mock limit buy order creation
       mockAxiosPost.mockResolvedValue({
-        data: { 
+        data: {
           error: [],
           result: { txid: ['OQCLML-BW3P3-BUCMWZ'] },
         },
@@ -821,7 +822,7 @@ describe('Kraken Exchange Routes', () => {
       expect(body.timestamp).toBeDefined();
       expect(Array.isArray(body.orders)).toBe(true);
       expect(body.orders.length).toBeGreaterThan(0);
-      
+
       // Test unified format
       const firstOrder = body.orders[0];
       expect(firstOrder.orderId).toBeDefined();
