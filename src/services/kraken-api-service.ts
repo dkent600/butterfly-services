@@ -1,7 +1,7 @@
 import axios from 'axios';
 import crypto from 'node:crypto';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, TYPES } from '../types/interfaces.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, ILogService, IOpenedOrderListItem, TYPES } from '../types/interfaces.js';
 import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
@@ -16,8 +16,9 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
   constructor(
     @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
     @inject(TYPES.IEnvService) envService: IEnvService,
+    @inject(TYPES.ILogService) logService: ILogService,
   ) {
-    super(envService);
+    super(envService, logService);
 
     this.instanceId = ++KrakenApiService.instanceCount;
 
@@ -303,10 +304,53 @@ export class KrakenApiService extends BaseExchangeService implements IExchangeSe
       // Map asset name to Kraken format for balance lookup
       const krakenAssetName = this.mapAssetToKraken(asset.name);
 
-      let balance = 0;
+      /*
+       * Balance Calculation Strategy for Kraken ".F" Suffix Assets
+       * 
+       * The use case here is to support apps that don't care about custody models,
+       * but just want the total balance of the coin available for trading/withdrawal.
+       * 
+       * Kraken has introduced ".F" suffix assets which typically represent:
+       * - Staked versions of assets (e.g., SOL.F for staked Solana)
+       * - Assets in custody/funding accounts vs. trading accounts
+       * - Assets participating in Kraken's earn/rewards programs
+       * 
+       * For portfolio management purposes, we sum both standard and ".F" balances
+       * to provide the total holdings of that asset, regardless of custody state.
+       * This gives applications a complete view of available funds.
+       */
 
+      let balance = 0;
+      let standardBalance = 0;
+      let fSuffixBalance = 0;
+
+      // Check for standard format balance (e.g., "SOL", "ADA", "XXBT")
       if (data.result?.[krakenAssetName]) {
-        balance = parseFloat(data.result[krakenAssetName]);
+        standardBalance = parseFloat(data.result[krakenAssetName]);
+      }
+
+      // Check for .F suffix format balance (e.g., "SOL.F", "ADA.F")
+      // This represents staked/funding/custody variants of the same asset
+      const fSuffixName = `${krakenAssetName}.F`;
+      if (data.result?.[fSuffixName]) {
+        fSuffixBalance = parseFloat(data.result[fSuffixName]);
+      }
+
+      // Calculate total balance (sum of all custody models)
+      balance = standardBalance + fSuffixBalance;
+
+      // Provide explicit logging to monitor Kraken's API behavior evolution
+      if (standardBalance > 0 && fSuffixBalance > 0) {
+        this.logService.info(`[KRAKEN BALANCE] ${asset.name} found in both custody formats:`);
+        this.logService.info(`  - Standard (${krakenAssetName}): ${standardBalance}`);
+        this.logService.info(`  - Funding/Staked (${fSuffixName}): ${fSuffixBalance}`);
+        this.logService.info(`  - Total Combined: ${balance}`);
+      } else if (fSuffixBalance > 0) {
+        this.logService.info(`[KRAKEN BALANCE] ${asset.name} found only as ${fSuffixName}: ${fSuffixBalance}`);
+      } else if (standardBalance > 0) {
+        this.logService.info(`[KRAKEN BALANCE] ${asset.name} found only as ${krakenAssetName}: ${standardBalance}`);
+      } else {
+        this.logService.info(`[KRAKEN BALANCE] No balance found for ${asset.name} (checked ${krakenAssetName} and ${fSuffixName})`);
       }
 
       return balance;

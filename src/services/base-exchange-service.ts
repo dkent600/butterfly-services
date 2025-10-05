@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { IAsset, IExchangeTimeSyncer, IEnvService } from '../types/interfaces.js';
+import { IAsset, IExchangeTimeSyncer, IEnvService, ILogService } from '../types/interfaces.js';
 import { ExchangeTimeSyncer } from './exchange-time-syncer.js';
 
 /**
@@ -18,7 +18,8 @@ export abstract class BaseExchangeService {
 
   constructor(
     protected readonly envService: IEnvService,
-  ) {}
+    protected readonly logService: ILogService,
+  ) { }
 
   /**
    * Abstract method to get the time endpoint for the specific exchange.
@@ -81,12 +82,12 @@ export abstract class BaseExchangeService {
    */
   protected async getTimeSyncer(): Promise<IExchangeTimeSyncer> {
     const exchangeName = this.getExchangeName();
-    
+
     // Pass server time provider function to factory
     const serverTimeProvider = () => this.getRealServerTime();
-    
+
     const timeSyncer = await ExchangeTimeSyncer.getForExchange(exchangeName, serverTimeProvider);
-    
+
     return timeSyncer;
   }
 
@@ -118,11 +119,11 @@ export abstract class BaseExchangeService {
     // Get server-synchronized time in milliseconds - do this ONCE per call
     const timeSyncer = await this.getTimeSyncer();
     const currentTimeMs = Math.floor(timeSyncer.now());
-    
+
     // Enhanced time validation with detailed logging
     const now = Date.now();
     const timeDiff = Math.abs(currentTimeMs - now);
-    
+
     if (timeDiff > 300000) { // More than 5 minutes off
       console.warn(`[${exchangeName.toUpperCase()} NONCE] Warning: Server time ${currentTimeMs} differs significantly from local time ${now} (diff: ${timeDiff}ms). Using local time.`);
       const fallbackTime = now;
@@ -130,15 +131,15 @@ export abstract class BaseExchangeService {
     } else if (timeDiff > 60000) { // More than 1 minute off - warn but continue
       console.warn(`[${exchangeName.toUpperCase()} NONCE] Notice: Server time ${currentTimeMs} differs from local time ${now} by ${timeDiff}ms.`);
     }
-    
+
     // Additional validation: ensure nonce is reasonable (not too old)
     const oldestAllowed = now - 86400000; // 24 hours ago
     const actualTime = Math.max(currentTimeMs, oldestAllowed);
-    
+
     if (actualTime !== currentTimeMs) {
       console.warn(`[${exchangeName.toUpperCase()} NONCE] Adjusted time from ${currentTimeMs} to ${actualTime} (minimum threshold)`);
     }
-    
+
     return this.performAtomicNonceGeneration(globalNonceRef, actualTime, exchangeName, instanceId);
   }
 
@@ -156,27 +157,27 @@ export abstract class BaseExchangeService {
     let attempts = 0;
     const maxAttempts = 100;
     const startTime = Date.now();
-    
+
     const instanceStr = instanceId ? ` Instance #${instanceId}` : '';
     console.log(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} Starting generation - Current global: ${globalNonceRef.value}, Server time: ${currentTimeMs}`);
-    
+
     while (attempts < maxAttempts) {
       const currentGlobalNonce = globalNonceRef.value;
-      
+
       // ALWAYS increment by exactly 1 - this is the only way to ensure no duplicates
       // Even if time goes backwards, we maintain strict sequence
       generatedNonce = currentGlobalNonce + 1;
-      
+
       // Ensure nonce is at least as large as server time, but never decrease the sequence
       if (generatedNonce < currentTimeMs) {
         generatedNonce = Math.max(currentTimeMs, currentGlobalNonce + 1);
         console.log(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} Boosted nonce from ${currentGlobalNonce + 1} to ${generatedNonce} to match server time`);
       }
-      
+
       if (attempts > 0) {
         console.log(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} Retry attempt ${attempts}: global was ${currentGlobalNonce}, generating ${generatedNonce}`);
       }
-      
+
       // Atomic compare-and-swap: only update if no other thread changed the value
       if (globalNonceRef.value === currentGlobalNonce) {
         globalNonceRef.value = generatedNonce;
@@ -185,27 +186,27 @@ export abstract class BaseExchangeService {
       // Another thread updated it, retry with the new value
       attempts++;
     }
-    
+
     if (attempts >= maxAttempts) {
       console.error(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} CRITICAL: Failed to generate unique nonce after ${maxAttempts} attempts! Final global value: ${globalNonceRef.value}`);
       throw new Error(`Failed to generate unique nonce after ${maxAttempts} attempts`);
     }
-    
+
     const duration = Date.now() - startTime;
-    
+
     // Enhanced debug logging with timing analysis and validation checks
     console.log(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} SUCCESS: Generated ${generatedNonce} in ${duration}ms after ${attempts} attempts`);
     console.log(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} Validation: serverTime=${currentTimeMs}, nonce=${generatedNonce}, globalRef=${globalNonceRef.value}`);
-    
+
     // Sanity check: ensure nonce is reasonable
     if (generatedNonce < currentTimeMs) {
       console.error(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} ERROR: Generated nonce ${generatedNonce} is less than server time ${currentTimeMs}!`);
     }
-    
+
     if (generatedNonce < globalNonceRef.value) {
       console.error(`[${exchangeName.toUpperCase()} NONCE]${instanceStr} ERROR: Generated nonce ${generatedNonce} is less than global reference ${globalNonceRef.value}!`);
     }
-    
+
     return generatedNonce;
   }
 

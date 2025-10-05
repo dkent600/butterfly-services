@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { injectable, inject } from 'tsyringe';
-import { IAsset, IExchangeService, IExchangeApiService, IEnvService, IOpenedOrderListItem, IClosedOrderListItem, TYPES } from '../types/interfaces.js';
+import { IAsset, IExchangeService, IExchangeApiService, IEnvService, ILogService, IOpenedOrderListItem, IClosedOrderListItem, TYPES } from '../types/interfaces.js';
 import { BaseExchangeService } from './base-exchange-service.js';
 
 @injectable()
@@ -10,8 +10,9 @@ export class MexcApiService extends BaseExchangeService implements IExchangeServ
   constructor(
     @inject(TYPES.IExchangeApiService) private readonly exchangeApiService: IExchangeApiService,
     @inject(TYPES.IEnvService) envService: IEnvService,
+    @inject(TYPES.ILogService) logService: ILogService,
   ) {
-    super(envService);
+    super(envService, logService);
   }
 
   protected getTimeEndpoint(): string {
