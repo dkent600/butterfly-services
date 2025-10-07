@@ -1,9 +1,7 @@
-import { injectable } from 'tsyringe';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { IEnvService } from '../types/interfaces.js';
 
-@injectable()
 export class EnvService implements IEnvService {
   private config: Record<string, unknown> = {};
 
@@ -14,7 +12,7 @@ export class EnvService implements IEnvService {
   private async loadConfig(): Promise<void> {
     // First: Load from actual environment variables
     this.loadFromEnvironment();
-    
+
     // Second: Load from local config file (if exists) - lower priority
     this.loadFromConfigFile();
   }
@@ -25,7 +23,7 @@ export class EnvService implements IEnvService {
     // MEXC_API_SECRET -> api.mexc.apiSecret
     // KRAKEN_API_KEY -> api.kraken.apiKey
     // KRAKEN_API_SECRET -> api.kraken.apiSecret
-    
+
     for (const [key, value] of Object.entries(process.env)) {
       if (value) {
         const configKey = this.mapEnvKeyToConfigKey(key);
@@ -50,7 +48,7 @@ export class EnvService implements IEnvService {
           const fullPath = join(process.cwd(), configPath);
           const configContent = readFileSync(fullPath, 'utf-8');
           const fileConfig = JSON.parse(configContent) as Record<string, unknown>;
-          
+
           // Merge file config (lower priority than env vars)
           this.config = { ...fileConfig, ...this.config };
           console.log(`✅ Loaded config from ${configPath}`);

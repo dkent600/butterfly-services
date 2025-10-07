@@ -1,7 +1,5 @@
-import { injectable } from 'tsyringe';
 import { ILogService } from '../types/interfaces.js';
 
-@injectable()
 export class LogService implements ILogService {
 
   info(message: string): void {
