@@ -1,7 +1,28 @@
-# butterfly-services
+# Butterfly-services
 Multi-Exchange API Gateway for secure cryptocurrency exchange operations, part of the Butterfly App ecosystem.
 
 This project provides a Node.js service hosting REST API endpoints for cryptocurrency exchange operations with comprehensive safety mechanisms, testing, and production-ready integrations.
+
+## Project Overview
+
+This backend service provides the API layer for the **Butterfly App** ecosystem, enabling:
+- Secure cryptocurrency exchange operations across multiple platforms (Kraken, MEXC, CoinEx)
+- RESTful API endpoints for price queries, balance checks, and order management
+- Centralized credential management and exchange authentication
+- Request queuing and nonce management for exchange API compliance
+- Production-safe operations with test mode protections
+
+The service is designed to be consumed by the **batch-take-profit** frontend application and other clients requiring secure, reliable access to cryptocurrency exchange APIs.
+
+## Technical Stack
+
+- **Architecture**: Layered Service-Oriented Architecture with Dependency Injection: [ API ] -> [ Services ] -> [ Infrastucture]
+- **Runtime**: Node.js 18+ with TypeScript
+- **API Framework**: Fastify server providing Swagger/OpenAPI documentation
+- **Dependency Injection**: TSyringe for clean architecture
+- **HTTP Client**: Axios for exchange-API communications
+- **Testing**: Vitest with comprehensive test coverage
+- **Build Tool**: TypeScript compiler with ES modules
 
 ## 🚀 Quick Start
 
