@@ -1,5 +1,5 @@
 # butterfly-services
-REST API service for secure cryptocurrency exchange operations, part of the Butterfly App ecosystem.
+Multi-Exchange API Gateway for secure cryptocurrency exchange operations, part of the Butterfly App ecosystem.
 
 This project provides a Node.js service hosting REST API endpoints for cryptocurrency exchange operations with comprehensive safety mechanisms, testing, and production-ready integrations.
 
